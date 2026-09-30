@@ -2,11 +2,11 @@
   const ADD = Phaser.BlendModes.ADD;
   const ts = (size, color) => ({ fontFamily: 'Rajdhani, "Segoe UI", sans-serif', fontSize: size + 'px', fontStyle: '700', color });
 
-  function backdrop(scene) {
+  function backdrop(scene, theme) {
     const { W, H } = CG.CONFIG;
-    scene.add.image(0, 0, 'bg_sky').setOrigin(0).setDisplaySize(W, H).setScrollFactor(0).setDepth(-10);
-    scene.bgFar = scene.add.tileSprite(0, 0, W, H, 'bg_far').setOrigin(0).setScrollFactor(0).setDepth(-9);
-    scene.bgTrees = scene.add.tileSprite(0, 0, W, H, 'bg_trees').setOrigin(0).setScrollFactor(0).setDepth(-8);
+    scene.add.image(0, 0, 'bg_sky_' + theme).setOrigin(0).setDisplaySize(W, H).setScrollFactor(0).setDepth(-10);
+    scene.bgFar = scene.add.tileSprite(0, 0, W, H, 'bg_far_' + theme).setOrigin(0).setScrollFactor(0).setDepth(-9);
+    scene.bgTrees = scene.add.tileSprite(0, 0, W, H, 'bg_trees_' + theme).setOrigin(0).setScrollFactor(0).setDepth(-8);
   }
 
   // ------------------------------------------------------------------ boot
@@ -34,7 +34,7 @@
   // ------------------------------------------------------------------ moving jungle behind the menus
   CG.BackdropScene = class extends Phaser.Scene {
     constructor() { super('Backdrop'); }
-    create() { backdrop(this); this.x = 0; }
+    create() { backdrop(this, 'jungle'); this.x = 0; }
     update(t, delta) {
       this.x += delta * 0.06;
       this.bgFar.tilePositionX = this.x * 0.3;
@@ -48,14 +48,15 @@
     init(data) { this.cfg = Object.assign({ devices: [{ type: 'kbAll' }], stage: 1, score: 0, lives: null }, data); }
 
     create() {
-      const { W, H, TILE: T } = CG.CONFIG, L = CG.DATA.level, C = CG.CONFIG.PLAYER;
+      const { W, H, TILE: T } = CG.CONFIG, C = CG.CONFIG.PLAYER, all = CG.DATA.levels;
+      const L = CG.DATA.level = all[(this.cfg.stage - 1) % all.length];        // stages repeat, harder each time
       this.diff = this.cfg.stage - 1;
       this.score = this.cfg.score;
       this.over = false; this.cleared = false; this.camX = 0; this.spawnI = 0; this.bossOn = false; this.bossT = 2500;
       this.artScale = (CG.CONFIG.SHEET_ART && CG.DATA.art && CG.DATA.art.scale) || {};
       this.bossCamX = L.boss.wallCol * T + 3 * T - W;
 
-      backdrop(this);
+      backdrop(this, L.theme);
       this.physics.world.setBounds(0, 0, L.w * T, H + 600);
       this.cameras.main.setBounds(0, 0, L.w * T, H);
       this.buildTerrain();
@@ -65,8 +66,9 @@
         gravityY: 700, blendMode: 'ADD', tint: [0xffffff, 0xffd27a, 0xff8a3c], emitting: false,
       }).setDepth(15);
 
-      this.bullets = this.physics.add.group({ allowGravity: false, maxSize: 40 });
+      this.bullets = this.physics.add.group({ allowGravity: false, maxSize: 90 });
       this.ebullets = this.physics.add.group({ allowGravity: false, maxSize: 120 });
+      this.ebombs = this.physics.add.group({ maxSize: 40 });                   // grenades and bombs: these fall
       this.enemies = this.add.group();
       this.pickups = this.physics.add.group();
 
@@ -80,11 +82,17 @@
       }
 
       // everything that appears as the camera advances, sorted left to right
-      const spawns = L.enemies.map(([t, c, r]) => ({ t, x: (c + 0.5) * T, y: (r || L.groundRow) * T }));
+      const spawns = L.enemies.map(([t, c, r]) => ({ t, x: (c + 0.5) * T, y: t === 'drone' ? 4.5 * T : (r || L.groundRow) * T }));
       L.capsules.forEach(([c, kind]) => spawns.push({ t: 'flyer', x: (c + 0.5) * T, y: 4 * T, extra: kind }));
       const bx = L.boss.wallCol * T;
-      L.boss.cannonRows.forEach((r) => spawns.push({ t: 'cannon', x: bx - 8, y: r * T }));
-      spawns.push({ t: 'core', x: bx - 40, y: gy });
+      if (L.boss.type === 'fortress') {
+        L.boss.cannonRows.forEach((r) => spawns.push({ t: 'cannon', x: bx - 8, y: r * T }));
+        spawns.push({ t: 'core', x: bx - 40, y: gy });
+      } else if (L.boss.type === 'tank') {
+        spawns.push({ t: 'tank', x: bx - 260, y: gy });
+      } else {
+        spawns.push({ t: 'gunship', x: bx - 300, y: 250 });
+      }
       this.spawns = spawns.sort((a, b) => a.x - b.x);
 
       this.setupColliders();
@@ -99,15 +107,16 @@
         };
       });
       this.scoreText = this.add.text(W - 40, 46, '', ts(38, '#ffffff')).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100).setShadow(0, 2, '#000', 6);
-      this.stageText = this.add.text(W - 40, 84, 'STAGE ' + this.cfg.stage, ts(20, '#ffd39a')).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100);
+      this.stageText = this.add.text(W - 40, 84, 'STAGE ' + this.cfg.stage + ' · ' + L.name, ts(20, '#ffd39a')).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100);
       this.banner = this.add.text(W / 2, H * 0.36, '', ts(88, '#ff9a3c')).setOrigin(0.5).setScrollFactor(0).setDepth(100).setAlpha(0).setShadow(0, 5, '#000', 14);
-      this.say('STAGE ' + this.cfg.stage, 1800);
+      this.say(L.name, 1800);
+      CG.Sfx.play('start');
       CG.UI.onGameStart(this);
     }
 
     // ---------------------------------------------------------------- terrain
     buildTerrain() {
-      const { H, TILE: T } = CG.CONFIG, L = CG.DATA.level, gy = L.groundRow * T;
+      const { H, TILE: T } = CG.CONFIG, L = CG.DATA.level, gy = L.groundRow * T, k = (name) => name + '_' + L.theme;
       const zone = (group, x, y, w, h) => {
         const z = this.add.zone(x + w / 2, y + h / 2, w, h);
         this.physics.add.existing(z, true);
@@ -118,19 +127,19 @@
       this.ledges = this.physics.add.staticGroup();
 
       // water fills the bottom of the stage; the ground pieces cover it
-      this.add.tileSprite(0, gy + 40, L.w * T, T, 'water').setOrigin(0).setDepth(1);
-      this.add.tileSprite(0, gy + 40 + T, L.w * T, H - gy, 'water_deep').setOrigin(0).setDepth(1);
+      this.add.tileSprite(0, gy + 40, L.w * T, T, k('water')).setOrigin(0).setDepth(1);
+      this.add.tileSprite(0, gy + 40 + T, L.w * T, H - gy, k('water_deep')).setOrigin(0).setDepth(1);
       L.ground.forEach(([a, b]) => {
         zone(this.solids, a * T, gy, (b - a) * T, H - gy + 300);
         for (let c = a; c < b; c++) {
-          this.add.image(c * T, gy, 'g_top').setOrigin(0).setDepth(2);
-          for (let r = L.groundRow + 1; r < L.h; r++) this.add.image(c * T, r * T, 'g_in').setOrigin(0).setDepth(2);
+          this.add.image(c * T, gy, k('g_top')).setOrigin(0).setDepth(2);
+          for (let r = L.groundRow + 1; r < L.h; r++) this.add.image(c * T, r * T, k('g_in')).setOrigin(0).setDepth(2);
         }
       });
       L.ledges.forEach(([c, r, w]) => {
         const cc = zone(this.ledges, c * T, r * T, w * T, 20).body.checkCollision;
         cc.down = cc.left = cc.right = false;
-        for (let i = 0; i < w; i++) this.add.image((c + i) * T, r * T - 4, 'ledge').setOrigin(0).setDepth(2);
+        for (let i = 0; i < w; i++) this.add.image((c + i) * T, r * T - 4, k('ledge')).setOrigin(0).setDepth(2);
       });
       // the fortress wall
       const wc = L.boss.wallCol;
@@ -176,6 +185,18 @@
         this.kill(bul);
         z.owner.hit();
       });
+      // grenades and bombs burst on the ground and kill on touch
+      ph.add.collider(this.ebombs, this.solids, (a, b) => {
+        const m = mover(a, b);
+        if (m.active) { this.boom(m.x, m.y, 10); CG.Sfx.play('boom'); this.kill(m); }
+      });
+      ph.add.overlap(bodies, this.ebombs, (a, b) => {
+        const [z, bomb] = pick(a, b, (o) => !!o.owner);
+        if (!bomb.active || z.owner.dead) return;
+        this.boom(bomb.x, bomb.y, 10);
+        this.kill(bomb);
+        z.owner.hit();
+      });
       ph.add.overlap(bodies, this.enemies, (a, b) => {
         const [z, e] = pick(a, b, (o) => !!o.owner);
         if (e.active && e.T.ai !== 'flyer') z.owner.hit();
@@ -211,6 +232,18 @@
     }
     efire(x, y, a) {
       this.shot(this.ebullets, 'ebullet', x, y, a, CG.CONFIG.ENEMY_BULLET_SPEED + 35 * this.diff, 16);
+      CG.Sfx.play('eshoot');
+    }
+    // a thrown grenade or dropped bomb: falls under gravity
+    ebomb(x, y, vx, vy) {
+      const b = this.ebombs.get(x, y, 'bomb');
+      if (!b) return;
+      b.setTexture('bomb').setActive(true).setVisible(true).setDepth(9);
+      b.body.enable = true;
+      b.body.allowGravity = true;
+      b.body.setSize(18, 18, true);
+      b.body.reset(x, y);
+      b.body.setVelocity(vx, vy);
     }
     countBullets(player) {
       let n = 0;
@@ -241,13 +274,14 @@
       const c = e.body.center, S = CG.CONFIG.SCORE;
       this.score += S[e.type] || 0;
       this.boom(c.x, c.y, e.T.boss ? 40 : 18);
+      CG.Sfx.play(e.T.boss ? 'bigboom' : 'boom');
       this.cameras.main.shake(e.T.boss ? 260 : 80, e.T.boss ? 0.012 : 0.004);
       if (e.type === 'flyer') this.dropPickup(c.x, c.y, e.extra);
       e.setActive(false).setVisible(false);
       e.body.enable = false;
       if (e.barrel) e.barrel.setVisible(false);
       this.time.delayedCall(0, () => e.destroy());
-      if (e.type === 'core') this.stageClear();
+      if (e.T.final) this.stageClear();
     }
 
     dropPickup(x, y, kind) {
@@ -261,6 +295,8 @@
     collect(p, k) {
       const C = CG.CONFIG.PLAYER;
       if (k.kind === 'rapid') { p.rapid = true; this.say('RAPID FIRE', 900); }
+      if (k.kind === 'spread') { p.spread = true; this.say('SPREAD SHOT', 900); }
+      CG.Sfx.play('pickup');
       if (k.kind === 'barrier') { p.barrierT = C.barrierMs; this.say('SHIELD', 900); }
       if (k.kind === 'life') { p.lives++; this.say('EXTRA LIFE', 900); }
       this.score += CG.CONFIG.SCORE.pickup;
@@ -281,12 +317,14 @@
       this.time.delayedCall(0, () => {             // after the physics step that killed the core has finished
         this.enemies.getChildren().slice().forEach((e) => { if (e.active) { this.boom(e.x, e.y - 40, 16); e.destroy(); } });
         this.ebullets.children.iterate((b) => { if (b && b.active) this.kill(b); });
+        this.ebombs.children.iterate((b) => { if (b && b.active) this.kill(b); });
       });
       const wallX = CG.DATA.level.boss.wallCol * CG.CONFIG.TILE;
       for (let i = 0; i < 9; i++) {
         this.time.delayedCall(i * 170, () => this.boom(wallX + Phaser.Math.Between(-20, 160), Phaser.Math.Between(150, 850), 30));
       }
       this.say('STAGE CLEAR', 2400);
+      CG.Sfx.play('clear');
       this.time.delayedCall(3300, () => {
         this.scene.restart({
           devices: this.cfg.devices, stage: this.cfg.stage + 1, score: this.score + 3000,
@@ -299,6 +337,7 @@
       if (this.over || !this.players.every((p) => p.out)) return;
       this.over = true;
       this.say('GAME OVER', 5000);
+      CG.Sfx.play('over');
       this.time.delayedCall(1400, () => CG.UI.gameOver(this.score, this.cfg.stage));
     }
 
@@ -332,10 +371,11 @@
       const off = (b) => b.x < this.camX - 60 || b.x > this.camX + W + 60 || b.y < -60 || b.y > H + 60;
       this.bullets.children.iterate((b) => { if (b && b.active && off(b)) this.kill(b); });
       this.ebullets.children.iterate((b) => { if (b && b.active && off(b)) this.kill(b); });
+      this.ebombs.children.iterate((b) => { if (b && b.active && (b.y > H + 60 || b.x < this.camX - 200)) this.kill(b); });
       this.pickups.children.iterate((k) => { if (k && k.active && (k.x < this.camX - 100 || k.y > H + 100)) k.destroy(); });
 
       // boss fight: camera locked at the fortress, soldiers keep arriving from behind
-      if (!this.bossOn && this.camX >= this.bossCamX - 4) { this.bossOn = true; this.say('DESTROY THE CORE', 1800); }
+      if (!this.bossOn && this.camX >= this.bossCamX - 4) { this.bossOn = true; this.say(CG.DATA.level.boss.say, 1800); }
       if (this.bossOn && !this.cleared) {
         this.bossT -= delta;
         if (this.bossT <= 0) {
@@ -348,7 +388,7 @@
 
       this.hud.forEach((h, i) => {
         const p = this.players[i];
-        h.text.setText('×' + Math.max(0, p.lives) + (p.rapid ? '  R' : '') + (p.barrierT > 0 ? '  S' : ''));
+        h.text.setText('×' + Math.max(0, p.lives) + (p.rapid ? ' R' : '') + (p.spread ? ' S' : '') + (p.barrierT > 0 ? ' B' : ''));
         h.icon.setAlpha(p.out ? 0.3 : 1); h.text.setAlpha(p.out ? 0.3 : 1);
       });
       this.scoreText.setText(String(this.score).padStart(7, '0'));

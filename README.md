@@ -31,6 +31,8 @@ Up to 5 players on one screen. On the join screen everyone presses their FIRE bu
 
 Hold down on the ground to lie flat. Down + Jump drops through a ledge. Esc or P pauses.
 
+There are three stages, each with its own look and boss: **Jungle** (fortress core), **Steel Yard** (tank) and **Frozen Pass** (gunship). After the third they repeat, harder. Shoot the flying capsules for power-ups: **R** rapid fire, **S** three-way spread shot, **B** shield, **1** extra life. Sound effects are made by the game itself; the SOUND button on the menu switches them off.
+
 The players are the painted commandos from `contra/assets/commandos.png` (players 3 to 5 are the blue one recoloured). Enemies, terrain and the fortress are pixel art drawn by the game's own code (`contra/src/art.js`). Setting `SHEET_ART: false` in `contra/src/config.js` makes the players pixel art too.
 
 Friends and online scores need a free Firebase project: follow `contra/FIREBASE.md`.

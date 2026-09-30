@@ -25,7 +25,7 @@
 
       Object.assign(this, {
         facing: 1, aimX: 1, aimY: 0, lives, dead: false, out: false, prone: false, onGround: false,
-        invT: 0, barrierT: 0, rapid: false, fireCd: 0, dropT: 0, ledgeT: -1e9, runT: 0, spin: 0,
+        invT: 0, barrierT: 0, rapid: false, spread: false, fireCd: 0, dropT: 0, ledgeT: -1e9, runT: 0, spin: 0,
       });
     }
 
@@ -43,7 +43,7 @@
 
       if (inp.jumpPressed && onGround) {
         if (inp.down && sc.time.now - this.ledgeT < 80) this.dropT = 260;      // drop through a ledge
-        else { b.velocity.y = -C.jump; this.setProne(false); }
+        else { b.velocity.y = -C.jump; this.setProne(false); CG.Sfx.play('jump'); }
       }
 
       // 8-way aim: up alone = straight up, up/down + a direction = diagonals, down in the air = straight down
@@ -60,9 +60,10 @@
       if (this.phys.x > maxX) this.phys.x = maxX;
       if (b.top > CG.CONFIG.H + 60) { this.die(); return; }                     // fell in the water
 
-      if (inp.shoot && this.fireCd <= 0 && sc.countBullets(this) < C.maxBullets) {
-        const m = this.muzzle();
-        sc.fire(this, m.x, m.y, Math.atan2(this.aimY, this.aimX));
+      if (inp.shoot && this.fireCd <= 0 && sc.countBullets(this) < C.maxBullets * (this.spread ? 3 : 1)) {
+        const m = this.muzzle(), a = Math.atan2(this.aimY, this.aimX);
+        for (const off of this.spread ? [-0.2, 0, 0.2] : [0]) sc.fire(this, m.x, m.y, a + off);      // spread = three-way fan
+        CG.Sfx.play('shoot');
         this.fireCd = this.rapid ? C.rapidMs : C.fireMs;
       }
       this.sync(dt);
@@ -107,7 +108,8 @@
     die() {
       if (this.dead || this.out) return;
       const sc = this.scene, b = this.body, v = this.visual;
-      this.dead = true; this.lives--; this.rapid = false; this.barrierT = 0;
+      this.dead = true; this.lives--; this.rapid = false; this.spread = false; this.barrierT = 0;
+      CG.Sfx.play('die');
       b.stop(); b.enable = false;
       this.shield.setVisible(false);
       v.setFrame(this.art.anims.death[0]);
@@ -142,7 +144,12 @@
     turret: { tex: 'e_turret', hp: 6, body: [84, 112], ai: 'turret', fireMs: 1500, fixed: true },
     flyer:  { tex: 'e_flyer', hp: 1, body: [90, 50], ai: 'flyer', fly: true },
     cannon: { tex: 'boss_cannon', hp: 14, body: [84, 84], ai: 'turret', fireMs: 1250, fixed: true, center: true, boss: true },
-    core:   { tex: 'boss_core', hp: 40, body: [100, 160], ai: 'core', fixed: true, boss: true },
+    core:   { tex: 'boss_core', hp: 40, body: [100, 160], ai: 'core', fixed: true, boss: true, final: true },
+    grenadier: { tex: 'px_gren', frames: true, hp: 2, body: [44, 100], ai: 'gren', fireMs: 2400 },
+    drone:  { tex: 'px_drone', frames: true, hp: 2, body: [56, 34], ai: 'drone', fly: true, fireMs: 1700 },
+    // the other two stage bosses (final: destroying it clears the stage)
+    tank:   { tex: 'boss_tank', hp: 70, body: [240, 110], ai: 'tank', boss: true, final: true, pivotY: 96, barrelScale: 1.6, fireMs: 2300 },
+    gunship: { tex: 'boss_heli', frames: true, hp: 55, body: [220, 80], ai: 'gunship', fly: true, boss: true, final: true, fireMs: 1500 },
   };
 
   CG.Enemy = class extends Phaser.Physics.Arcade.Sprite {
@@ -162,14 +169,31 @@
       this.body.setOffset((this.width - bw) / 2, mid ? (this.height - bh) / 2 : this.height - bh);
       if (T.fly) this.body.allowGravity = false;
       if (T.fixed) { this.body.allowGravity = false; this.body.moves = false; this.body.immovable = true; }
-      if (T.ai === 'turret') {
+      this.cd2 = 900;
+      if (T.ai === 'turret' || T.ai === 'tank') {
         this.barrel = scene.add.image(x, y, 'e_barrel').setOrigin(0.12, 0.5).setDepth(9).setRotation(Math.PI);
-        if (T.boss) this.barrel.setScale(1.25);
+        this.barrel.setScale(T.barrelScale || (T.boss ? 1.25 : 1));
       }
     }
 
     pivot() {                       // where the barrel is attached
-      return { x: this.x, y: this.T.center ? this.y : this.y - this.height * 0.52 };
+      return { x: this.x, y: this.T.center ? this.y : this.y - (this.T.pivotY || this.height * 0.52) };
+    }
+
+    // turn the barrel toward the player; returns true once it is time to fire
+    aimBarrel(dt, P, onScreen, fireMs) {
+      const pv = this.pivot();
+      this.barrel.setPosition(pv.x, pv.y);
+      if (!P) return false;
+      this.barrel.rotation = Phaser.Math.Angle.RotateTo(this.barrel.rotation, Math.atan2(P.body.center.y - pv.y, P.body.center.x - pv.x), dt * 2.2);
+      if (!onScreen || this.cd > 0) return false;
+      this.cd = fireMs;
+      return true;
+    }
+    shootBarrel() {
+      if (!this.active) return;
+      const pv = this.pivot(), a = this.barrel.rotation, len = 64 * this.barrel.scaleX;
+      this.scene.efire(pv.x + Math.cos(a) * len, pv.y + Math.sin(a) * len, a);
     }
 
     tick(dt) {
@@ -199,16 +223,40 @@
           sc.efire(this.x + Math.cos(a) * 44, this.y - 66 + Math.sin(a) * 44, a);
         }
       } else if (T.ai === 'turret') {
-        const pv = this.pivot();
-        this.barrel.setPosition(pv.x, pv.y);
-        if (P) {
-          const want = Math.atan2(P.body.center.y - pv.y, P.body.center.x - pv.x);
-          this.barrel.rotation = Phaser.Math.Angle.RotateTo(this.barrel.rotation, want, dt * 2.2);
-          if (onScreen && this.cd <= 0) {
+        if (this.aimBarrel(dt, P, onScreen, fireMs)) this.shootBarrel();
+      } else if (T.ai === 'tank') {                      // rolls back and forth in front of the wall, fires three-shot bursts
+        const left = sc.bossCamX + 620, right = CG.DATA.level.boss.wallCol * CG.CONFIG.TILE - 170;
+        if (!this.dir) this.dir = -1;
+        if (this.x < left) this.dir = 1; else if (this.x > right) this.dir = -1;
+        b.velocity.x = this.dir * 90;
+        if (this.aimBarrel(dt, P, onScreen, fireMs)) for (let i = 0; i < 3; i++) sc.time.delayedCall(i * 150, () => this.shootBarrel());
+      } else if (T.ai === 'gunship') {                   // sweeps across the top of the screen dropping bombs
+        this.x = sc.bossCamX + CG.CONFIG.W / 2 + 120 + Math.sin(this.t * 0.7) * 560;
+        this.y = 250 + Math.sin(this.t * 1.9) * 70;
+        this.setFrame(Math.floor(this.t * 16) % 2);
+        if (onScreen) {
+          this.cd2 -= ms;
+          if (this.cd2 <= 0) { this.cd2 = Math.max(600, 1000 - 80 * sc.diff); sc.ebomb(this.x, this.y + 44, Phaser.Math.Between(-90, 90), 60); }
+          if (P && this.cd <= 0) {
             this.cd = fireMs;
-            const a = this.barrel.rotation, len = 64 * this.barrel.scaleX;
-            sc.efire(pv.x + Math.cos(a) * len, pv.y + Math.sin(a) * len, a);
+            sc.efire(this.x - 90, this.y + 30, Math.atan2(P.body.center.y - this.y - 30, P.body.center.x - this.x + 90));
           }
+        }
+      } else if (T.ai === 'gren') {                      // lobs grenades in an arc onto the player
+        if (P) this.setFlipX(P.body.center.x < this.x);
+        this.setFrame(this.cd > fireMs - 300 ? 1 : 0);
+        if (P && onScreen && this.cd <= 0) {
+          this.cd = fireMs;
+          const t = 1.15, dx = P.body.center.x - this.x, dy = P.body.bottom - (this.y - 84);
+          sc.ebomb(this.x, this.y - 84, dx / t, (dy - 0.5 * CG.CONFIG.GRAVITY * t * t) / t);
+        }
+      } else if (T.ai === 'drone') {                     // drifts across and shoots when the player is near
+        b.velocity.x = -170;
+        this.y = this.baseY + Math.sin(this.t * 2.4) * 50;
+        this.setFrame(Math.floor(this.t * 14) % 2);
+        if (P && onScreen && this.cd <= 0 && Math.abs(P.body.center.x - this.x) < 520) {
+          this.cd = fireMs;
+          sc.efire(this.x, this.y + 16, Math.atan2(P.body.center.y - this.y, P.body.center.x - this.x));
         }
       } else if (T.ai === 'flyer') {
         b.velocity.x = -240;
@@ -219,6 +267,7 @@
     damage(n) {
       if (!this.active) return;
       this.hp -= n;
+      if (this.hp > 0) CG.Sfx.play('hit');
       this.setTintFill(0xffffff);
       this.hurtT = 60;
       if (this.hp <= 0) this.scene.killEnemy(this);

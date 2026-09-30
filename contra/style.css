@@ -126,7 +126,7 @@ canvas { image-rendering: pixelated; }
   button { padding: 7px 12px; font-size: 16px; }
   button.big { padding: 8px 12px; font-size: 19px; }
   .title-panel { width: min(520px, 100%); display: grid; grid-template-columns: 1fr 1fr; }
-  .title-panel > h1, .title-panel > .who, .title-panel > .big, .title-panel > .back { grid-column: 1 / -1; }
+  .title-panel > h1, .title-panel > .who, .title-panel > .big, .title-panel > .back, .title-panel > .span { grid-column: 1 / -1; }
   .slot { padding: 5px 10px; font-size: 15px; }
   .list { gap: 4px; }
   ul, table { font-size: 14px; }

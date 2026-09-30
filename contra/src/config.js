@@ -17,5 +17,5 @@ CG.CONFIG = {
     respawnInvMs: 2200, barrierMs: 10000,
   },
   ENEMY_BULLET_SPEED: 430,
-  SCORE: { runner: 100, rifle: 300, turret: 500, flyer: 200, cannon: 1000, core: 5000, pickup: 200 },
+  SCORE: { runner: 100, rifle: 300, turret: 500, flyer: 200, grenadier: 300, drone: 300, cannon: 1000, core: 5000, tank: 6000, gunship: 7000, pickup: 200 },
 };

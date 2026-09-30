@@ -25,6 +25,7 @@
     <button data-act="lobby" class="big">PLAY <small>1 to 5 players</small></button>
     <button data-act="friends">FRIENDS</button>
     <button data-act="how">HOW TO PLAY</button>
+    <button data-act="sound" id="sound-btn" class="span">SOUND: ON</button>
     <a class="back" href="../">◂ All games</a>
   </div>
 </div>
@@ -60,7 +61,8 @@
       <li>Hold a direction while shooting to aim 8 ways. Hold up to shoot straight up.</li>
       <li>Hold down on the ground to lie flat — most shots pass over you.</li>
       <li>Down + Jump on a ledge drops through it.</li>
-      <li>Shoot the flying capsules for power-ups: R rapid fire, S shield, 1 extra life.</li>
+      <li>Shoot the flying capsules for power-ups: R rapid fire, S spread shot, B shield, 1 extra life.</li>
+      <li>Three stages, each with its own boss, then they repeat harder.</li>
       <li>Anything that touches you kills you. Falling in the water kills you.</li>
       <li>Esc or P pauses.</li>
     </ul>
@@ -136,6 +138,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
 <script src="src/config.js"></script>
 <script src="firebase-config.js"></script>
+<script src="src/sfx.js"></script>
 <script src="src/level.js"></script>
 <script src="src/art.gen.js"></script>
 <script src="src/art.js"></script>

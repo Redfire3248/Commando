@@ -185,6 +185,7 @@ CG.UI = (() => {
 
   const ACTIONS = {
     lobby: openLobby,
+    sound: () => { $('sound-btn').textContent = 'SOUND: ' + (CG.Sfx.toggle() ? 'ON' : 'OFF'); },
     landscape,
     start: startGame,
     leave: (id) => leave(id),
@@ -218,7 +219,7 @@ CG.UI = (() => {
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 
   return {
-    ready() { booted = true; show('menu'); },
+    ready() { booted = true; $('sound-btn').textContent = 'SOUND: ' + (CG.Sfx.on ? 'ON' : 'OFF'); show('menu'); },
     onGameStart(s) { scene = s; },
     gameOver, refreshFriends, localBest, localName, show,
   };

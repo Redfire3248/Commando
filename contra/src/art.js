@@ -83,7 +83,12 @@ CG.Art = (() => {
       line(g, X(sh.x), Y(sh.y), X(sh.x + dx * 5), Y(sh.y + dy * 5 + 1), 2, pal.skin);                         // arm
       return { mx: sh.x + dx * 16 - CX, my: sh.y + dy * 16 + lift - GY };
     }
-    line(g, X(sh.x), Y(sh.y), X(sh.x - Math.sin(a1) * 6), Y(sh.y + 6), 2, pal.skin);                         // swinging arm
+    if (o.throw) {                                                        // arm up, grenade in hand
+      line(g, X(sh.x), Y(sh.y), X(sh.x + 5), Y(sh.y - 9), 2, pal.skin);
+      R(g, X(sh.x + 5), Y(sh.y - 12), 3, 3, '#1d2024');
+    } else {
+      line(g, X(sh.x), Y(sh.y), X(sh.x - Math.sin(a1) * 6), Y(sh.y + 6), 2, pal.skin);                       // swinging arm
+    }
     return null;
   }
   function prone(g, ox, pal) {
@@ -135,7 +140,10 @@ CG.Art = (() => {
   }
 
   // tiny 3x5 letters for the power-up badges
-  const FONT = { R: ['110', '101', '110', '101', '101'], S: ['011', '100', '010', '001', '110'], '1': ['010', '110', '010', '010', '111'] };
+  const FONT = {
+    R: ['110', '101', '110', '101', '101'], S: ['011', '100', '010', '001', '110'],
+    B: ['110', '101', '110', '101', '110'], '1': ['010', '110', '010', '010', '111'],
+  };
   function letter(g, ch, x, y, col) {
     FONT[ch].forEach((row, j) => [...row].forEach((b, i) => { if (b === '1') R(g, x + i, y + j, 1, 1, col); }));
   }
@@ -193,7 +201,8 @@ CG.Art = (() => {
 
     // ---- power-ups, bullets, effects ----
     put(scene, 'pk_rapid', lowres(26, 16, (g) => badge(g, '#ffd23c', 'R')), S);
-    put(scene, 'pk_barrier', lowres(26, 16, (g) => badge(g, '#5ad0ff', 'S')), S);
+    put(scene, 'pk_barrier', lowres(26, 16, (g) => badge(g, '#5ad0ff', 'B')), S);
+    put(scene, 'pk_spread', lowres(26, 16, (g) => badge(g, '#ff8a3c', 'S')), S);
     put(scene, 'pk_life', lowres(26, 16, (g) => badge(g, '#ff7a7a', '1')), S);
     const orb = (c1, c2) => (g) => { disc(g, 4, 4, 3, c2); disc(g, 4, 4, 2, c1); R(g, 3, 3, 2, 2, '#ffffff'); };
     put(scene, 'bullet', lowres(9, 9, orb('#ffd27a', '#ff8a3c')), S);
@@ -214,46 +223,132 @@ CG.Art = (() => {
     }), S);
     put(scene, 'life', lowres(8, 12, (g) => { R(g, 2, 0, 4, 4, '#d0d6de'); disc(g, 4, 8, 3, '#ffffff'); R(g, 3, 7, 2, 2, '#c0c6ce'); }), S);
 
-    // ---- terrain ----
-    put(scene, 'g_top', lowres(16, 16, (g, w, h) => {
-      dirt(g, w, h, '#6b4423', '#553518', '#86582f');
-      R(g, 0, 0, 16, 4, '#2f8a3a'); R(g, 0, 0, 16, 1, '#7be06a');
-      [1, 4, 6, 9, 12, 14].forEach((x) => R(g, x, 4, 1, 1 + (x % 3), '#2f8a3a'));
+    // ---- more enemies and the other two bosses ----
+    const gren = Object.assign({}, foe, { helmet: '#34507a', shirt: '#4a5f86', pants: '#2f3d58', pants2: '#252f45' });
+    put(scene, 'px_gren', lowres(FW * 2, FH, (g) => { soldier(g, 0, gren, {}); soldier(g, FW, gren, { throw: true }); }), S, 2);
+    put(scene, 'px_drone', lowres(22 * 2, 14, (g) => {
+      for (let f = 0; f < 2; f++) {
+        const o = f * 22;
+        R(g, o + 6, 5, 10, 6, '#525b66'); R(g, o + 7, 6, 8, 2, '#8d97a3'); R(g, o + 10, 8, 2, 2, '#ff4a4a');
+        R(g, o + 4, 4, 1, 2, '#2b3038'); R(g, o + 17, 4, 1, 2, '#2b3038');
+        if (f) { R(g, o + 3, 3, 4, 1, '#c9d2de'); R(g, o + 15, 3, 4, 1, '#c9d2de'); }
+        else { R(g, o + 1, 3, 8, 1, '#c9d2de'); R(g, o + 13, 3, 8, 1, '#c9d2de'); }
+      }
+    }), S, 2);
+    put(scene, 'bomb', lowres(8, 8, (g) => { disc(g, 4, 4, 3, '#1d2024'); R(g, 3, 2, 2, 1, '#ff4a4a'); }), S);
+    put(scene, 'boss_tank', lowres(90, 44, (g) => {
+      R(g, 6, 30, 78, 12, '#22262b');
+      for (let i = 0; i < 6; i++) { disc(g, 12 + i * 13, 37, 4, '#3b424b'); R(g, 11 + i * 13, 36, 2, 2, '#7b8692'); }
+      R(g, 4, 22, 82, 10, '#5d6f4c'); R(g, 10, 18, 70, 6, '#5d6f4c'); R(g, 10, 18, 70, 2, '#86a06c');
+      R(g, 30, 6, 32, 13, '#4c5d3e'); R(g, 30, 6, 32, 2, '#78906a'); R(g, 40, 3, 10, 4, '#3e4c33');
+      R(g, 44, 11, 4, 4, '#c0392b'); R(g, 14, 25, 3, 3, '#2b3038'); R(g, 72, 25, 3, 3, '#2b3038');
+    }), S);
+    put(scene, 'boss_heli', lowres(84 * 2, 36, (g) => {
+      for (let f = 0; f < 2; f++) {
+        const o = f * 84;
+        R(g, o + 50, 16, 28, 4, '#4c5d3e'); R(g, o + 74, 9, 4, 11, '#4c5d3e'); disc(g, o + 78, 10, 3, f ? '#8d97a3' : '#c9d2de');
+        R(g, o + 22, 12, 30, 16, '#4c5d3e'); R(g, o + 20, 16, 4, 10, '#4c5d3e'); R(g, o + 22, 12, 30, 2, '#78906a');
+        R(g, o + 22, 15, 10, 8, '#9fd8ff'); R(g, o + 23, 16, 4, 2, '#e6f8ff');
+        R(g, o + 44, 19, 4, 4, '#c0392b');
+        R(g, o + 36, 8, 2, 4, '#2b3038');
+        if (f) R(g, o + 24, 6, 26, 2, '#c9d2de'); else R(g, o + 4, 6, 66, 2, '#c9d2de');
+        R(g, o + 26, 28, 1, 3, '#22262b'); R(g, o + 46, 28, 1, 3, '#22262b'); R(g, o + 20, 31, 32, 1, '#22262b');
+        R(g, o + 14, 24, 9, 3, '#22262b');
+      }
+    }), S, 2);
+
+    // ---- terrain + background, one set per stage theme ----
+    for (const id in THEMES) theme(scene, id, THEMES[id]);
+  }
+
+  // ------------------------------------------------------------------ stage themes
+  // Each theme gets its own ground, ledge, liquid and three background layers, named <key>_<theme>.
+  const THEMES = {
+    jungle: {
+      sky: ['#16264a', '#1c3358', '#244366', '#2d5670', '#356a72', '#3c7a6c', '#2f6656', '#224e40', '#173a2e'],
+      far: '#1f4a3c', farHi: '#2c6450', cap: 2, farKind: 'hills', near: '#0f2a1e', nearKind: 'palms',
+      top: '#2f8a3a', topHi: '#7be06a', dirt: ['#6b4423', '#553518', '#86582f'], rock: '#4a2f15',
+      liquid: ['#1c5a96', '#8fd8ff', '#3f8fd0', '#154878', '#103a62'],
+    },
+    base: {
+      sky: ['#0c0a1e', '#141030', '#1d1740', '#281f4e', '#33285a', '#3c305e', '#32284e', '#251d3a', '#18132a'],
+      far: '#1d1838', farHi: '#ffd76a', cap: 0, farKind: 'city', near: '#0b0916', nearKind: 'towers',
+      top: '#c9a227', topHi: '#ffe680', hazard: true, dirt: ['#4a4f5a', '#3a3f48', '#5c6370'], rock: '#2b2f36',
+      liquid: ['#3a7a1c', '#c8ff6a', '#6fbf2a', '#285a12', '#1d440c'],
+    },
+    snow: {
+      sky: ['#3b4f7a', '#4d6590', '#6480a6', '#7e9aba', '#9ab3cc', '#b4c8da', '#9db4cc', '#8098b6', '#667e9e'],
+      far: '#5f7896', farHi: '#eef6fd', cap: 9, farKind: 'hills', near: '#22344a', nearKind: 'pines',
+      top: '#e8f2fb', topHi: '#ffffff', dirt: ['#5a6478', '#485064', '#707a90'], rock: '#3c4456',
+      liquid: ['#1a3a5e', '#9fd0f0', '#35608c', '#12294a', '#0c1e38'],
+    },
+  };
+  function theme(scene, id, t) {
+    const k = (name) => name + '_' + id;
+    const surface = (g, y, hgt) => {
+      R(g, 0, y, 16, hgt, t.top);
+      if (t.hazard) for (let x = 0; x < 16; x += 4) R(g, x, y + 1, 2, hgt - 1, '#1a1a1a');
+      R(g, 0, y, 16, 1, t.topHi);
+    };
+    put(scene, k('g_top'), lowres(16, 16, (g, w, h) => {
+      dirt(g, w, h, t.dirt[0], t.dirt[1], t.dirt[2]);
+      surface(g, 0, 4);
+      if (!t.hazard) [1, 4, 6, 9, 12, 14].forEach((x) => R(g, x, 4, 1, 1 + (x % 3), t.top));
     }), 4);
-    put(scene, 'g_in', lowres(16, 16, (g, w, h) => { dirt(g, w, h, '#6b4423', '#553518', '#86582f'); R(g, 3, 5, 3, 2, '#4a2f15'); R(g, 10, 11, 3, 2, '#4a2f15'); }), 4);
-    put(scene, 'ledge', lowres(16, 8, (g) => {
-      R(g, 0, 2, 16, 5, '#6b4423'); R(g, 0, 0, 16, 3, '#2f8a3a'); R(g, 0, 0, 16, 1, '#7be06a');
-      [2, 7, 11].forEach((x) => R(g, x, 7, 2, 1, '#4a2f15'));
+    put(scene, k('g_in'), lowres(16, 16, (g, w, h) => {
+      dirt(g, w, h, t.dirt[0], t.dirt[1], t.dirt[2]); R(g, 3, 5, 3, 2, t.rock); R(g, 10, 11, 3, 2, t.rock);
     }), 4);
-    put(scene, 'water', lowres(16, 16, (g) => {
-      R(g, 0, 0, 16, 16, '#1c5a96'); R(g, 0, 0, 16, 2, '#8fd8ff'); R(g, 0, 2, 16, 1, '#3f8fd0');
-      R(g, 2, 6, 5, 1, '#3f8fd0'); R(g, 10, 10, 4, 1, '#3f8fd0'); R(g, 5, 13, 4, 1, '#154878');
+    put(scene, k('ledge'), lowres(16, 8, (g) => {
+      R(g, 0, 2, 16, 5, t.dirt[0]); surface(g, 0, 3);
+      [2, 7, 11].forEach((x) => R(g, x, 7, 2, 1, t.rock));
+    }), 4);
+    const q = t.liquid;
+    put(scene, k('water'), lowres(16, 16, (g) => {
+      R(g, 0, 0, 16, 16, q[0]); R(g, 0, 0, 16, 2, q[1]); R(g, 0, 2, 16, 1, q[2]);
+      R(g, 2, 6, 5, 1, q[2]); R(g, 10, 10, 4, 1, q[2]); R(g, 5, 13, 4, 1, q[3]);
+    }), 4);
+    put(scene, k('water_deep'), lowres(16, 16, (g) => {
+      R(g, 0, 0, 16, 16, q[3]); R(g, 3, 4, 4, 1, q[0]); R(g, 10, 9, 4, 1, q[0]); R(g, 1, 13, 3, 1, q[4]);
     }), 4);
 
-    put(scene, 'water_deep', lowres(16, 16, (g) => {
-      R(g, 0, 0, 16, 16, '#154878'); R(g, 3, 4, 4, 1, '#1c5a96'); R(g, 10, 9, 4, 1, '#1c5a96'); R(g, 1, 13, 3, 1, '#103a62');
-    }), 4);
-
-    // ---- background ----
-    put(scene, 'bg_sky', lowres(1, 9, (g) => ['#16264a', '#1c3358', '#244366', '#2d5670', '#356a72', '#3c7a6c', '#2f6656', '#224e40', '#173a2e'].forEach((c, i) => R(g, 0, i, 1, 1, c))), 120);
-    put(scene, 'bg_far', lowres(256, 270, (g, w, h) => {
-      for (let x = 0; x < w; x++) {
-        const t = x / w * Math.PI * 2;
-        const y = Math.round(150 + Math.sin(t * 2) * 34 + Math.sin(t * 5 + 1) * 16 + Math.sin(t * 11) * 5);
-        R(g, x, y, 1, h - y, '#1f4a3c'); R(g, x, y, 1, 2, '#2c6450');
+    put(scene, k('bg_sky'), lowres(1, 9, (g) => t.sky.forEach((c, i) => R(g, 0, i, 1, 1, c))), 120);
+    put(scene, k('bg_far'), lowres(256, 270, (g, w, h) => {
+      if (t.farKind === 'city') {                                   // a skyline with lit windows
+        for (let i = 0; i < 16; i++) {
+          const x = i * 16, top = 110 + (i * 37) % 90;
+          R(g, x, top, 15, h - top, t.far);
+          for (let y = top + 4; y < h - 50; y += 7) for (let wx = x + 2; wx < x + 13; wx += 4) if ((wx * 7 + y * 3 + i) % 5 === 0) R(g, wx, y, 2, 2, t.farHi);
+        }
+        return;
+      }
+      for (let x = 0; x < w; x++) {                                 // rolling hills or snow-capped peaks
+        const a = x / w * Math.PI * 2;
+        const y = Math.round(150 + Math.sin(a * 2) * 34 + Math.sin(a * 5 + 1) * 16 + Math.sin(a * 11) * 5);
+        R(g, x, y, 1, h - y, t.far); R(g, x, y, 1, Math.max(2, t.cap + Math.round(Math.sin(a * 9) * 3)), t.farHi);
       }
     }), 4);
-    put(scene, 'bg_trees', lowres(256, 270, (g, w, h) => {
-      const col = '#0f2a1e';
+    put(scene, k('bg_trees'), lowres(256, 270, (g, w, h) => {
+      const col = t.near;
       for (let i = 0; i < 9; i++) {
         const x = (i * 29 + 11) % w, top = 70 + (i * 37) % 80;
         for (const o of [-w, 0, w]) {
-          R(g, x + o, top, 3, h - top, col);
-          for (let k = -3; k <= 3; k++) line(g, x + o + 1, top, x + o + 1 + k * 11, top + 14 + Math.abs(k) * 5, 2, col);
+          if (t.nearKind === 'palms') {
+            R(g, x + o, top, 3, h - top, col);
+            for (let f = -3; f <= 3; f++) line(g, x + o + 1, top, x + o + 1 + f * 11, top + 14 + Math.abs(f) * 5, 2, col);
+          } else if (t.nearKind === 'towers') {                     // radio masts and pipes
+            R(g, x + o, top, 3, h - top, col);
+            for (let y = top + 10; y < h - 44; y += 18) R(g, x + o - 5, y, 13, 1, col);
+            R(g, x + o, top - 2, 3, 2, '#ff4a4a');
+          } else {                                                  // pines
+            R(g, x + o, top + 60, 3, h - top, col);
+            for (let f = 0; f < 5; f++) R(g, x + o + 1 - (f * 4 + 2), top + f * 14, (f * 4 + 2) * 2 + 1, 15, col);
+            R(g, x + o - 1, top, 5, 2, t.farHi);
+          }
         }
       }
       R(g, 0, h - 44, w, 44, col);
       for (let x = 0; x < w; x += 5) R(g, x, h - 44 - ((x * 7) % 9), 3, 10, col);
+      if (t.nearKind === 'pines') R(g, 0, h - 44, w, 2, t.farHi);
     }), 4);
   }
 
