@@ -61,3 +61,12 @@ canvas { display: block; }
 .no-guns #b-shoot, .no-guns #b-lock, .no-guns #b-next { display: none; }
 .no-guns #b-slash { width: 92px; height: 92px; right: calc(126px + var(--r)); bottom: calc(40px + var(--b)); }
 .no-guns #b-dash  { width: 78px; height: 78px; right: calc(40px + var(--r));  bottom: calc(128px + var(--b)); }
+
+/* ---------- phones held upright: ask for landscape ---------- */
+#rotate { gap: 18px; padding: 24px; box-sizing: border-box; }
+#rotate .turn { font-size: 64px; line-height: 1; }
+#rotate button {
+  pointer-events: auto; font: 700 18px Rajdhani, system-ui, sans-serif; letter-spacing: .08em; color: #fff;
+  padding: 14px 22px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .35); background: rgba(255, 255, 255, .12);
+}
+#rotate small { font-size: 15px; font-weight: 600; opacity: .7; max-width: 300px; }

@@ -97,12 +97,31 @@ CG.UI = (() => {
     $('lobby-start').textContent = joined.length ? 'START  (' + joined.length + (joined.length === 1 ? ' player)' : ' players)') : 'WAITING FOR PLAYERS';
     $('lobby-touch').classList.toggle('hidden', !CG.Touch.enabled || joined.some((d) => d.id === 'touch'));
   }
-  function openLobby() { joined = []; padPrev = {}; renderLobby(); show('lobby'); }
+  function openLobby() {
+    joined = []; padPrev = {};
+    if (CG.Touch.enabled) joined.push({ id: 'touch', type: 'touch' });       // on a phone you are in straight away
+    $('lobby-hint').classList.toggle('hidden', CG.Touch.enabled);
+    renderLobby();
+    show('lobby');
+  }
+  // Phones: go full screen and lock the screen sideways. Browsers only allow this straight after a tap,
+  // and iPhones do not allow it at all (there the player just turns the phone).
+  function landscape() {
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!req) return;
+    try {
+      Promise.resolve(req.call(el)).then(() => {
+        if (screen.orientation && screen.orientation.lock) return screen.orientation.lock('landscape');
+      }).catch(() => {});
+    } catch (e) { /* not supported here */ }
+  }
   function startGame() {
     if (!joined.length) return;
     let devices = joined.map((d) => ({ type: d.type, index: d.index }));
     // a lone keyboard player gets both key layouts and the mouse
     if (devices.length === 1 && (devices[0].type === 'kbA' || devices[0].type === 'kbB')) devices = [{ type: 'kbAll' }];
+    if (devices.some((d) => d.type === 'touch') && !document.fullscreenElement) landscape();
     play(devices);
   }
   const KEY_JOIN = {
@@ -166,6 +185,7 @@ CG.UI = (() => {
 
   const ACTIONS = {
     lobby: openLobby,
+    landscape,
     start: startGame,
     leave: (id) => leave(id),
     'join-touch': () => join('touch', 'touch'),

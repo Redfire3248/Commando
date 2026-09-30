@@ -24,14 +24,23 @@
   window.addEventListener('appinstalled', () => installBtn.classList.add('hidden'));
 
   // Fullscreen (and lock to landscape on phones where the browser allows it)
+  function goFullscreen() {
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!req) return;                       // iPhones: not allowed, the player just turns the phone
+    try {
+      Promise.resolve(req.call(el)).then(() => {
+        if (screen.orientation && screen.orientation.lock) return screen.orientation.lock('landscape');
+      }).catch(() => {});
+    } catch (e) { /* not supported here */ }
+  }
   fsBtn.addEventListener('click', () => {
     if (document.fullscreenElement) { document.exitFullscreen(); return; }
-    const el = document.documentElement;
-    if (!el.requestFullscreen) return;
-    el.requestFullscreen().then(() => {
-      if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
-    }).catch(() => {});
+    goFullscreen();
   });
+  // the button on the "turn your phone" screen
+  const rotateBtn = document.getElementById('rotate-btn');
+  if (rotateBtn) rotateBtn.addEventListener('click', goFullscreen);
   fsBtn.addEventListener('keydown', (e) => e.preventDefault());   // Space must not re-trigger it mid-game
   installBtn.addEventListener('keydown', (e) => e.preventDefault());
 })();

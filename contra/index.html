@@ -8,6 +8,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -32,7 +35,7 @@
     <h2>WHO IS PLAYING?</h2>
     <p class="sub center">Everyone press your FIRE button to join</p>
     <div id="lobby-slots" class="list"></div>
-    <p class="hint">
+    <p class="hint" id="lobby-hint">
       Keyboard 1: <b>F</b> (moves with W A S D, G jumps) · Keyboard 2: <b>K</b> (moves with arrows, L jumps) ·
       Gamepad: <b>A</b> or <b>X</b>. Playing alone on a keyboard? You get both layouts.
     </p>
@@ -123,7 +126,12 @@
   </div>
   <button id="b-pause">II</button>
 </div>
-<div id="rotate">↻<br>Rotate your device to landscape</div>
+<div id="rotate">
+  <div class="turn">↻</div>
+  <div>Turn your phone sideways to play</div>
+  <button data-act="landscape">GO FULL SCREEN, SIDEWAYS</button>
+  <small>If the button does nothing, switch on auto-rotate and turn the phone.</small>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
 <script src="src/config.js"></script>

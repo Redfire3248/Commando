@@ -103,3 +103,31 @@ canvas { image-rendering: pixelated; }
 
 /* dark, thin scrollbars inside menus */
 .panel, .overlay { scrollbar-width: thin; scrollbar-color: #4a5a4e transparent; }
+
+/* ---------- phones held upright: ask for landscape ---------- */
+#rotate { gap: 18px; padding: 24px; box-sizing: border-box; }
+#rotate .turn { font-size: 64px; line-height: 1; }
+#rotate button {
+  pointer-events: auto; font: 700 18px Rajdhani, system-ui, sans-serif; letter-spacing: .08em; color: #fff;
+  padding: 14px 22px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .35); background: rgba(255, 255, 255, .12);
+}
+#rotate small { font-size: 15px; font-weight: 600; opacity: .7; max-width: 300px; }
+
+/* ---------- short screens (phones held sideways): compact menus ---------- */
+.overlay { align-items: flex-start; }
+.panel { margin: auto; }                 /* centred when it fits, top-aligned and scrollable when it does not */
+@media (max-height: 520px) {
+  .overlay { padding: 8px; }
+  .panel { padding: 12px 16px; gap: 7px; }
+  h1 { font-size: 30px; text-shadow: 0 3px 0 #5a2406; }
+  h2 { font-size: 24px; margin: 0; }
+  .sub { display: none; }
+  .who { margin: 0; font-size: 15px; }
+  button { padding: 7px 12px; font-size: 16px; }
+  button.big { padding: 8px 12px; font-size: 19px; }
+  .title-panel { width: min(520px, 100%); display: grid; grid-template-columns: 1fr 1fr; }
+  .title-panel > h1, .title-panel > .who, .title-panel > .big, .title-panel > .back { grid-column: 1 / -1; }
+  .slot { padding: 5px 10px; font-size: 15px; }
+  .list { gap: 4px; }
+  ul, table { font-size: 14px; }
+}
