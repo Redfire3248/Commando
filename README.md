@@ -60,3 +60,7 @@ Each game has its own `assets/` folder and its own slicer. The slicers only cut 
 | COMMANDO | `contra/assets/` | `contra/PROMPTS.md` | `python contra/tools/build_art.py` |
 
 The slicers need Python with `pillow`, `numpy` and `scipy`. Anything without a sheet keeps its code-drawn placeholder.
+
+## Rights
+
+All rights reserved. The code and all artwork belong to the author and may not be copied, reused or redistributed without permission. See `LICENSE`.

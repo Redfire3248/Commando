@@ -1,0 +1,20 @@
+Copyright (c) 2026 Redfire3248. All rights reserved.
+
+This repository is public so that the games can be played and the project can be viewed.
+It is NOT open source.
+
+You may:
+  - play the games in a web browser;
+  - view the source code and files on GitHub.
+
+You may NOT, without written permission from the copyright holder:
+  - copy, download for reuse, modify, or redistribute any part of this project;
+  - use any of the artwork, sprite sheets, characters, level designs, or other assets
+    in another game, product, dataset, or publication;
+  - host a copy of these games elsewhere, or sell or monetise them.
+
+No licence or right is granted by implication. For permission requests, open an issue on
+this repository.
+
+The Phaser game engine is loaded from a public CDN and is the property of its own authors
+under its own licence; it is not covered by this notice.
