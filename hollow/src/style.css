@@ -1,0 +1,63 @@
+html, body {
+  margin: 0; height: 100%; background: #07080d; overflow: hidden;
+  touch-action: none; overscroll-behavior: none;
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  font-family: Rajdhani, "Segoe UI", system-ui, sans-serif;
+}
+#game { position: fixed; inset: 0; }
+canvas { display: block; }
+.hidden { display: none !important; }
+
+/* ---------- top-right buttons ---------- */
+#top-btns {
+  position: fixed; z-index: 8; display: flex; gap: 8px;
+  top: calc(10px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+}
+#top-btns button {
+  border: 1px solid rgba(255,255,255,.22); background: rgba(10,14,24,.6); color: #dfe8f5;
+  font: 700 14px Rajdhani, system-ui, sans-serif; letter-spacing: .06em;
+  padding: 7px 14px; border-radius: 999px; cursor: pointer; backdrop-filter: blur(4px);
+}
+#top-btns button:hover { background: rgba(40,60,90,.7); }
+#install-btn { border-color: rgba(111,243,255,.6) !important; color: #bffbff !important; }
+#fs-btn { opacity: .55; }
+
+/* ---------- touch controls ---------- */
+#touch { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+#stick-zone { position: absolute; left: 0; top: 25%; bottom: 0; width: 45%; pointer-events: auto; }
+#stick {
+  position: absolute; width: 150px; height: 150px; border-radius: 50%;
+  left: calc(36px + env(safe-area-inset-left)); bottom: calc(30px + env(safe-area-inset-bottom));
+  border: 2px solid rgba(255,255,255,.18); background: rgba(255,255,255,.05);
+}
+#knob {
+  position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px 0 0 -32px;
+  border-radius: 50%; background: rgba(255,255,255,.28);
+}
+#btns button {
+  position: absolute; pointer-events: auto; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.28); background: rgba(16,20,36,.45); color: rgba(255,255,255,.85);
+  font: 700 13px Rajdhani, system-ui, sans-serif; letter-spacing: .05em; padding: 0;
+  --r: env(safe-area-inset-right); --b: env(safe-area-inset-bottom);
+}
+#btns button.on { background: rgba(111,243,255,.35); border-color: rgba(111,243,255,.8); }
+#b-jump  { width: 92px; height: 92px; right: calc(22px + var(--r));  bottom: calc(22px + var(--b)); }
+#b-shoot { width: 92px; height: 92px; right: calc(126px + var(--r)); bottom: calc(40px + var(--b)); }
+#b-slash { width: 78px; height: 78px; right: calc(40px + var(--r));  bottom: calc(128px + var(--b)); }
+#b-dash  { width: 72px; height: 72px; right: calc(134px + var(--r)); bottom: calc(146px + var(--b)); }
+#b-next  { width: 58px; height: 58px; right: calc(24px + var(--r));  bottom: calc(222px + var(--b)); font-size: 11px; }
+#b-lock  { width: 58px; height: 58px; right: calc(226px + var(--r)); bottom: calc(60px + var(--b)); font-size: 11px; }
+
+/* ---------- portrait warning (phones only) ---------- */
+#rotate {
+  display: none; position: fixed; inset: 0; z-index: 20; background: #07080d; color: #cfd8e6;
+  font: 700 22px Rajdhani, system-ui, sans-serif; text-align: center; align-items: center; justify-content: center;
+  flex-direction: column; line-height: 1.6;
+}
+@media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
+
+/* sword-only mode: no gun buttons */
+.no-guns #b-shoot, .no-guns #b-lock, .no-guns #b-next { display: none; }
+.no-guns #b-slash { width: 92px; height: 92px; right: calc(126px + var(--r)); bottom: calc(40px + var(--b)); }
+.no-guns #b-dash  { width: 78px; height: 78px; right: calc(40px + var(--r));  bottom: calc(128px + var(--b)); }

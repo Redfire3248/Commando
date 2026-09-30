@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b1410">
+<title>COMMANDO — GUNHOLLOW</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game"></div>
+
+<!-- main menu -->
+<div id="menu" class="overlay">
+  <div class="panel title-panel">
+    <h1>COMMANDO</h1>
+    <p class="sub">one hit · three lives · no mercy</p>
+    <div class="who">Playing as <b id="menu-name">Soldier</b> · Best <b id="menu-best">0</b></div>
+    <button data-act="lobby" class="big">PLAY <small>1 to 5 players</small></button>
+    <button data-act="friends">FRIENDS</button>
+    <button data-act="how">HOW TO PLAY</button>
+    <a class="back" href="../">◂ All games</a>
+  </div>
+</div>
+
+<!-- join screen -->
+<div id="lobby" class="overlay hidden">
+  <div class="panel wide">
+    <h2>WHO IS PLAYING?</h2>
+    <p class="sub center">Everyone press your FIRE button to join</p>
+    <div id="lobby-slots" class="list"></div>
+    <p class="hint">
+      Keyboard 1: <b>F</b> (moves with W A S D, G jumps) · Keyboard 2: <b>K</b> (moves with arrows, L jumps) ·
+      Gamepad: <b>A</b> or <b>X</b>. Playing alone on a keyboard? You get both layouts.
+    </p>
+    <button data-act="join-touch" id="lobby-touch" class="hidden">JOIN ON THIS TOUCH SCREEN</button>
+    <button data-act="start" id="lobby-start" class="big" disabled>WAITING FOR PLAYERS</button>
+    <button data-act="menu">BACK</button>
+  </div>
+</div>
+
+<!-- how to play -->
+<div id="how" class="overlay hidden">
+  <div class="panel wide">
+    <h2>HOW TO PLAY</h2>
+    <table>
+      <tr><th></th><th>Alone</th><th>Keyboard 1</th><th>Keyboard 2</th><th>Gamepad</th></tr>
+      <tr><td>Move / aim</td><td>Arrows or WASD</td><td>W A S D</td><td>Arrows</td><td>Stick / D-pad</td></tr>
+      <tr><td>Shoot</td><td>X, J or click</td><td>F</td><td>K</td><td>X or RT</td></tr>
+      <tr><td>Jump</td><td>Z, K or Space</td><td>G</td><td>L</td><td>A</td></tr>
+    </table>
+    <ul>
+      <li>Up to 5 players on one screen: two on the keyboard, the rest on gamepads (or one on a touch screen).</li>
+      <li>Hold a direction while shooting to aim 8 ways. Hold up to shoot straight up.</li>
+      <li>Hold down on the ground to lie flat — most shots pass over you.</li>
+      <li>Down + Jump on a ledge drops through it.</li>
+      <li>Shoot the flying capsules for power-ups: R rapid fire, S shield, 1 extra life.</li>
+      <li>Anything that touches you kills you. Falling in the water kills you.</li>
+      <li>Esc or P pauses.</li>
+    </ul>
+    <button data-act="menu">BACK</button>
+  </div>
+</div>
+
+<!-- friends -->
+<div id="friends" class="overlay hidden">
+  <div class="panel wide">
+    <h2>FRIENDS</h2>
+    <div id="fr-setup" class="note hidden">
+      Online features are not switched on yet. Follow the steps in <b>contra/FIREBASE.md</b>, paste your keys into
+      <b>contra/firebase-config.js</b>, then reload.
+    </div>
+    <div id="fr-body" class="hidden">
+      <div class="row">
+        <label>Your name <input id="fr-name" maxlength="16" autocomplete="off"></label>
+        <button data-act="fr-save">SAVE</button>
+      </div>
+      <div class="row">Your friend code: <b id="fr-code" class="code">······</b> <button data-act="fr-copy">COPY</button></div>
+      <div class="row">
+        <label>Add a friend by code <input id="fr-add" maxlength="6" autocomplete="off" placeholder="ABC123"></label>
+        <button data-act="fr-send">SEND REQUEST</button>
+      </div>
+      <div id="fr-msg" class="msg"></div>
+      <h3>Requests</h3>
+      <div id="fr-requests" class="list"><i>None</i></div>
+      <h3>Friends</h3>
+      <div id="fr-list" class="list"><i>No friends yet</i></div>
+      <div class="row"><button data-act="fr-google">KEEP MY ACCOUNT WITH GOOGLE</button></div>
+    </div>
+    <button data-act="menu">BACK</button>
+  </div>
+</div>
+
+<!-- pause -->
+<div id="pause" class="overlay hidden">
+  <div class="panel">
+    <h2>PAUSED</h2>
+    <button data-act="resume" class="big">RESUME</button>
+    <button data-act="quit">QUIT TO MENU</button>
+  </div>
+</div>
+
+<!-- game over -->
+<div id="over" class="overlay hidden">
+  <div class="panel">
+    <h2>GAME OVER</h2>
+    <p class="score">Score <b id="over-score">0</b></p>
+    <p class="sub" id="over-best"></p>
+    <button data-act="retry" class="big">TRY AGAIN</button>
+    <button data-act="menu">MENU</button>
+  </div>
+</div>
+
+<!-- on-screen controls (touch devices) -->
+<div id="touch" class="hidden">
+  <div id="stick-zone"><div id="stick"><div id="knob"></div></div></div>
+  <div id="btns">
+    <button data-btn="shoot" id="b-shoot">FIRE</button>
+    <button data-btn="jump" id="b-jump">JUMP</button>
+  </div>
+  <button id="b-pause">II</button>
+</div>
+<div id="rotate">↻<br>Rotate your device to landscape</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
+<script src="src/config.js"></script>
+<script src="firebase-config.js"></script>
+<script src="src/level.js"></script>
+<script src="src/art.gen.js"></script>
+<script src="src/art.js"></script>
+<script src="src/input.js"></script>
+<script src="src/entities.js"></script>
+<script src="src/scenes.js"></script>
+<script src="src/net.js"></script>
+<script src="src/ui.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>

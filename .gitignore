@@ -1,0 +1,10 @@
+# editor / tool settings
+.claude/
+
+# OS junk
+Thumbs.db
+.DS_Store
+
+# Python cache from the art slicers
+__pycache__/
+*.pyc
