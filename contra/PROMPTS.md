@@ -269,3 +269,56 @@ ROW 3 — STEEL YARD: floodlight tower; radio mast; stack of oil barrels; shippi
 ROW 4 — FROZEN PASS: tall snowy pine; small snowy pine; bare frozen tree; snow-covered boulder; ice crystal cluster; snowdrift; snowy tent; frozen supply crate; broken snowy fence; frozen lantern post.
 ROW 5 — BATTLEFIELD: blank wooden warning sign; barbed-wire tangle; shell crater rim; tank trap; stack of ammo crates; broken stone wall; flag pole with a torn blank flag; burning oil drum; field radio on a crate; skull on a stick.
 ```
+
+---
+
+# Season 3
+
+## 10 — Fifteen stage backgrounds in one grid → `backgrounds15.png`
+Full scenes (no transparency needed). Each panel becomes one stage's backdrop, repeated sideways behind the ground.
+```
+GENERATE THIS IMAGE NOW from the description below. There is NO reference image: create everything from scratch.
+
+An original retro 16-bit PIXEL ART sheet of FIFTEEN different background scenes for a side-scrolling action game. Chunky square pixels with hard edges, a limited colour palette per scene, flat colour areas with simple dithering for skies and haze, no blur, no smooth gradients, no glow, no painterly brush strokes. Everything seen straight from the side like a flat stage set, no perspective. No people, no animals, no vehicles, no text, no labels, no numbers, no watermark.
+
+LAYOUT: one image laid out as a strict grid of EXACTLY 3 columns and 5 rows = 15 panels. Every panel is the same wide landscape rectangle (16:9). Between the panels there is a straight, even, PLAIN BLACK gap about 16 pixels wide; nothing crosses a gap. Panels read left to right, top row first.
+
+EVERY PANEL: a complete, fully painted scene filling its whole rectangle: sky at the top, far scenery in the middle, nearer scenery lower down, and a plain dark band along the bottom tenth of the panel (the game draws its own ground there). There is NO ground floor, no path and no platforms in the scenes. Each panel REPEATS SEAMLESSLY LEFT TO RIGHT: what touches its left edge continues exactly into its right edge at the same height. Nothing important is cut in half at the edges.
+
+THE 15 SCENES:
+1. JUNGLE DAY — bright blue sky, white clouds, green jungle mountains, palm trees.
+2. JUNGLE SUNSET — orange and purple sky, low red sun, dark green jungle silhouettes, waterfalls.
+3. JUNGLE NIGHT — deep blue sky, big pale moon, fireflies, black-green jungle silhouettes.
+4. RIVER DELTA — misty morning, wide brown river in the distance, stilt huts, reeds.
+5. MILITARY BASE NIGHT — navy sky with searchlight beams, radar dishes, smokestacks with red lights, hangars.
+6. MILITARY BASE DAY — grey-blue sky, concrete bunkers, fences, watchtowers, a parked cargo plane far away.
+7. DESERT CANYON — hot yellow sky, red rock mesas and canyon walls, heat haze.
+8. SANDSTORM RUINS — dusty orange sky, half-buried stone ruins and broken pillars.
+9. FROZEN PASS — pale grey sky, falling snow, jagged white mountains, snowy pine forest.
+10. ICE FORTRESS — dark teal night sky with green aurora, an ice fortress on a far cliff.
+11. VOLCANO — black-red sky, an erupting volcano with lava rivers, ash clouds.
+12. CITY RUINS — smoky grey-brown sky, ruined skyscrapers with broken windows, fires far away.
+13. HARBOUR DOCKS — sunset sea, cranes, cargo ships and stacked containers far away.
+14. SWAMP — green fog, dead trees with hanging moss, murky water far away.
+15. ENEMY HQ — blood-red sky, a giant steel fortress tower with glowing windows and cannons.
+```
+
+## 11 — Fifty cover and floor objects → `cover50.png`
+Simple solid things that sit on the ground. The game uses them as cover: they stop bullets, you can hide behind them or stand on them.
+```
+GENERATE THIS IMAGE NOW from the description below. There is NO reference image: create everything from scratch.
+
+An original retro 16-bit PIXEL ART sprite sheet of fifty simple objects for a side-scrolling action game. Chunky square pixels with hard edges, every object drawn small and scaled up exactly 4 times with nearest-neighbour edges, so every art-pixel is a crisp 4×4 block of one flat colour. Limited palette, flat colours with 2- or 3-step shading, a 1-pixel dark outline around every object. NO anti-aliasing, NO blur, NO gradients, NO glow, NO painterly detail. Strict side view, no perspective, no tilt.
+
+GRID: one sheet laid out as a strict grid: EXACTLY 10 columns and 5 rows, 50 cells, each cell exactly 256×256 pixels, total image exactly 2560×1280 pixels. EXACTLY one object in every cell, centred left to right. EVERY OBJECT SITS FLAT ON THE GROUND: its bottom edge is a perfectly straight horizontal line resting on the same baseline 8 pixels above the bottom of its cell, with nothing hanging below it. Objects are SIMPLE, CHUNKY, SOLID BLOCKS with clear, readable shapes — no thin poles, no wires, no small loose bits, nothing floating.
+
+BACKGROUND: REMOVE THE BACKGROUND COMPLETELY. Fully transparent PNG with a real alpha channel — no background colour, no white, no grey, NO CHECKERBOARD PATTERN, no ground strip, no shadows. No grid lines, no borders, no text, no letters, no numbers, no labels, no watermark.
+
+SIZES: in each row, cells 1 to 4 are LOW cover (about one quarter of the cell tall, as wide as the cell), cells 5 to 8 are MEDIUM cover (about half the cell tall), cells 9 and 10 are TALL cover (about three quarters of the cell tall).
+
+ROW 1 — ANY STAGE: low sandbag wall; low row of ammo crates; low concrete curb; low steel plate barricade; medium sandbag wall; medium wooden crate stack; medium concrete barrier; medium oil drum pair; tall stacked sandbag bunker; tall steel crate stack.
+ROW 2 — JUNGLE: low mossy log; low stone rubble; low bamboo fence; low rock; medium fallen tree trunk; medium mossy boulder; medium stone ruin block; medium wooden barricade; tall ancient stone pillar stump; tall wooden watch hut base.
+ROW 3 — MILITARY BASE: low hazard-striped barrier; low pipe stack; low metal crate; low tyre pile; medium shipping crate; medium fuel drum stack; medium generator box; medium steel blast shield; tall shipping container end; tall concrete bunker block.
+ROW 4 — SNOW: low snowbank; low ice block; low frozen log; low snowy rock; medium snow-covered sandbags; medium ice wall; medium frozen supply crate; medium snowy boulder; tall ice pillar; tall snowy rock wall.
+ROW 5 — DESERT, VOLCANO, CITY: low sandstone block; low broken brick wall; low black lava rock; low rusty car door; medium sandstone ruin; medium broken brick wall; medium cooled lava boulder; medium wrecked car; tall broken concrete wall with rebar stumps; tall rusty steel wall.
+```
