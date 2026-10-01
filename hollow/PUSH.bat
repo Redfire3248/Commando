@@ -19,5 +19,5 @@ if errorlevel 1 (
 )
 echo.
 echo Published. The website updates in about a minute:
-echo https://redfire3248.github.io/GUNHOLLOW/hollow/
+echo https://redfire3248.github.io/Commando/hollow/
 pause

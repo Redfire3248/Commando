@@ -1,6 +1,6 @@
 // Tiny static server for local play and testing on phones over Wi-Fi. No dependencies.
 //   node server/dev-server.js        then open http://localhost:8080
-// Serves the game picker at / and the two games at /hollow/ and /contra/.
+// Serves COMMANDO at / (index.html loads its files from contra/) and HOLLOW at /hollow/.
 const http = require('http');
 const fs = require('fs');
 const path = require('path');

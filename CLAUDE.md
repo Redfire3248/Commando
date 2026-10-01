@@ -7,7 +7,7 @@ Two HTML5 games in one project, both Phaser 3.80.1 from CDN with Arcade physics,
 | `hollow/` | Hollow Knight style: sword, dash, wall-jump, benches | `GH` |
 | `contra/` | Contra style run-and-gun "COMMANDO": seven agents with abilities, hearts + shared team lives, shop, cover, 1-5 local players + bots, Google sign-in, parties, queue, online co-op | `CG` |
 
-`index.html` at the root redirects straight to `contra/` (the user wants the site to open COMMANDO; HOLLOW is separate at `/hollow/`). `server/dev-server.js` serves the root; games live at `/hollow/` and `/contra/`. Each game is self-contained (own `assets/`, own `tools/build_art.py`, own generated `art.gen.js`). Nothing is shared between them on purpose.
+`index.html` at the root IS COMMANDO's page: it has `<base href="contra/">`, so every relative path loads from `contra/` while the address stays `https://redfire3248.github.io/Commando/` (the user wants no `/contra/` in the URL). Edit the game's HTML there; `contra/index.html` only redirects to `../` (keeping `?guest&fakedb`). The GitHub repo is `Redfire3248/Commando` (renamed from GUNHOLLOW). HOLLOW is separate at `/hollow/`. `server/dev-server.js` serves the root; games live at `/hollow/` and `/contra/`. Each game is self-contained (own `assets/`, own `tools/build_art.py`, own generated `art.gen.js`). Nothing is shared between them on purpose.
 
 ## COMMANDO (`contra/`)
 
