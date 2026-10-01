@@ -25,7 +25,10 @@
         const last = Math.max(...Object.values(art.players[0].anims).map((a) => a[1]));
         CG.Art.recolourCommandos(this, art.sheets.commandos.fw, art.sheets.commandos.fh, last);
       }
-      this.anims.create({ key: 'px_boom', frames: this.anims.generateFrameNumbers('px_boom', { start: 0, end: 4 }), frameRate: 18 });
+      // explosion and splash animations: painted ones from enemies_tiles.png when loaded, pixel art otherwise
+      const painted = this.textures.exists('fx_boom');
+      this.anims.create({ key: 'boom', frames: this.anims.generateFrameNumbers(painted ? 'fx_boom' : 'px_boom', { start: 0, end: painted ? 3 : 4 }), frameRate: painted ? 14 : 18 });
+      if (this.textures.exists('fx_splash')) this.anims.create({ key: 'splash', frames: this.anims.generateFrameNumbers('fx_splash', { start: 0, end: 1 }), frameRate: 7 });
       this.scene.start('Backdrop');
       CG.UI.ready();
     }
@@ -54,6 +57,7 @@
       this.score = this.cfg.score;
       this.over = false; this.cleared = false; this.camX = 0; this.spawnI = 0; this.bossOn = false; this.bossT = 2500;
       this.artScale = (CG.CONFIG.SHEET_ART && CG.DATA.art && CG.DATA.art.scale) || {};
+      this.enemyScale = (CG.CONFIG.SHEET_ART && CG.DATA.art && CG.DATA.art.enemyScale) || 1;
       this.bossCamX = L.boss.wallCol * T + 3 * T - W;
 
       backdrop(this, L.theme);
@@ -127,24 +131,38 @@
       this.ledges = this.physics.add.staticGroup();
 
       // water fills the bottom of the stage; the ground pieces cover it
-      this.add.tileSprite(0, gy + 40, L.w * T, T, k('water')).setOrigin(0).setDepth(1);
-      this.add.tileSprite(0, gy + 40 + T, L.w * T, H - gy, k('water_deep')).setOrigin(0).setDepth(1);
+      const has = (key) => this.textures.exists(key);
+      const fit = (ts) => { const w = ts.texture.getSourceImage().width; if (w !== T) ts.setTileScale(T / w); return ts; };
+      fit(this.add.tileSprite(0, gy + 40, L.w * T, T, k('water')).setOrigin(0).setDepth(1));
+      fit(this.add.tileSprite(0, gy + 40 + T, L.w * T, H - gy, k('water_deep')).setOrigin(0).setDepth(1));
+      const variant = (name, i) => (has(k(name) + '_' + i) ? k(name) + '_' + i : k(name));
+      const tile = (x, y, key) => this.add.image(x, y, key).setOrigin(0).setDisplaySize(T + 0.5, T + 0.5).setDepth(2);
       L.ground.forEach(([a, b]) => {
         zone(this.solids, a * T, gy, (b - a) * T, H - gy + 300);
         for (let c = a; c < b; c++) {
-          this.add.image(c * T, gy, k('g_top')).setOrigin(0).setDepth(2);
-          for (let r = L.groundRow + 1; r < L.h; r++) this.add.image(c * T, r * T, k('g_in')).setOrigin(0).setDepth(2);
+          const edge = c === a && has(k('g_left')) ? k('g_left') : c === b - 1 && has(k('g_right')) ? k('g_right') : variant('g_top', c % 3);
+          tile(c * T, gy, edge);
+          for (let r = L.groundRow + 1; r < L.h; r++) tile(c * T, r * T, variant('g_in', (c + r) % 2));
+          // painted scenery for this stage's theme (behind everyone, never in the way)
+          const props = (CG.CONFIG.SHEET_ART && CG.DATA.art && CG.DATA.art.props && CG.DATA.art.props[L.theme]) || [];
+          const prop = props.length && (c * 73 + 11) % 13 < 3 ? props[(c * 31 + 7) % props.length] : null;
+          if (prop && has(prop) && c > a + 1 && c < b - 2 && c < L.boss.wallCol - 3 && this.artScale[prop]) {
+            this.add.image(c * T + T / 2, gy + 8, prop).setOrigin(0.5, 1).setScale(this.artScale[prop]).setDepth(3);
+          }
         }
       });
       L.ledges.forEach(([c, r, w]) => {
         const cc = zone(this.ledges, c * T, r * T, w * T, 20).body.checkCollision;
         cc.down = cc.left = cc.right = false;
-        for (let i = 0; i < w; i++) this.add.image((c + i) * T, r * T - 4, k('ledge')).setOrigin(0).setDepth(2);
+        for (let i = 0; i < w; i++) {
+          const img = this.add.image((c + i) * T - 4, r * T - 4, k('ledge')).setOrigin(0).setDepth(2);
+          if (img.width !== 16 * 4) img.setDisplaySize(T + 8, (T + 8) * img.height / img.width).setY(r * T - 10);   // painted ledge piece
+        }
       });
       // the fortress wall
       const wc = L.boss.wallCol;
       zone(this.solids, wc * T, 0, (L.w - wc) * T, gy);
-      for (let c = wc; c < wc + 4; c++) for (let r = 0; r < L.groundRow; r++) this.add.image(c * T, r * T, 'boss_wall').setOrigin(0).setDepth(2);
+      for (let c = wc; c < wc + 4; c++) for (let r = 0; r < L.groundRow; r++) tile(c * T, r * T, has(k('wall')) ? k('wall') : 'boss_wall');
     }
 
     // is there something to stand on at this point?
@@ -254,9 +272,19 @@
 
     boom(x, y, n) {
       this.sparks.explode(n, x, y);
-      const e = this.add.sprite(x, y, 'px_boom', 0).setDepth(14).setScale(n > 25 ? 2.2 : n > 15 ? 1.4 : 1);
-      e.play('px_boom');
+      const key = this.textures.exists('fx_boom') ? 'fx_boom' : 'px_boom';
+      const e = this.add.sprite(x, y, key, 0).setDepth(14).setScale((this.artScale.fx_boom || 1) * (n > 25 ? 2.2 : n > 15 ? 1.4 : 1));
+      e.play('boom');
       e.once('animationcomplete', () => e.destroy());
+    }
+
+    // a splash where something fell into the water
+    splash(x) {
+      if (!this.anims.exists('splash')) return;
+      const s = this.add.sprite(x, CG.DATA.level.groundRow * CG.CONFIG.TILE + 48, 'fx_splash', 0).setOrigin(0.5, 1)
+        .setScale(this.artScale.fx_splash || 1).setDepth(3);
+      s.play('splash');
+      s.once('animationcomplete', () => s.destroy());
     }
 
     nearestPlayer(x, y) {
@@ -277,6 +305,16 @@
       CG.Sfx.play(e.T.boss ? 'bigboom' : 'boom');
       this.cameras.main.shake(e.T.boss ? 260 : 80, e.T.boss ? 0.012 : 0.004);
       if (e.type === 'flyer') this.dropPickup(c.x, c.y, e.extra);
+      if (e.painted && e.T.death) {                  // painted soldiers: knocked back, then lying still, then fade
+        const d = this.add.image(e.x, e.y, e.texture.key, e.T.death[0]).setOrigin(0.5, 1).setScale(e.scaleX).setFlipX(e.flipX).setDepth(7);
+        e.T.death.slice(1).forEach((f, i) => this.time.delayedCall(140 * (i + 1), () => d.active && d.setFrame(f)));
+        this.tweens.add({ targets: d, x: d.x + (e.flipX ? 60 : -60), duration: 300, ease: 'Quad.out' });
+        this.tweens.add({ targets: d, alpha: 0, delay: 900, duration: 500, onComplete: () => d.destroy() });
+      }
+      const left = { turret: 'e_wreck', core: 'boss_core_dead' }[e.type];     // wreckage stays behind
+      if (left && this.textures.exists(left) && this.artScale[left]) {
+        this.add.image(e.x, e.y, left).setOrigin(0.5, 1).setScale(this.artScale[left]).setDepth(7);
+      }
       e.setActive(false).setVisible(false);
       e.body.enable = false;
       if (e.barrel) e.barrel.setVisible(false);
@@ -365,7 +403,10 @@
       for (const e of this.enemies.getChildren().slice()) {
         if (!e.active) continue;
         e.tick(dt);
-        if (!e.T.boss && (e.x < this.camX - 260 || e.y > H + 260)) e.destroy();
+        if (!e.T.boss && (e.x < this.camX - 260 || e.y > H + 260)) {
+          if (e.y > H + 260 && !e.T.fly) this.splash(e.x);
+          e.destroy();
+        }
       }
 
       const off = (b) => b.x < this.camX - 60 || b.x > this.camX + W + 60 || b.y < -60 || b.y > H + 60;

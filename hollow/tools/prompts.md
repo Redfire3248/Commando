@@ -390,3 +390,99 @@ Cells 4, 5 — REST. Cell 4: lowering to sit. Cell 5: sitting cross-legged, head
 Cells 6, 7 — TRIUMPH. Cell 6: raising the sword. Cell 7: sword held straight up overhead.
 Cells 8 to 10 — FOCUS. Cell 8: dropping to one knee. Cell 9: kneeling with the sword planted point-down, both hands on the hilt. Cell 10: the same pose with faint cyan light rising from the blade.
 ```
+
+
+---
+
+## Hero v2 — `hero_v2.png` (10×5, small pixel-art hero, 8-frame run on row 1)
+
+**Attach:** nothing (made from scratch). **Save as:** `hollow/assets/hero_v2.png` — the slicer prefers this file over the old hero sheet, uses `HERO_LAYOUT_V2`, and the game draws it with hard pixel edges (no smoothing).
+
+```
+Retro 2D PIXEL ART sprite sheet for a side-scrolling action platformer, in the style of a classic 16-bit console game. A SMALL character made of big, chunky, clearly visible square pixels. The hero is drawn on a tiny canvas only 40 art-pixels tall, then scaled up 4 times with hard nearest-neighbour edges, so every art-pixel is a crisp 4×4 block of one flat colour. Limited palette of about 16 colours. Flat colours with simple 2-step shading and a 1-pixel dark outline around the character. NO anti-aliasing, NO blur, NO soft edges, NO gradients, NO painterly brush strokes, NO high-detail illustration. Strict side view (pure profile), no perspective.
+
+NO GLOW ANYWHERE: no glowing eyes, no light, no bloom, no halo, no aura, no sparkles, no lens flare, no light rays, no motion blur, no particles, no magic effects. Everything is plain flat-coloured pixels.
+
+GRID: one sprite sheet laid out as a strict grid: EXACTLY 10 columns and 5 rows, 50 cells, each cell exactly 256×256 pixels, total image exactly 2560×1280 pixels. EXACTLY one sprite in every cell, 10 sprites in every row, no empty cells, no extra sprites. Cells read left to right, top row first. The hero is SMALL in its cell: about 160 pixels tall standing (40 art-pixels), with lots of empty space around it, never touching or crossing into a neighbouring cell. The hero is drawn at EXACTLY the same size and on the same pixel scale in all 50 cells. Grounded poses are centred horizontally and stand on the same baseline 24 pixels above the bottom of the cell; airborne poses float above it.
+
+BACKGROUND: REMOVE THE BACKGROUND COMPLETELY. Fully transparent PNG with alpha channel — no background colour, no white, no grey, no checkerboard pattern, no gradient, no scenery, no floor line, no shadows. No grid lines, no borders, no frames, no text, no numbers, no labels, no watermark, no dust, no speed lines, no stray pixels.
+
+CHARACTER: a small hooded swordsman, facing RIGHT in every cell. A pointed dark navy hood; a black face opening with two small pale-cyan rectangular eyes (2 art-pixels each, flat colour, not glowing); a short crimson scarf with two tails trailing behind. A SHORT navy cloak that ends at the hips, so BOTH LEGS ARE ALWAYS VISIBLE: dark grey legs and brown boots. The legs are long — 40% of his height. The NEAR leg is one shade lighter than the FAR leg so you can always tell them apart.
+
+SWORD: a simple pixel-art straight sword held in one hand in all 50 cells, about half his height: light grey blade with a white 1-pixel edge highlight, dark grey crossguard, brown grip. When not attacking it is held low at his side, pointing down and back, never covering the legs.
+
+SLASH ARCS (only where named): a simple flat pixel crescent following the blade, solid white with a light grey inner edge, 3 to 5 art-pixels thick, NO glow and NO blur.
+
+ROW 1 — RUN (cells 1 to 8) and IDLE (cells 9, 10).
+An 8-frame running cycle, body leaning forward slightly, arms pumping, scarf trailing. The legs are in a CLEARLY DIFFERENT position in every one of the 8 frames; the second half mirrors the first with the legs swapped.
+Cell 1 CONTACT: near leg stretched far forward with the heel down, far leg stretched far behind on its toe, legs wide open.
+Cell 2 DOWN: near foot flat under the hips, knee bent; far boot lifted behind at knee height; body 1 art-pixel LOWER.
+Cell 3 PASSING: standing on the straight near leg; far knee swinging forward past it.
+Cell 4 UP: pushing off the near toe; far knee raised high in front; both feet off the ground; body 1 art-pixel HIGHER.
+Cell 5 CONTACT: far leg stretched far forward with the heel down, near leg stretched far behind on its toe.
+Cell 6 DOWN: far foot flat under the hips, knee bent; near boot lifted behind; body lower.
+Cell 7 PASSING: standing on the straight far leg; near knee swinging forward past it.
+Cell 8 UP: pushing off the far toe; near knee raised high in front; both feet off the ground; body higher.
+Cell 9 IDLE: standing relaxed, feet apart. Cell 10 IDLE: the same, shoulders and hood 1 art-pixel higher (breathing).
+
+ROW 2 — Cell 1 JUMP launch: knees bent, pushing off. Cell 2 rising: body stretched, legs straight down. Cell 3 apex: knees tucked. Cell 4 falling: legs reaching down, scarf and cloak blown up. Cell 5 LANDING: knees deeply bent, body low. Cells 6, 7 DOUBLE-JUMP FLIP: curled into a ball, cell 7 the same ball upside down. Cell 8 CROUCH: squatting low. Cells 9, 10 SLIDE: sliding forward on one knee with the other leg out in front, leaning back; cell 10 lower.
+
+ROW 3 — Cells 1 to 3 DASH: crouched; lunging horizontally with both legs straight out behind; easing out. Cells 4, 5 WALL SLIDE: back pressed against an invisible wall at the LEFT edge of the cell, boots braced on it, facing right; DO NOT draw the wall. Cell 6 WALL KICK: leaping up and to the right off that wall. Cells 7, 8 HURT: knocked back, head snapped back; staggering. Cell 9 DEATH: falling to the knees. Cell 10: the hero broken into a small scatter of square pixel pieces, well inside the cell.
+
+ROW 4 — Cells 1 to 4 FORWARD SLASH on the ground: sword drawn back over the shoulder (no arc); swinging forward, small arc; full lunge with the biggest arc in front; follow-through with a thin arc. Cells 5 to 7 UPWARD SLASH: sword low behind (no arc); swinging straight up, arc above the head; follow-through. Cells 8 to 10 DOWNWARD SLASH in mid-air, knees tucked: sword overhead (no arc); stabbing straight down, arc below the feet; follow-through.
+
+ROW 5 — Cells 1 to 3 AIR SLASH forward, knees tucked: wind-up (no arc); full swing with an arc in front; follow-through. Cells 4, 5 REST: sitting down; sitting cross-legged, head bowed, sword across the knees. Cells 6, 7 TRIUMPH: raising the sword; sword held straight up. Cells 8 to 10 FOCUS: dropping to one knee; kneeling with the sword planted point-down, both hands on the hilt; the same pose with the head bowed lower.
+```
+
+## Ledges + ground v2 — `tiles_v2.png` (10×5)
+
+**Attach:** nothing. **Save as:** `hollow/assets/tiles_v2.png`. The ledge pieces are drawn exactly as thick as their solid hitbox, so what you see is what you stand on and bump your head on.
+
+```
+Dark gothic hand-painted 2D game art for a side-scrolling platformer. Cavern rock in desaturated slate blue and charcoal with fine cracks, teal moss, a few warm ember-orange flecks (#ff9a3c). Crisp painted edges, even lighting, no photorealism. Everything seen perfectly straight-on, no perspective.
+
+GRID: one sheet laid out as a strict grid: EXACTLY 10 columns and 5 rows, 50 cells, each cell exactly 256×256 pixels, total image exactly 2560×1280 pixels. Cells read left to right, top row first. No grid lines, no borders, no text, no numbers, no labels, no watermark.
+ROWS 1 TO 3 ARE SOLID TILES: every cell is a fully opaque SQUARE of rock that fills 100% of its cell edge to edge, no transparency, no gaps, all tiles matching so they join seamlessly.
+ROWS 4 AND 5 ARE OBJECTS: REMOVE THE BACKGROUND COMPLETELY — fully transparent PNG with alpha channel, no background colour, no checkerboard, no shadows; each object inside its cell with at least 8 pixels of margin.
+
+ROW 1: GROUND SURFACE — a band of teal moss and short grass straight across the TOP edge, one fifth of the cell tall, perfectly level; solid rock below. Ten variations.
+ROW 2: Cells 1 to 6: INNER ROCK, seamless on all four sides, six variations. Cells 7, 8: CEILING — a darker rough band with small stone nubs along the BOTTOM edge, rock above. Cells 9, 10: TOP-LEFT and TOP-RIGHT CORNERS — the moss band along the top meeting a worn rim down the left (cell 9) or right (cell 10) edge.
+ROW 3: Cells 1 to 5: LEFT WALL — a worn lighter rim with a little moss down the LEFT edge. Cells 6 to 10: RIGHT WALL — the same rim down the RIGHT edge.
+ROW 4: FLOATING LEDGE PIECES — a flat slab of cave stone with a moss-topped, perfectly level top edge and a FLAT, LEVEL BOTTOM edge (no roots, vines, icicles or rocks hanging below it). Every ledge piece spans the FULL width of its cell edge to edge and is EXACTLY one third of the cell tall (about 85 pixels), centred vertically. Cells 1 to 3: left end piece (rounded left side), three variations. Cells 4 to 7: middle piece, joins seamlessly on both sides, four variations. Cells 8 to 10: right end piece (rounded right side), three variations.
+ROW 5: the same ten ledge pieces as row 4, but made of old dark wooden planks bound with iron bands, same thickness, same flat top and flat bottom.
+```
+
+## Enemies v2 — `enemies_v2.png` (10×5)
+
+**Attach:** nothing. **Save as:** `hollow/assets/enemies_v2.png`.
+
+```
+Dark gothic hand-painted 2D game art for a side-scrolling action game, in the spirit of a moody hand-drawn metroidvania. Desaturated slate blues and charcoal, ember-orange (#ff9a3c) and cyan (#6ff3ff) accents. Clean readable silhouettes, soft rim light from the upper right, crisp painted edges, no photorealism. Strict orthographic side view.
+
+GRID: one sprite sheet laid out as a strict grid: EXACTLY 10 columns and 5 rows, 50 cells, each cell exactly 256×256 pixels, total image exactly 2560×1280 pixels. EXACTLY one sprite in every cell, no empty cells. Cells read left to right, top row first. Each sprite inside its cell with at least 16 pixels of empty space on every side. Ground creatures stand on a baseline 24 pixels above the bottom of the cell; flying creatures are centred in the cell. All enemies FACE RIGHT.
+BACKGROUND: REMOVE THE BACKGROUND COMPLETELY. Fully transparent PNG with alpha channel — no background colour, no checkerboard, no gradient, no scenery, no floor, no shadows. No grid lines, no borders, no text, no numbers, no labels, no watermark.
+
+ROW 1 — HUSK CRAWLER: a low armoured beetle with a rust-orange segmented shell, a pale bone mask with empty black eyes, six short dark legs, about 80 pixels tall. Cells 1 to 6: walk cycle, the legs in a clearly different position in each frame. Cell 7: flinching when hit. Cells 8 to 10: death — flipping onto its back, shell cracking, collapsed husk.
+ROW 2 — MIRE HOPPER: a round moss-green frog-like creature with two small horns, long bent back legs and one large pale eye. Cells 1, 2: idle breathing. Cell 3: crouching to leap. Cells 4, 5: leaping, legs fully stretched. Cell 6: landing. Cell 7: flinching. Cells 8 to 10: death, bursting into green mist.
+ROW 3 — WATCHER (flying): a floating dark violet sphere with one huge glowing magenta eye and three short tentacles. Cells 1 to 4: hovering, tentacles drifting. Cells 5, 6: charging a shot, the eye glowing brighter. Cell 7: firing. Cell 8: flinching. Cells 9, 10: death, the eye cracking and the body dissolving.
+ROW 4 — CARAPACE BRUTE: a hulking two-legged armoured beetle-knight about 210 pixels tall, slate-grey shell with glowing ember cracks, a heavy stone club arm. Cells 1 to 4: heavy walk. Cells 5 to 7: club raised overhead, smashing down, club in the ground. Cell 8: flinching. Cells 9, 10: collapsing in death.
+ROW 5 — VENGEFLY (flying): a lean winged insect with a pale skull-like head, two buzzing translucent wings and a curved stinger. Cells 1 to 4: flying, wings in four positions. Cells 5, 6: diving forward, stinger first. Cell 7: flinching. Cells 8, 9: death, wings crumpling. Cell 10: a small glowing magenta orb projectile.
+```
+
+## Boss v2 — `boss_warden_v2.png` (10×5)
+
+**Attach:** nothing. **Save as:** `hollow/assets/boss_warden_v2.png`.
+
+```
+Dark gothic hand-painted 2D game art for a side-scrolling action game, in the spirit of a moody hand-drawn metroidvania. Desaturated slate blues and charcoal, ember-orange (#ff9a3c) and cyan (#6ff3ff) accents. Crisp painted edges, no photorealism. Strict orthographic side view.
+
+GRID: one sprite sheet laid out as a strict grid: EXACTLY 10 columns and 5 rows, 50 cells, each cell exactly 256×256 pixels, total image exactly 2560×1280 pixels. EXACTLY one sprite in every cell. Cells read left to right, top row first. The boss nearly fills each cell but keeps at least 8 pixels of empty space on every side, standing on a baseline 12 pixels above the bottom of the cell, drawn at the same size in every cell.
+BACKGROUND: REMOVE THE BACKGROUND COMPLETELY. Fully transparent PNG with alpha channel — no background colour, no checkerboard, no gradient, no scenery, no floor, no shadows. No grid lines, no borders, no text, no numbers, no labels, no watermark.
+
+SUBJECT: "The Hollow Warden" — a towering armoured knight of cracked stone and rusted chains, a cage for a helmet with a cyan flame burning inside, wielding a huge iron lantern-mace with a warm ember glow. FACES LEFT in every cell.
+ROW 1: Cells 1 to 4: idle, chains swaying, flame flickering. Cells 5 to 10: slow heavy walk, the legs in a clearly different position in each frame.
+ROW 2: OVERHEAD SLAM. Cells 1 to 3: lifting the mace high overhead. Cell 4: the mace smashing into the ground in front. Cell 5: the mace buried in the ground, cracks and sparks at the impact. Cells 6, 7: pulling it back up. Cells 8 to 10: a SHOCKWAVE on its own (no boss) — a low crescent of cyan-white energy rolling LEFT along the ground, three stages.
+ROW 3: LEAP. Cells 1, 2: crouching to jump. Cells 3, 4: airborne, knees up, mace raised. Cells 5, 6: falling, mace pointing down. Cell 7: landing crouched. CHARGE: Cells 8 to 10: lowering the shoulder and charging forward, legs pounding.
+ROW 4: Cells 1, 2: roaring, flame flaring bright. Cells 3 to 5: staggered — knocked back, dropping to one knee, flame dimmed. Cells 6 to 10: swinging the mace's chain in a full horizontal sweep around the body, five stages.
+ROW 5: DEATH. Cells 1 to 6: armour cracking, falling to its knees, the cage helmet tipping, the flame going out, collapsing into a pile of stone and chains. Cells 7 to 10: the empty cage helmet on its own, its last cyan wisp rising and fading, four stages.
+```

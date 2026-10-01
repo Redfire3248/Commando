@@ -58,7 +58,7 @@
       const cam = sc.cameras.main, minX = cam.scrollX + PW / 2 + 8, maxX = cam.scrollX + CG.CONFIG.W - PW / 2 - 8;
       if (this.phys.x < minX) this.phys.x = minX;
       if (this.phys.x > maxX) this.phys.x = maxX;
-      if (b.top > CG.CONFIG.H + 60) { this.die(); return; }                     // fell in the water
+      if (b.top > CG.CONFIG.H + 60) { sc.splash(b.center.x); this.die(); return; }   // fell in the water
 
       if (inp.shoot && this.fireCd <= 0 && sc.countBullets(this) < C.maxBullets * (this.spread ? 3 : 1)) {
         const m = this.muzzle(), a = Math.atan2(this.aimY, this.aimX);
@@ -139,11 +139,12 @@
   // ------------------------------------------------------------------ enemies
   //   ai: runner (charges), rifle (stands and shoots), turret (rotating barrel), flyer (power-up capsule), core
   const TYPES = {
-    runner: { tex: 'px_runner', frames: true, hp: 1, body: [44, 100], ai: 'runner', speed: 300 },
-    rifle:  { tex: 'px_rifle', frames: true, hp: 2, body: [44, 100], ai: 'rifle', fireMs: 1900 },
+    // sheet: painted frames from enemies_tiles.png (same frame order as the pixel art), used when loaded
+    runner: { tex: 'px_runner', sheet: 'sheet_runner', death: [8, 9], frames: true, hp: 1, body: [44, 100], ai: 'runner', speed: 300 },
+    rifle:  { tex: 'px_rifle', sheet: 'sheet_rifle', death: [7, 8, 9], frames: true, hp: 2, body: [44, 100], ai: 'rifle', fireMs: 1900 },
     turret: { tex: 'e_turret', hp: 6, body: [84, 112], ai: 'turret', fireMs: 1500, fixed: true },
     flyer:  { tex: 'e_flyer', hp: 1, body: [90, 50], ai: 'flyer', fly: true },
-    cannon: { tex: 'boss_cannon', hp: 14, body: [84, 84], ai: 'turret', fireMs: 1250, fixed: true, center: true, boss: true },
+    cannon: { tex: 'boss_cannon', barrelTex: 'boss_barrel', hp: 14, body: [84, 84], ai: 'turret', fireMs: 1250, fixed: true, center: true, boss: true },
     core:   { tex: 'boss_core', hp: 40, body: [100, 160], ai: 'core', fixed: true, boss: true, final: true },
     grenadier: { tex: 'px_gren', frames: true, hp: 2, body: [44, 100], ai: 'gren', fireMs: 2400 },
     drone:  { tex: 'px_drone', frames: true, hp: 2, body: [56, 34], ai: 'drone', fly: true, fireMs: 1700 },
@@ -155,29 +156,34 @@
   CG.Enemy = class extends Phaser.Physics.Arcade.Sprite {
     constructor(scene, type, x, y, extra) {
       const T = TYPES[type];
-      super(scene, x, y, T.tex, T.frames ? 0 : undefined);
+      const sheet = CG.CONFIG.SHEET_ART && T.sheet && scene.textures.exists(T.sheet);
+      super(scene, x, y, sheet ? T.sheet : T.tex, T.frames ? 0 : undefined);
       scene.add.existing(this);
       scene.physics.add.existing(this);
-      this.type = type; this.T = T; this.extra = extra;
+      this.type = type; this.T = T; this.extra = extra; this.painted = sheet; this.fireT = 0;
+      // painted art is stored at full size and drawn smaller; Arcade scales the hitbox with the sprite, so undo that
+      const sc = sheet ? (scene.enemyScale || 1) : (scene.artScale[this.texture.key] || 1);
+      this.setScale(sc);
       // the fortress gets tougher each stage and with more players
-      this.hp = Math.ceil(T.hp * (T.boss ? (1 + 0.35 * scene.diff) * (1 + 0.5 * (scene.players.length - 1)) : 1));
+      this.hp = this.maxHp = Math.ceil(T.hp * (T.boss ? (1 + 0.35 * scene.diff) * (1 + 0.5 * (scene.players.length - 1)) : 1));
       this.cd = 500 + Math.random() * 900; this.t = Math.random() * 6; this.hurtT = 0; this.dir = 0; this.baseY = y;
       const mid = T.fly || T.center;
       this.setOrigin(0.5, mid ? 0.5 : 1).setDepth(8);
-      const [bw, bh] = T.body;
+      const bw = T.body[0] / sc, bh = T.body[1] / sc;
       this.body.setSize(bw, bh, false);
       this.body.setOffset((this.width - bw) / 2, mid ? (this.height - bh) / 2 : this.height - bh);
       if (T.fly) this.body.allowGravity = false;
       if (T.fixed) { this.body.allowGravity = false; this.body.moves = false; this.body.immovable = true; }
       this.cd2 = 900;
       if (T.ai === 'turret' || T.ai === 'tank') {
-        this.barrel = scene.add.image(x, y, 'e_barrel').setOrigin(0.12, 0.5).setDepth(9).setRotation(Math.PI);
-        this.barrel.setScale(T.barrelScale || (T.boss ? 1.25 : 1));
+        const bt = T.barrelTex && scene.textures.exists(T.barrelTex) && scene.artScale[T.barrelTex] ? T.barrelTex : 'e_barrel';
+        this.barrel = scene.add.image(x, y, bt).setOrigin(0.12, 0.5).setDepth(9).setRotation(Math.PI);
+        this.barrel.setScale((scene.artScale[bt] || 1) * (T.barrelScale || (T.boss && bt === 'e_barrel' ? 1.25 : 1)));
       }
     }
 
     pivot() {                       // where the barrel is attached
-      return { x: this.x, y: this.T.center ? this.y : this.y - (this.T.pivotY || this.height * 0.52) };
+      return { x: this.x, y: this.T.center ? this.y : this.y - (this.T.pivotY || this.displayHeight * 0.52) };
     }
 
     // turn the barrel toward the player; returns true once it is time to fire
@@ -192,13 +198,13 @@
     }
     shootBarrel() {
       if (!this.active) return;
-      const pv = this.pivot(), a = this.barrel.rotation, len = 64 * this.barrel.scaleX;
+      const pv = this.pivot(), a = this.barrel.rotation, len = this.barrel.displayWidth * 0.85;
       this.scene.efire(pv.x + Math.cos(a) * len, pv.y + Math.sin(a) * len, a);
     }
 
     tick(dt) {
       const sc = this.scene, b = this.body, T = this.T, ms = dt * 1000;
-      this.cd -= ms; this.t += dt;
+      this.cd -= ms; this.t += dt; this.fireT -= ms;
       if (this.hurtT > 0) { this.hurtT -= ms; if (this.hurtT <= 0) this.clearTint(); }
       const P = sc.nearestPlayer(this.x, this.y);
       const cam = sc.cameras.main, onScreen = this.x > cam.scrollX - 40 && this.x < cam.scrollX + CG.CONFIG.W + 40;
@@ -215,10 +221,11 @@
           this.setFlipX(P.body.center.x < this.x);
           // point the rifle at the player: up, diagonal up, forward, diagonal down, down
           const tilt = Math.round(Math.atan2(P.body.center.y - (this.y - 66), Math.abs(P.body.center.x - this.x)) / (Math.PI / 4));
-          this.setFrame([2, 1, 0, 3, 4][Phaser.Math.Clamp(tilt, -2, 2) + 2]);
+          const aim = [2, 1, 0, 3, 4][Phaser.Math.Clamp(tilt, -2, 2) + 2];
+          this.setFrame(this.painted && this.fireT > 0 && aim === 0 ? 5 : aim);       // painted sheet has a firing pose
         }
         if (P && onScreen && this.cd <= 0) {
-          this.cd = fireMs;
+          this.cd = fireMs; this.fireT = 160;
           const a = Math.round(Math.atan2(P.body.center.y - (this.y - 66), P.body.center.x - this.x) / (Math.PI / 4)) * (Math.PI / 4);
           sc.efire(this.x + Math.cos(a) * 44, this.y - 66 + Math.sin(a) * 44, a);
         }
@@ -268,6 +275,8 @@
       if (!this.active) return;
       this.hp -= n;
       if (this.hp > 0) CG.Sfx.play('hit');
+      // the fortress core cracks at half health
+      if (this.type === 'core' && this.hp < this.maxHp / 2 && this.texture.key === 'boss_core' && this.scene.textures.exists('boss_core_dmg')) this.setTexture('boss_core_dmg');
       this.setTintFill(0xffffff);
       this.hurtT = 60;
       if (this.hp <= 0) this.scene.killEnemy(this);

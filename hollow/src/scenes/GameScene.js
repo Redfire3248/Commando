@@ -1,16 +1,28 @@
 GH.GameScene = class extends Phaser.Scene {
   constructor() { super('Game'); }
 
-  create() {
+  // data (all optional): room id, at [tx, ty] where to stand, carry (player state from the room before),
+  // respawn (came back from death to the bench room), facing.
+  create(data) {
+    data = data || {};
     const T = GH.CONFIG.TILE;
     this.T = T;
     this.save = GH.Save.load() || {};
-    this.room = GH.DATA.rooms.crossing;
-    this.collected = new Set(this.save.collected || []);
+    const carry = data.carry || null;
+    const id = data.room || (!carry && this.save.room) || 'crossing';
+    this.roomId = GH.DATA.rooms[id] ? id : 'crossing';
+    this.room = GH.DATA.rooms[this.roomId];
+    // the bench you respawn at: this room's, else the last one rested at
+    this.benchRoom = this.room.bench ? this.roomId : ((carry && carry.benchRoom) || this.save.room || 'crossing');
+    this.collected = new Set(carry ? carry.collected : (this.save.collected || []));
     this.slash = null;
     this.stopped = false;
     this.cache = null;
     this.cacheData = null;
+    this.otherCache = null;      // shards lost in a different room
+    this.leaving = false;
+    this.boss = null;
+    this.waves = [];
 
     this.buildBackground();
     this.buildRoom();
@@ -19,22 +31,34 @@ GH.GameScene = class extends Phaser.Scene {
     this.inp = new GH.Controls(this);
     this.weapons = new GH.Weapons(this);
 
-    const [sx, sy] = this.save.benched ? this.room.bench : this.room.spawn;
+    const R = this.room;
+    const [sx, sy] = data.at || ((data.respawn || this.save.benched) && R.bench) || R.spawn;
     const P = this.player = new GH.Player(this, (sx + 0.5) * T, (sy + 1) * T);
-    if (this.save.weapons) {
-      const owned = this.save.weapons.filter((id) => GH.DATA.weaponById[id]);
+    const src = carry || this.save;
+    if (src.weapons) {
+      const owned = src.weapons.filter((w) => GH.DATA.weaponById[w]);
       if (owned.length) P.weapons = owned;
-      P.weaponIndex = Phaser.Math.Clamp(this.save.weaponIndex || 0, 0, P.weapons.length - 1);
+      P.weaponIndex = Phaser.Math.Clamp(src.weaponIndex || 0, 0, P.weapons.length - 1);
     }
-    Object.assign(P.abilities, this.save.abilities || {});
-    P.shards = this.save.shards || 0;
+    Object.assign(P.abilities, src.abilities || {});
+    P.shards = src.shards || 0;
+    if (src.maxHp) P.maxHp = src.maxHp;
+    P.hp = carry && !data.respawn ? carry.hp : P.maxHp;
+    if (data.facing) P.facing = data.facing;
 
     this.enemies = this.add.group();
     this.spawnEnemies();
     this.buildPickups();
     this.shards = this.physics.add.group({ maxSize: 200 });
+    if (R.boss && !this.collected.has('boss:' + R.boss.id)) {
+      const [bx, by] = R.boss.at;
+      this.boss = new GH.Boss(this, (bx + 0.5) * T, (by + 1) * T);
+      this.enemies.add(this.boss);
+    }
     this.setupColliders();
-    if (this.save.cache) this.makeCache(this.save.cache.x, this.save.cache.y, this.save.cache.amount);
+    const cache = carry ? carry.cache : this.save.cache;
+    if (cache && (cache.room || 'crossing') === this.roomId) this.makeCache(cache.x, cache.y, cache.amount);
+    else this.otherCache = cache || null;
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.room.w * T, this.room.h * T);
@@ -43,7 +67,105 @@ GH.GameScene = class extends Phaser.Scene {
 
     this.input.keyboard.on('keydown-F2', () => this.toggleDebug());
     this.scene.launch('HUD');
+    if (data.at) cam.fadeIn(260, 0, 0, 0);
     this.time.delayedCall(500, () => this.events.emit('area', this.room.name, this.room.subtitle));
+  }
+
+  // ================================================================ rooms
+  carryState() {
+    const P = this.player;
+    return {
+      hp: P.hp, maxHp: P.maxHp, shards: P.shards, abilities: Object.assign({}, P.abilities),
+      weapons: P.weapons, weaponIndex: P.weaponIndex, collected: [...this.collected],
+      cache: this.cacheData || this.otherCache, benchRoom: this.benchRoom,
+    };
+  }
+
+  leave(ex) {
+    const P = this.player;
+    if (this.leaving || P.dead || !ex) return;
+    this.leaving = true;
+    const cam = this.cameras.main;
+    cam.fadeOut(200, 0, 0, 0);
+    cam.once('camerafadeoutcomplete', () => {
+      this.scene.restart({ room: ex.to, at: ex.at, carry: this.carryState(), facing: P.facing });
+    });
+  }
+
+  // The boss door: rock drawn over the doorway plus a solid block, removed when the boss falls.
+  sealDoor() {
+    const [x, y, w, h] = this.room.boss.door, T = this.T;
+    const art = GH.DATA.art || {}, tiles = art.tiles && this.textures.exists('tiles') ? art.tiles : null;
+    const z = this.add.zone((x + w / 2) * T, (y + h / 2) * T, w * T, h * T);
+    this.physics.add.existing(z, true);
+    this.solids.add(z);
+    this.door = [z];
+    for (let j = y; j < y + h; j++) {
+      for (let i = x; i < x + w; i++) {
+        const img = tiles
+          ? this.add.image(i * T, j * T, 'tiles', tiles.inner[(i + j) % tiles.inner.length]).setDisplaySize(T + 0.5, T + 0.5)
+          : this.add.image(i * T, j * T, 'tile_in' + ((i + j) % 3));
+        img.setOrigin(0).setDepth(2).setAlpha(0);
+        this.tweens.add({ targets: img, alpha: 1, duration: 300, delay: (y + h - j) * 70 });
+        this.door.push(img);
+      }
+    }
+    this.cameras.main.shake(300, 0.008);
+  }
+
+  openDoor() {
+    (this.door || []).forEach((o) => {
+      if (o.body) { o.body.enable = false; this.time.delayedCall(0, () => o.destroy()); }
+      else this.tweens.add({ targets: o, alpha: 0, duration: 500, onComplete: () => o.destroy() });
+    });
+    this.door = null;
+  }
+
+  startBossFight() {
+    this.sealDoor();
+    this.boss.wake();
+    this.events.emit('toast', this.boss.d.name.toUpperCase(), '', '#ffb38a');
+  }
+
+  bossDefeated(boss) {
+    const P = this.player;
+    this.collected.add('boss:' + this.room.boss.id);
+    this.waves.forEach((w) => w.s.destroy());
+    this.waves = [];
+    this.time.delayedCall(2200, () => {
+      this.openDoor();
+      P.maxHp += 1;
+      P.hp = P.maxHp;
+      this.spawnShards(boss.body.center.x, boss.body.center.y - 60, 30);
+      this.events.emit('toast', 'WARDEN FALLEN', 'Mask shard: +1 max health', '#ffe9c4');
+      this.cameras.main.flash(300, 255, 240, 210);
+      this.writeSave();
+    });
+  }
+
+  // Shockwave rolling along the floor. Jump over it.
+  spawnWave(x, bottom, dir) {
+    const art = this.textures.exists('boss_wave');
+    const s = art
+      ? this.add.sprite(x, bottom + 6, 'boss_wave', 0).setScale(GH.DATA.art.boss.scale * 0.85).play('boss_wave')
+      : this.add.image(x, bottom, 'slash').setTint(0x6ff3ff).setBlendMode(Phaser.BlendModes.ADD).setScale(0.8, 0.5);
+    s.setOrigin(0.5, 1).setFlipX(dir > 0).setDepth(9);
+    this.waves.push({ s, x, bottom, dir, life: 2.6 });
+  }
+
+  updateWaves(dt) {
+    const P = this.player, pb = P.body;
+    this.waves = this.waves.filter((w) => {
+      w.x += w.dir * 780 * dt;
+      w.life -= dt;
+      w.s.x = w.x;
+      if (w.life <= 0 || this.tileAt(w.x + w.dir * 30, w.bottom - 20) === '#') {
+        this.tweens.add({ targets: w.s, alpha: 0, duration: 150, onComplete: () => w.s.destroy() });
+        return false;
+      }
+      if (!P.dead && Math.abs(pb.center.x - w.x) < 46 && pb.bottom > w.bottom - 70) P.hurt(1, w.x - w.dir * 100);
+      return true;
+    });
   }
 
   // ================================================================ world
@@ -76,14 +198,17 @@ GH.GameScene = class extends Phaser.Scene {
     this.solids = this.physics.add.staticGroup();
     R.solids.forEach(([x, y, w, h]) => zone(this.solids, x * T, y * T, w * T, h * T));
 
+    // Ledges are solid on every side (you bump your head on them), and the hitbox is as thick as the ledge art.
+    const painted0 = (GH.DATA.art && GH.DATA.art.images) || {};
+    this.platH = painted0.tile_plat ? 40 : 20;
     this.platforms = this.physics.add.staticGroup();
-    R.platforms.forEach(([x, y, w]) => {
-      const c = zone(this.platforms, x * T, y * T, w * T, 20).body.checkCollision;
-      c.down = c.left = c.right = false;
-    });
+    R.platforms.forEach(([x, y, w]) => zone(this.platforms, x * T, y * T, w * T, this.platH));
 
     this.spikeZones = this.physics.add.staticGroup();
     R.spikes.forEach(([x, y, w]) => zone(this.spikeZones, x * T + 6, y * T + 28, w * T - 12, 36));
+
+    this.exitZones = this.physics.add.staticGroup();
+    (R.exits || []).forEach((ex) => { zone(this.exitZones, ex.x * T, ex.y * T, ex.w * T, ex.h * T).exit = ex; });
 
     const art = GH.DATA.art || {}, painted = art.images || {};
     const tiles = art.tiles && this.textures.exists('tiles') ? art.tiles : null;
@@ -136,6 +261,8 @@ GH.GameScene = class extends Phaser.Scene {
     }
 
     // bench (rest + save point)
+    this.benchPos = null;
+    if (!R.bench) return;
     const [bx, by] = R.bench;
     const b = this.benchPos = { x: (bx + 0.5) * T, y: (by + 1) * T };
     this.add.image(b.x, b.y - 50, 'glow').setTint(0xffd9a0).setBlendMode(Phaser.BlendModes.ADD).setScale(2.4).setAlpha(0.3).setDepth(4);
@@ -279,7 +406,8 @@ GH.GameScene = class extends Phaser.Scene {
     const c = this.cache = this.physics.add.image(x, y, 'cache').setDepth(7);
     c.body.allowGravity = false;
     c.amount = amount;
-    this.cacheData = { x, y, amount };
+    this.cacheData = { x, y, amount, room: this.roomId };
+    this.otherCache = null;            // a new death replaces shards left in another room
     this.tweens.add({ targets: c, scale: 1.2, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.cacheCollider = this.physics.add.overlap(this.player.phys, c, () => this.grabCache());
   }
@@ -314,25 +442,24 @@ GH.GameScene = class extends Phaser.Scene {
     // Arcade doesn't promise which object comes first in a callback, so sort them out explicitly.
     const isStatic = (o) => o.body instanceof Phaser.Physics.Arcade.StaticBody;
     const mover = (a, b) => (isStatic(a) ? b : a);           // the moving thing in a thing-vs-terrain pair
-    const terrain = (a, b) => (isStatic(a) ? a : b);
     const other = (a, b) => (a === P.phys ? b : a);           // whatever the player touched
-    const canLand = (a, b) => {
-      const body = mover(a, b).body, plat = terrain(a, b).body;
-      return body.velocity.y >= 0 && body.prev.y + body.height <= plat.position.y + 12;
-    };
-
     ph.add.collider(P.phys, this.solids);
-    ph.add.collider(P.phys, this.platforms, () => { P.platT = this.time.now; }, (a, b) => P.dropT <= 0 && canLand(a, b));
+    ph.add.collider(P.phys, this.platforms);
     ph.add.collider(this.enemies, this.solids);
-    ph.add.collider(this.enemies, this.platforms, null, canLand);
+    ph.add.collider(this.enemies, this.platforms);
     ph.add.collider(this.shards, this.solids, null, (a, b) => !mover(a, b).magnet);
-    ph.add.collider(this.shards, this.platforms, null, (a, b) => !mover(a, b).magnet && canLand(a, b));
+    ph.add.collider(this.shards, this.platforms, null, (a, b) => !mover(a, b).magnet);
 
     ph.add.overlap(W.bullets, this.solids, (a, b) => this.bulletWall(mover(a, b)));
+    ph.add.overlap(W.bullets, this.platforms, (a, b) => this.bulletWall(mover(a, b)));
     ph.add.overlap(W.enemyBullets, this.solids, (a, b) => W.kill(mover(a, b)));
     ph.add.overlap(W.bullets, this.enemies, (a, b) => (a.w ? this.bulletHit(a, b) : this.bulletHit(b, a)));
     ph.add.overlap(P.phys, W.enemyBullets, (a, b) => { const o = other(a, b); if (o.active && P.hurt(1, o.x)) W.kill(o); });
-    ph.add.overlap(P.phys, this.enemies, (a, b) => { const e = other(a, b); if (e.active) P.hurt(e.d.contact, e.body.center.x); });
+    ph.add.overlap(P.phys, this.enemies, (a, b) => {
+      const e = other(a, b);
+      if (e.active && e.state !== 'dead') P.hurt(e.d.contact, e.body.center.x);
+    });
+    ph.add.overlap(P.phys, this.exitZones, (a, b) => this.leave(other(a, b).exit));
     ph.add.overlap(P.phys, this.spikeZones, () => this.spikeHit());
     ph.add.overlap(P.phys, this.pickups, (a, b) => this.collect(other(a, b)));
     ph.add.overlap(P.phys, this.shards, (a, b) => this.grabShard(other(a, b)));
@@ -363,7 +490,13 @@ GH.GameScene = class extends Phaser.Scene {
 
   killEnemy(e) {
     const c = e.body.center;
-    if (!this.playFx('fx_explosion', c.x, c.y, 0.95)) this.fx.burst.explode(22, c.x, c.y);
+    if (e.art && e.art.anims.death) {
+      // the enemy's own death frames, left behind for a moment
+      const body = this.add.sprite(e.x, e.y, e.art.key).setOrigin(0.5, 1).setScale(e.scaleX).setFlipX(e.flipX).setDepth(7);
+      body.play(e.type + '_death');
+      body.once('animationcomplete', () => this.tweens.add({ targets: body, alpha: 0, delay: 900, duration: 600, onComplete: () => body.destroy() }));
+      this.fx.burst.explode(8, c.x, c.y);
+    } else if (!this.playFx('fx_explosion', c.x, c.y, 0.95)) this.fx.burst.explode(22, c.x, c.y);
     this.fx.sparks.explode(10, c.x, c.y);
     this.cameras.main.shake(90, 0.004);
     this.hitstop(40);
@@ -487,6 +620,11 @@ GH.GameScene = class extends Phaser.Scene {
       const cam = this.cameras.main;
       cam.fadeOut(400, 0, 0, 0);
       cam.once('camerafadeoutcomplete', () => {
+        if (!this.benchPos) {
+          this.writeSave();
+          this.scene.restart({ room: this.benchRoom, respawn: true, carry: this.carryState() });
+          return;
+        }
         P.revive(this.benchPos.x, this.benchPos.y);
         this.weapons.clear();
         this.respawnEnemies();
@@ -498,6 +636,7 @@ GH.GameScene = class extends Phaser.Scene {
 
   updateBench() {
     const P = this.player, b = this.benchPos;
+    if (!b) return;
     const near = !P.dead && Math.abs(P.body.center.x - b.x) < 90 && Math.abs(P.body.bottom - b.y) < 40;
     this.benchPrompt.setAlpha(Phaser.Math.Linear(this.benchPrompt.alpha, near ? 1 : 0, 0.2));
     if (near && P.onGroundNow && this.inp.pressed.up) {
@@ -513,9 +652,9 @@ GH.GameScene = class extends Phaser.Scene {
   writeSave() {
     const P = this.player;
     GH.Save.write({
-      benched: true,
+      benched: true, room: this.benchRoom, maxHp: P.maxHp,
       weapons: P.weapons, weaponIndex: P.weaponIndex, abilities: P.abilities, shards: P.shards,
-      collected: [...this.collected], cache: this.cacheData,
+      collected: [...this.collected], cache: this.cacheData || this.otherCache,
     });
   }
 
@@ -537,6 +676,8 @@ GH.GameScene = class extends Phaser.Scene {
     this.updateSlash(dt);
     this.updateShards(dt);
     this.updateBench();
+    this.updateWaves(dt);
+    if (this.boss && !this.boss.awake && !P.dead && P.body.center.x > this.room.boss.wakeX * this.T) this.startBossFight();
 
     // Camera: eases toward a point a little ahead of the player. The easing uses real elapsed time, so it
     // glides the same on a 60Hz and a 144Hz screen instead of lurching with the frame rate.

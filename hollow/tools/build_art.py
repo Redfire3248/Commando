@@ -173,7 +173,7 @@ def build_player():
 
 
 # ------------------------------------------------------------------------------------ sword hero (one 10x5 sheet)
-HERO_FILES = ['30_hero_sword.png', 'hero_sword.png']
+HERO_FILES = ['hero_v2.png', '30_hero_sword.png', 'hero_sword.png']   # first one found wins
 HERO_COLS, HERO_ROWS = 10, 5
 # The AI does not keep to an exact grid, so the hero sheet is cut sprite by sprite: each row of the
 # sheet is read left to right and the sprites are numbered 0, 1, 2... in the order they appear.
@@ -194,6 +194,18 @@ HERO_LAYOUT = [
     ('hurt', 2, [6, 7], 8, 'feet'), ('death', 2, [8, 9, 10], 6, 'center'),
     ('slash_fwd', 3, [0, 1, 2], 14, 'feet'),       # sprite 3 (follow-through) was drawn at a smaller size: not used
     ('slash_up', 3, [4, 5, 6], 14, 'feet'),
+    ('slash_down', 3, [7, 8, 9], 14, 'air'),
+    ('slash_air', 4, [0, 1, 2], 14, 'air'), ('rest', 4, [3, 4], 2, 'feet'), ('triumph', 4, [5, 6], 4, 'feet'),
+    ('focus', 4, [7, 8, 9], 5, 'feet'),
+]
+# hero_v2.png: the sheet from the "Hero v2" prompt in tools/prompts.md (8-frame run on row 1).
+HERO_LAYOUT_V2 = [
+    ('run', 0, [0, 1, 2, 3, 4, 5, 6, 7], 14, 'feet'), ('idle', 0, [8, 9], 3, 'feet'),
+    ('jump', 1, [0, 1, 2, 3], 0, 'feet'), ('land', 1, [4], 10, 'feet'), ('flip', 1, [5, 6], 12, 'mid'),
+    ('crouch', 1, [7], 1, 'feet'), ('slide', 1, [8, 9], 6, 'feet'),
+    ('dash', 2, [0, 1, 2], 20, 'feet'), ('wall', 2, [3, 4], 6, 'back'), ('wallkick', 2, [5], 1, 'feet'),
+    ('hurt', 2, [6, 7], 8, 'feet'), ('death', 2, [8, 9], 5, 'center'),
+    ('slash_fwd', 3, [0, 1, 2, 3], 18, 'feet'), ('slash_up', 3, [4, 5, 6], 14, 'feet'),
     ('slash_down', 3, [7, 8, 9], 14, 'air'),
     ('slash_air', 4, [0, 1, 2], 14, 'air'), ('rest', 4, [3, 4], 2, 'feet'), ('triumph', 4, [5, 6], 4, 'feet'),
     ('focus', 4, [7, 8, 9], 5, 'feet'),
@@ -291,15 +303,17 @@ def build_hero():
             break
     if a is None:
         return False
+    layout = HERO_LAYOUT_V2 if name == 'hero_v2.png' else HERO_LAYOUT
     rows = cut_rows(a, HERO_COLS, HERO_ROWS)
-    print('  hero sheet: sprites per row', [len(r) for r in rows])
-    for name, r, ks, _, _ in HERO_LAYOUT:
+    print('  hero sheet:', name, '- sprites per row', [len(r) for r in rows])
+    for name, r, ks, _, _ in layout:
         if max(ks) >= len(rows[r]):
             print('  hero sheet: row', r, 'has too few sprites for', name, '- fix HERO_LAYOUT; hero skipped')
             return False
 
     # measure the standing pose once: how tall he is, and where the eyes sit relative to the feet
-    idle = rows[0][0]
+    idle_r, idle_ks = next((r, ks) for n, r, ks, _, _ in layout if n == 'idle')
+    idle = rows[idle_r][idle_ks[0]]
     stand_h = idle.shape[0]
     ys, xs = np.nonzero(idle[..., 3] > 100)
     ex, ey = eyes(idle)
@@ -307,7 +321,7 @@ def build_hero():
 
     CELL, OX, BASE = 288, 144, 232
     frames, anims = [], {}
-    for name, r, ks, fps, mode in HERO_LAYOUT:
+    for name, r, ks, fps, mode in layout:
         anims[name] = [len(frames), len(frames) + len(ks) - 1, fps, 1]
         frames += [(rows[r][k], mode) for k in ks]
     cols = 8
@@ -330,6 +344,8 @@ def build_hero():
         sheet.paste(cell, ((i % cols) * CELL, (i // cols) * CELL))
     manifest['sheets']['player'] = {'path': save(sheet, 'player'), 'fw': CELL, 'fh': CELL}
     manifest['player'] = {'originY': BASE / CELL, 'scale': round(132 / stand_h, 4), 'anims': anims}
+    if layout is HERO_LAYOUT_V2:
+        manifest['player']['pixel'] = True       # pixel-art hero: drawn with hard edges, no smoothing
     print('  sword hero:', len(frames), 'frames, standing height', stand_h, 'px')
     return True
 
@@ -448,14 +464,262 @@ def build_props():
     print('  props:', len(cells))
 
 
+
+# ------------------------------------------------------------------------------------ v2 sheets (10x5)
+# enemies_v2.png: one enemy per row. (texture key, row, height drawn in game, flies?, [(anim, cells, fps)])
+ENEMY_ROWS = {
+    'crawler':  (0, 84, False, [('walk', [0, 1, 2, 3, 4, 5], 10), ('hurt', [6], 1), ('death', [7, 8, 9], 8)]),
+    'hopper':   (1, 92, False, [('idle', [0, 1], 3), ('crouch', [2], 1), ('leap', [3, 4], 6), ('land', [5], 1),
+                                ('hurt', [6], 1), ('death', [7, 8, 9], 8)]),
+    'turret':   (2, 104, True, [('idle', [0, 1, 2, 3], 6), ('charge', [4, 5], 8), ('hurt', [7], 1), ('death', [8, 9], 6)]),
+    'brute':    (3, 220, False, [('walk', [0, 1, 2, 3], 6), ('windup', [4], 1), ('smash', [5, 6], 10), ('hurt', [7], 1),
+                                 ('death', [8, 9], 4)]),
+    'vengefly': (4, 88, True, [('idle', [0, 1, 2, 3], 14), ('dive', [4, 5], 10), ('hurt', [6], 1), ('death', [7, 8], 6)]),
+}
+
+
+def pack(crops, fly):
+    """Puts frames of different sizes into one strip of equal cells: centred left-right, standing on the
+    bottom edge (or centred, for flyers). Pixels are copied untouched."""
+    fw = max(c.shape[1] for c in crops) + 4
+    fh = max(c.shape[0] for c in crops) + 4
+    strip = Image.new('RGBA', (fw * len(crops), fh), (0, 0, 0, 0))
+    for i, c in enumerate(crops):
+        h, w = c.shape[:2]
+        y = (fh - h) // 2 if fly else fh - h
+        strip.paste(Image.fromarray(c), (i * fw + (fw - w) // 2, y))
+    return strip, fw, fh
+
+
+def build_enemies_v2():
+    a = load('enemies_v2.png')
+    if a is None:
+        return
+    cells = cut_cells(a, 10, 5)
+    manifest['enemies'] = {}
+    for name, (row, height, fly, anims) in ENEMY_ROWS.items():
+        crops, out = [], {}
+        for anim, ks, fps in anims:
+            out[anim] = [len(crops), len(crops) + len(ks) - 1, fps]
+            crops += [cells[row * 10 + k][0] for k in ks]
+        strip, fw, fh = pack(crops, fly)
+        key = 'en_' + name
+        manifest['sheets'][key] = {'path': save(strip, key), 'fw': fw, 'fh': fh}
+        stand = crops[0].shape[0]
+        # flyers are centred in their frame, so their origin is the middle; walkers stand on the bottom edge
+        manifest['enemies'][name] = {'key': key, 'scale': round(height / stand, 4), 'anims': out, 'fly': fly}
+    print('  enemies v2:', ', '.join(ENEMY_ROWS))
+
+
+# boss_warden_v2.png: the AI did not keep the rows evenly spaced, so sprites are found one by one and given
+# to the row whose ground line they stand on (or hang above). (anim, row, sprites in that row, fps)
+BOSS_LAYOUT = [
+    ('idle', 0, [0, 1, 2, 3], 5), ('walk', 0, [4, 5, 6, 7, 8, 9], 8),
+    ('lift', 1, [0, 1, 2], 8), ('smash', 1, [3], 1), ('buried', 1, [4], 1), ('pull', 1, [5, 6], 6),
+    ('crouch', 2, [0, 1], 6), ('air', 2, [2, 3], 6), ('fall', 2, [4], 1), ('land', 2, [5], 1),
+    ('charge', 2, [6, 7, 8], 10),
+    ('roar', 3, [0, 1], 4), ('stagger', 3, [2, 3, 4], 6), ('sweep', 3, [5, 6, 7, 8], 12),
+    ('death', 4, [0, 1, 2, 3, 4, 5], 5), ('cage', 4, [6, 7, 8, 9], 5),
+]
+BOSS_HEIGHT = 300          # standing height in game pixels
+
+
+def boss_sprites(a):
+    """Returns the sheet's sprites grouped into rows by the ground line they stand on."""
+    m = a[..., 3] > 10
+    proj = m.sum(1)
+    lab, _ = ndimage.label(ndimage.binary_dilation(m, iterations=4))
+    pieces = []
+    for i, sl in enumerate(ndimage.find_objects(lab)):
+        part = (lab[sl] == i + 1) & m[sl]
+        if part.sum() < 300:                                   # loose specks
+            continue
+        y0, x0 = sl[0].start, sl[1].start
+        h = part.shape[0]
+        if h > 250:                                            # two sprites from neighbouring rows touch: cut between them
+            rows = part.sum(1)
+            cut = int(h * 0.3) + int(np.argmin(rows[int(h * 0.3):int(h * 0.7)]))
+            halves = [(part[:cut], y0), (part[cut:], y0 + cut)]
+        else:
+            halves = [(part, y0)]
+        for p, py in halves:
+            ys, xs = np.nonzero(p)
+            if len(xs) < 300:
+                continue
+            pieces.append((py + ys.min(), py + ys.max() + 1, x0 + xs.min(), x0 + xs.max() + 1, p, py, x0))
+    # ground lines: the bottom edge shared by most sprites in each horizontal band
+    bottoms = sorted(p[1] for p in pieces)
+    lines = []
+    for b in bottoms:
+        if not lines or b - lines[-1][-1] > 40:
+            lines.append([b])
+        else:
+            lines[-1].append(b)
+    ground = [max(l) for l in lines if len(l) >= 3]
+    rows = [[] for _ in ground]
+    for y0, y1, x0, x1, p, py, px in pieces:
+        r = next((i for i, g in enumerate(ground) if g >= y1 - 8), len(ground) - 1)
+        crop = a[y0:y1, x0:x1].copy()
+        keep = np.zeros(crop.shape[:2], bool)
+        keep[:, :] = p[y0 - py:y1 - py, x0 - px:x1 - px]
+        crop[~keep] = 0
+        rows[r].append((x0, crop))
+    return [[c for _, c in sorted(r, key=lambda t: t[0])] for r in rows]
+
+
+def build_boss_v2():
+    a = load('boss_warden_v2.png')
+    if a is None:
+        return
+    rows = boss_sprites(a)
+    print('  boss: sprites per row', [len(r) for r in rows])
+    for name, r, ks, _ in BOSS_LAYOUT:
+        if r >= len(rows) or max(ks) >= len(rows[r]):
+            print('  boss: row', r, 'has too few sprites for', name, '- fix BOSS_LAYOUT; boss skipped')
+            return
+    crops, anims = [], {}
+    for name, r, ks, fps in BOSS_LAYOUT:
+        anims[name] = [len(crops), len(crops) + len(ks) - 1, fps]
+        crops += [rows[r][k] for k in ks]
+    strip, fw, fh = pack(crops, False)
+    manifest['sheets']['boss_warden'] = {'path': save(strip, 'boss_warden'), 'fw': fw, 'fh': fh}
+    # the shockwave (row 2, last three sprites) is its own little strip
+    waves = rows[1][7:10]
+    if len(waves) == 3:
+        ws, wfw, wfh = pack(waves, False)
+        manifest['sheets']['boss_wave'] = {'path': save(ws, 'boss_wave'), 'fw': wfw, 'fh': wfh}
+    stand = crops[0].shape[0]
+    manifest['boss'] = {'scale': round(BOSS_HEIGHT / stand, 4), 'anims': anims}
+    print('  boss: %d frames' % len(crops))
+
+
+def build_tiles_v2():
+    """tiles_v2.png came back without real transparency (a grey-and-white checkerboard is painted in), so only
+    the parts that are solid all the way across are used: the square tiles, and the straight middle ledge
+    pieces cut just inside their edges. Nothing is erased; every used pixel is copied as it is."""
+    p = find('tiles_v2.png')
+    if not p:
+        return False
+    a = np.array(Image.open(p).convert('RGBA'))
+    rgb = a[..., :3].astype(int)
+    checker = (rgb.min(2) > 195) & (rgb.max(2) - rgb.min(2) < 14)
+    solid = ~checker & (a[..., 3] > 200)
+    lab, _ = ndimage.label(ndimage.binary_opening(solid, iterations=2))
+    boxes = []
+    for i, sl in enumerate(ndimage.find_objects(lab)):
+        h, w = sl[0].stop - sl[0].start, sl[1].stop - sl[1].start
+        if h * w > 4000:
+            boxes.append((sl[0].start, sl[0].stop, sl[1].start, sl[1].stop))
+    # the AI squashed the sheet, so the tiles are rectangles; the game draws each one 64x64 anyway
+    squares = [b for b in boxes if b[1] - b[0] > 120 and 0.85 < (b[3] - b[2]) / (b[1] - b[0]) < 1.5]
+    ledges = [b for b in boxes if (b[3] - b[2]) > 2.2 * (b[1] - b[0])]
+    if len(squares) < 6:
+        print('  tiles_v2: found only', len(squares), 'square tiles - skipped')
+        return False
+
+    FW = min(b[3] - b[2] for b in squares) - 10
+    FH = min(b[1] - b[0] for b in squares) - 10
+    S = FH
+    # group squares into rows by their top edge
+    squares.sort(key=lambda b: (b[0], b[2]))
+    rows = []
+    for b in squares:
+        if rows and abs(b[0] - rows[-1][0][0]) < 40:
+            rows[-1].append(b)
+        else:
+            rows.append([b])
+    for r in rows:
+        r.sort(key=lambda b: b[2])
+
+    def top(b):          # first row that is solid all the way across (grass tips stick up into the checkerboard)
+        cx = (b[2] + b[3]) // 2
+        y = b[0]
+        while y < b[0] + 30 and not solid[y, cx - FW // 2:cx - FW // 2 + FW].all():
+            y += 1
+        return y
+
+    FH = min(b[1] - top(b) for b in squares) - 2
+
+    def crop(b):         # centred left-right, from the first fully solid row (keeps the grass band)
+        cx, y = (b[2] + b[3]) // 2, top(b)
+        return a[y:y + FH, cx - FW // 2:cx - FW // 2 + FW]
+
+    def mossy(c):        # teal grass along the top
+        t = c[:S // 8, :, :3].astype(int)
+        return (t[..., 1] - t[..., 0]).mean() > 30
+
+    def rim_side(c):     # the lighter worn rim: which edge is it on?
+        g = c[..., :3].astype(int).sum(2)
+        lft, rgt, mid = g[:, :FW // 10].mean(), g[:, -FW // 10:].mean(), g[:, FW // 3:-FW // 3].mean()
+        if max(lft, rgt) < mid * 1.12:
+            return None
+        return 'left' if lft > rgt else 'right'
+
+    sets = {k: [] for k in ('top', 'inner', 'left', 'right', 'topLeft', 'topRight', 'bottom')}
+    frames = []
+    for r in rows:
+        for b in r:
+            c = crop(b)
+            side, moss = rim_side(c), mossy(c)
+            kind = ('topLeft' if side == 'left' else 'topRight' if side == 'right' else 'top') if moss \
+                else (side or 'inner')
+            sets[kind].append(len(frames))
+            frames.append(c)
+    # fill gaps: no ceiling tiles are square on this sheet; a missing corner uses a plain surface tile
+    if not sets['bottom']:
+        sets['bottom'] = sets['inner']
+    for k, fb in (('topLeft', 'top'), ('topRight', 'top'), ('left', 'inner'), ('right', 'inner')):
+        if not sets[k]:
+            sets[k] = sets[fb]
+    cols = 10
+    sheet = Image.new('RGBA', (cols * FW, -(-len(frames) // cols) * FH))
+    for i, c in enumerate(frames):
+        sheet.paste(Image.fromarray(c), ((i % cols) * FW, (i // cols) * FH))
+    manifest['sheets']['tiles'] = {'path': save(sheet, 'tiles'), 'fw': FW, 'fh': FH}
+    manifest['tiles'] = sets
+
+    # ledges: the straight middle pieces, cut to the rows and columns that are solid all the way across
+    best = {}
+    for y0, y1, x0, x1 in ledges:
+        x0, x1 = x0 + 4, x1 - 4
+        full = solid[y0:y1, x0:x1].all(1)
+        ys = np.nonzero(full)[0]
+        if not len(ys):
+            continue
+        # longest run of solid rows
+        runs, start = [], ys[0]
+        for k in range(1, len(ys) + 1):
+            if k == len(ys) or ys[k] != ys[k - 1] + 1:
+                runs.append((start, ys[k - 1] + 1))
+                if k < len(ys):
+                    start = ys[k]
+        r0, r1 = max(runs, key=lambda t: t[1] - t[0])
+        h = r1 - r0
+        if h < 0.22 * (x1 - x0):            # rounded end pieces lose too much: not used
+            continue
+        c = a[y0 + r0:y0 + r1, x0:x1]
+        wood = (c[..., 0].astype(int) - c[..., 2].astype(int)).mean() > 25
+        k = 'wood' if wood else 'stone'
+        if k not in best or h * (x1 - x0) > best[k].shape[0] * best[k].shape[1]:
+            best[k] = c
+    if 'stone' in best:
+        manifest['images']['tile_plat'] = save(Image.fromarray(best['stone']), 'tile_plat')
+    if 'wood' in best:
+        manifest['images']['tile_plank'] = save(Image.fromarray(best['wood']), 'tile_plank')
+    print('  tiles_v2:', {k: len(v) for k, v in sets.items()}, 'at %dx%d px; ledges' % (FW, FH), list(best))
+    return True
+
 if __name__ == '__main__':
     print('Slicing art from', os.path.join(ROOT, 'assets'))
     if not build_hero():          # the one-sheet sword hero replaces the older 01 + 02 sheets
         build_player()
     build_weapons()
     build_vfx()
-    build_tiles()
     build_props()
+    if not build_tiles_v2():       # tiles_v2.png replaces the 07 tiles and the ledge piece
+        build_tiles()
+    build_enemies_v2()
+    build_boss_v2()
     with open(os.path.join(ROOT, 'data', 'art.gen.js'), 'w', encoding='utf-8') as f:
         f.write('// GENERATED by tools/build_art.py — do not edit by hand.\n')
         f.write('GH.DATA.art = ' + json.dumps(manifest, indent=1) + ';\n')

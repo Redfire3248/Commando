@@ -38,6 +38,7 @@
       this.animT = 0; this.runT = 0; this.landT = 0; this.slashAnim = null; this.animScale = 1;
       this.slideT = 0; this.flipT = 0; this.kickT = 0; this.slideDir = 1; this.pose = null;
       if (this.sheet) this.visual.setOrigin(0.5, this.sheet.originY);
+      if (this.sheet && this.sheet.pixel) scene.textures.get('player').setFilter(Phaser.Textures.FilterMode.NEAREST);
       if (this.held) this.gun.setTexture('guns_held', 0).setOrigin(this.held.originX, 0.5).setScale(this.held.scale);
     }
 
@@ -88,7 +89,6 @@
       }
 
       const onGround = b.blocked.down || b.touching.down;
-      const onPlatform = onGround && this.scene.time.now - this.platT < 80;
       this.onGroundNow = onGround;
       if (onGround) {
         this.coyote = C.coyoteMs;
@@ -161,10 +161,7 @@
       // ---- jump ----
       if (p.jump) this.buffer = C.bufferMs;
       if (this.buffer > 0 && this.dashT <= 0) {
-        if (onPlatform && h.down) {
-          this.dropT = 260;                       // drop through a one-way platform
-          this.buffer = 0;
-        } else if (onGround || this.coyote > 0) {
+        if (onGround || this.coyote > 0) {
           this.doJump(C.jumpVel);
           fx.dust.explode(5, b.center.x, b.bottom);
         } else if (this.wallT > 0) {
@@ -349,7 +346,12 @@
       let gunHidden = this.dead || dashing || !GH.CONFIG.GUNS;
       if (this.sheet) {
         v.setFrame(this.frameFor(dt));
-        v.setPosition(b.center.x, b.bottom);
+        // running: the body bobs twice per cycle (once per step) and leans into the run
+        const running = this.onGroundNow && Math.abs(b.velocity.x) > 60 && !dashing && !this.slideT && !this.slashAnim;
+        const cyc = this.sheet.anims.run ? (this.sheet.anims.run[1] - this.sheet.anims.run[0] + 1) / this.sheet.anims.run[2] : 0.5;
+        const bob = running ? -Math.abs(Math.sin(this.runT / cyc * Math.PI * 2)) * 7 : 0;
+        v.setPosition(b.center.x, b.bottom + bob);
+        v.rotation = running ? this.facing * 0.05 : 0;
         // the sheet has real poses, so only a hint of squash and stretch
         const sc = this.sheet.scale * this.animScale;
         v.setScale(sc * (1 + (this.sx - 1) * 0.4), sc * (1 + (this.sy - 1) * 0.4));

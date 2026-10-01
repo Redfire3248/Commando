@@ -131,3 +131,20 @@ canvas { image-rendering: pixelated; }
   .list { gap: 4px; }
   ul, table { font-size: 14px; }
 }
+
+/* ---------- D-pad (replaces the joystick) ---------- */
+#dpad {
+  position: absolute; pointer-events: auto; touch-action: none; width: 186px; height: 186px;
+  left: calc(22px + env(safe-area-inset-left)); bottom: calc(22px + env(safe-area-inset-bottom));
+}
+#dpad .dp {
+  position: absolute; width: 62px; height: 62px; box-sizing: border-box; pointer-events: none;
+  display: flex; align-items: center; justify-content: center; border-radius: 12px;
+  border: 2px solid rgba(255,255,255,.28); background: rgba(16,20,36,.5); color: rgba(255,255,255,.85);
+  font: 700 22px system-ui, sans-serif;
+}
+#dpad .up { left: 62px; top: 0; }
+#dpad .down { left: 62px; bottom: 0; }
+#dpad .left { left: 0; top: 62px; }
+#dpad .right { right: 0; top: 62px; }
+#dpad .dp.on { background: rgba(255,154,60,.4); border-color: rgba(255,154,60,.9); }

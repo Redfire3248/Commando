@@ -39,22 +39,32 @@
         this.help.setAlpha(this.help.alpha > 0.5 ? 0 : 1);
       });
 
-      G.events.on('toast', this.toast, this);
-      G.events.on('area', this.area, this);
-      G.events.on('hurt', () => {
+      // boss health bar (shown while a boss is awake)
+      this.bossG = this.add.graphics();
+      this.bossName = this.add.text(960, 962, '', ts(30, '#f3eee2', '700', 'Cinzel')).setOrigin(0.5).setShadow(0, 2, '#000', 8);
+
+      // The Game scene restarts on every room change and relaunches this scene, so drop the old listeners.
+      this.onHurt = () => {
         this.hurtOv.setAlpha(0.9);
         this.tweens.add({ targets: this.hurtOv, alpha: 0, duration: 520 });
+      };
+      G.events.on('toast', this.toast, this);
+      G.events.on('area', this.area, this);
+      G.events.on('hurt', this.onHurt);
+      this.events.once('shutdown', () => {
+        G.events.off('toast', this.toast, this);
+        G.events.off('area', this.area, this);
+        G.events.off('hurt', this.onHurt);
       });
     }
 
     helpText() {
       if (GH.Touch && GH.Touch.enabled) {
         return [
-          'Left thumb: move',
+          'Arrow buttons: move (press between two for diagonals)',
           'Hold up or down while you SLASH to strike that way',
           'Slash down in the air to bounce off spikes and enemies',
           'Push up at a bench to rest + save',
-          'Push down + JUMP to drop through ledges',
         ].join('\n');
       }
       const lines = [
@@ -66,7 +76,7 @@
         'Attack downward in mid-air to bounce off spikes and enemies',
       ];
       if (GH.CONFIG.GUNS) lines.push('SHOOT   F        AIM IN PLACE   hold R        SWAP GUN   Q  E');
-      lines.push('REST   ↑ at a bench        DROP   ↓ + Jump', 'Gamepad works too   ·   H hides this');
+      lines.push('REST   ↑ at a bench', 'Gamepad works too   ·   H hides this');
       return lines.join('\n');
     }
 
@@ -114,6 +124,17 @@
     update() {
       const P = this.G.player, L = this.last;
       if (!P) return;
+
+      const B = this.G.boss, show = !!(B && B.active && B.awake && B.hp > 0);
+      this.bossG.clear();
+      this.bossName.setVisible(show);
+      if (show) {
+        const w = 900, x = 960 - w / 2, y = 994;
+        this.bossName.setText(B.d.name.toUpperCase());
+        this.bossG.fillStyle(0x05070d, 0.75).fillRect(x - 4, y - 4, w + 8, 26);
+        this.bossG.fillStyle(0x4a1520, 1).fillRect(x, y, w, 18);
+        this.bossG.fillStyle(0xe8d9b0, 1).fillRect(x, y, w * B.hp / B.maxHp, 18);
+      }
 
       if (P.maxHp !== L.max) {
         this.masks.forEach((m) => m.destroy());

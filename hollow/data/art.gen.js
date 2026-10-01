@@ -43,15 +43,50 @@ GH.DATA.art = {
    "fw": 224,
    "fh": 224
   },
-  "tiles": {
-   "path": "assets/atlas/tiles.png",
-   "fw": 213,
-   "fh": 213
-  },
   "props": {
    "path": "assets/atlas/props.png",
    "fw": 232,
    "fh": 232
+  },
+  "tiles": {
+   "path": "assets/atlas/tiles.png",
+   "fw": 195,
+   "fh": 144
+  },
+  "en_crawler": {
+   "path": "assets/atlas/en_crawler.png",
+   "fw": 188,
+   "fh": 134
+  },
+  "en_hopper": {
+   "path": "assets/atlas/en_hopper.png",
+   "fw": 181,
+   "fh": 144
+  },
+  "en_turret": {
+   "path": "assets/atlas/en_turret.png",
+   "fw": 139,
+   "fh": 147
+  },
+  "en_brute": {
+   "path": "assets/atlas/en_brute.png",
+   "fw": 177,
+   "fh": 207
+  },
+  "en_vengefly": {
+   "path": "assets/atlas/en_vengefly.png",
+   "fw": 139,
+   "fh": 138
+  },
+  "boss_warden": {
+   "path": "assets/atlas/boss_warden.png",
+   "fw": 233,
+   "fh": 193
+  },
+  "boss_wave": {
+   "path": "assets/atlas/boss_wave.png",
+   "fw": 176,
+   "fh": 115
   }
  },
  "scale": {
@@ -67,18 +102,18 @@ GH.DATA.art = {
  },
  "player": {
   "originY": 0.8055555555555556,
-  "scale": 0.8199,
+  "scale": 0.9778,
   "anims": {
-   "idle": [
+   "run": [
     0,
-    3,
-    6,
+    7,
+    14,
     1
    ],
-   "run": [
-    4,
+   "idle": [
+    8,
     9,
-    13,
+    3,
     1
    ],
    "jump": [
@@ -87,103 +122,104 @@ GH.DATA.art = {
     0,
     1
    ],
-   "flip": [
-    14,
-    14,
-    1,
-    1
-   ],
-   "crouch": [
-    15,
-    15,
-    1,
-    1
-   ],
    "land": [
-    16,
-    16,
+    14,
+    14,
     10,
     1
    ],
-   "slide": [
+   "flip": [
+    15,
+    16,
+    12,
+    1
+   ],
+   "crouch": [
     17,
+    17,
+    1,
+    1
+   ],
+   "slide": [
     18,
+    19,
     6,
     1
    ],
    "dash": [
-    19,
-    21,
+    20,
+    22,
     20,
     1
    ],
    "wall": [
-    22,
     23,
+    24,
     6,
     1
    ],
    "wallkick": [
-    24,
-    24,
+    25,
+    25,
     1,
     1
    ],
    "hurt": [
-    25,
     26,
+    27,
     8,
     1
    ],
    "death": [
-    27,
+    28,
     29,
-    6,
+    5,
     1
    ],
    "slash_fwd": [
     30,
-    32,
-    14,
+    33,
+    18,
     1
    ],
    "slash_up": [
-    33,
-    35,
+    34,
+    36,
     14,
     1
    ],
    "slash_down": [
-    36,
-    38,
+    37,
+    39,
     14,
     1
    ],
    "slash_air": [
-    39,
-    41,
+    40,
+    42,
     14,
     1
    ],
    "rest": [
-    42,
     43,
+    44,
     2,
     1
    ],
    "triumph": [
-    44,
     45,
+    46,
     4,
     1
    ],
    "focus": [
-    46,
-    48,
+    47,
+    49,
     5,
     1
    ]
-  }
+  },
+  "pixel": true
  },
  "held": {
   "originX": 0.078125,
@@ -230,54 +266,6 @@ GH.DATA.art = {
     "my": 0
    }
   }
- },
- "tiles": {
-  "top": [
-   0,
-   1,
-   2,
-   3,
-   4,
-   5,
-   6,
-   7
-  ],
-  "inner": [
-   8,
-   9,
-   10,
-   11,
-   12,
-   13,
-   14,
-   15
-  ],
-  "left": [
-   16,
-   17,
-   18,
-   19
-  ],
-  "right": [
-   20,
-   21,
-   22,
-   23
-  ],
-  "topLeft": [
-   24,
-   25
-  ],
-  "topRight": [
-   26,
-   27
-  ],
-  "bottom": [
-   28,
-   29,
-   30,
-   31
-  ]
  },
  "props": {
   "ledge_stone": {
@@ -471,6 +459,283 @@ GH.DATA.art = {
    "w": 151,
    "h": 209,
    "hang": false
+  }
+ },
+ "tiles": {
+  "top": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ],
+  "inner": [
+   9,
+   10,
+   11,
+   12,
+   13
+  ],
+  "left": [
+   15,
+   16,
+   17,
+   18,
+   19
+  ],
+  "right": [
+   20,
+   21,
+   22,
+   23
+  ],
+  "topLeft": [
+   14
+  ],
+  "topRight": [
+   8
+  ],
+  "bottom": [
+   9,
+   10,
+   11,
+   12,
+   13
+  ]
+ },
+ "enemies": {
+  "crawler": {
+   "key": "en_crawler",
+   "scale": 0.8155,
+   "anims": {
+    "walk": [
+     0,
+     5,
+     10
+    ],
+    "hurt": [
+     6,
+     6,
+     1
+    ],
+    "death": [
+     7,
+     9,
+     8
+    ]
+   },
+   "fly": false
+  },
+  "hopper": {
+   "key": "en_hopper",
+   "scale": 0.7731,
+   "anims": {
+    "idle": [
+     0,
+     1,
+     3
+    ],
+    "crouch": [
+     2,
+     2,
+     1
+    ],
+    "leap": [
+     3,
+     4,
+     6
+    ],
+    "land": [
+     5,
+     5,
+     1
+    ],
+    "hurt": [
+     6,
+     6,
+     1
+    ],
+    "death": [
+     7,
+     9,
+     8
+    ]
+   },
+   "fly": false
+  },
+  "turret": {
+   "key": "en_turret",
+   "scale": 0.7324,
+   "anims": {
+    "idle": [
+     0,
+     3,
+     6
+    ],
+    "charge": [
+     4,
+     5,
+     8
+    ],
+    "hurt": [
+     6,
+     6,
+     1
+    ],
+    "death": [
+     7,
+     8,
+     6
+    ]
+   },
+   "fly": true
+  },
+  "brute": {
+   "key": "en_brute",
+   "scale": 1.2644,
+   "anims": {
+    "walk": [
+     0,
+     3,
+     6
+    ],
+    "windup": [
+     4,
+     4,
+     1
+    ],
+    "smash": [
+     5,
+     6,
+     10
+    ],
+    "hurt": [
+     7,
+     7,
+     1
+    ],
+    "death": [
+     8,
+     9,
+     4
+    ]
+   },
+   "fly": false
+  },
+  "vengefly": {
+   "key": "en_vengefly",
+   "scale": 0.6567,
+   "anims": {
+    "idle": [
+     0,
+     3,
+     14
+    ],
+    "dive": [
+     4,
+     5,
+     10
+    ],
+    "hurt": [
+     6,
+     6,
+     1
+    ],
+    "death": [
+     7,
+     8,
+     6
+    ]
+   },
+   "fly": true
+  }
+ },
+ "boss": {
+  "scale": 1.6854,
+  "anims": {
+   "idle": [
+    0,
+    3,
+    5
+   ],
+   "walk": [
+    4,
+    9,
+    8
+   ],
+   "lift": [
+    10,
+    12,
+    8
+   ],
+   "smash": [
+    13,
+    13,
+    1
+   ],
+   "buried": [
+    14,
+    14,
+    1
+   ],
+   "pull": [
+    15,
+    16,
+    6
+   ],
+   "crouch": [
+    17,
+    18,
+    6
+   ],
+   "air": [
+    19,
+    20,
+    6
+   ],
+   "fall": [
+    21,
+    21,
+    1
+   ],
+   "land": [
+    22,
+    22,
+    1
+   ],
+   "charge": [
+    23,
+    25,
+    10
+   ],
+   "roar": [
+    26,
+    27,
+    4
+   ],
+   "stagger": [
+    28,
+    30,
+    6
+   ],
+   "sweep": [
+    31,
+    34,
+    12
+   ],
+   "death": [
+    35,
+    40,
+    5
+   ],
+   "cage": [
+    41,
+    44,
+    5
+   ]
   }
  }
 };
