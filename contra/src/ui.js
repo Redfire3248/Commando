@@ -447,8 +447,13 @@ CG.UI = (() => {
   // run an online action and show what happened
   function run(fn, okMsg, where) {
     const out = (m) => (where ? say(where, m) : m && toast(m));
-    try { Promise.resolve(fn()).then(() => out(okMsg)).catch((e) => out(e.message || String(e))); }
-    catch (e) { out(e.message || String(e)); }
+    // the database refusing a write almost always means the rules in FIREBASE.md have not been published yet
+    const why = (e) => {
+      const m = (e && (e.message || e.code)) || String(e);
+      return /permission/i.test(m) ? 'The server refused this. The database rules need updating (see contra/FIREBASE.md, step 4).' : m;
+    };
+    try { Promise.resolve(fn()).then(() => out(okMsg)).catch((e) => out(why(e))); }
+    catch (e) { out(why(e)); }
   }
 
   const ACTIONS = {
