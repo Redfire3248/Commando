@@ -199,6 +199,56 @@ CG.Art = (() => {
       R(g, 3, 3, 1, 1, '#9aa4b0'); R(g, 12, 12, 1, 1, '#9aa4b0');
     }), 4);
 
+    // ---- cover: solid things on the ground to hide behind (drawn 4x) ----
+    const C4 = 4, outline = (g, w, h) => { g.strokeStyle = '#0d0f12'; g.lineWidth = 1; g.strokeRect(0.5, 0.5, w - 1, h - 1); };
+    const bags = (top, mid, dark, snow) => (g, w, h) => {
+      for (let row = 0; row < 3; row++) {
+        const y = h - 4 - row * 4, off = row % 2 ? 4 : 0;
+        for (let x = -4 + off; x < w; x += 8) {
+          R(g, x + 1, y - 3, 7, 4, '#0d0f12'); R(g, x + 1, y - 3, 6, 3, mid); R(g, x + 1, y - 3, 6, 1, top); R(g, x + 6, y - 2, 1, 2, dark);
+        }
+      }
+      if (snow) { R(g, 0, h - 13, w, 2, '#f2f6fa'); for (let x = 1; x < w; x += 5) R(g, x, h - 11, 2, 1, '#dfe8f0'); }
+    };
+    put(scene, 'cv_sandbags', lowres(32, 13, bags('#d8c08a', '#b89a62', '#7d6640')), C4);
+    put(scene, 'cv_snowbags', lowres(32, 13, bags('#c8d2dc', '#9aa8b6', '#6d7a88', true)), C4);
+    const crate = (wood, light, dark) => (g, w, h) => {
+      R(g, 0, 0, w, h, dark); R(g, 1, 1, w - 2, h - 2, wood);
+      for (let y = 4; y < h - 1; y += 5) R(g, 1, y, w - 2, 1, dark);
+      R(g, 1, 1, w - 2, 1, light); line(g, 2, 2, w - 3, h - 3, 1, dark); outline(g, w, h);
+    };
+    put(scene, 'cv_crate', lowres(16, 16, crate('#9a6a3a', '#c48a50', '#5c3d20')), C4);
+    put(scene, 'cv_icecrate', lowres(16, 16, (g, w, h) => { crate('#7a8a9a', '#c9d6e2', '#43505e')(g, w, h); R(g, 0, 0, w, 2, '#f2f6fa'); }), C4);
+    put(scene, 'cv_crates', lowres(16, 28, (g, w, h) => {
+      const c1 = lowres(16, 14, crate('#5f6e52', '#8a9a76', '#353f2c')), c2 = lowres(16, 14, crate('#9a6a3a', '#c48a50', '#5c3d20'));
+      g.drawImage(c2, 0, 14); g.drawImage(c1, 0, 0);
+    }), C4);
+    put(scene, 'cv_barrier', lowres(24, 14, (g, w, h) => {
+      R(g, 2, 0, w - 4, h, '#0d0f12'); R(g, 3, 1, w - 6, h - 1, '#9aa0a6'); R(g, 0, h - 5, w, 5, '#0d0f12'); R(g, 1, h - 4, w - 2, 4, '#7d848c');
+      R(g, 3, 1, w - 6, 1, '#c8ccd0');
+      for (let x = 4; x < w - 4; x += 6) { R(g, x, 4, 3, 3, '#e8c020'); R(g, x + 3, 4, 3, 3, '#202020'); }
+    }), C4);
+    put(scene, 'cv_drums', lowres(20, 18, (g, w, h) => {
+      for (const ox of [0, 10]) {
+        R(g, ox, 0, 10, h, '#0d0f12'); R(g, ox + 1, 1, 8, h - 1, '#a83a2a'); R(g, ox + 1, 1, 8, 1, '#d8664a');
+        R(g, ox + 1, 6, 8, 1, '#5e1e14'); R(g, ox + 1, 12, 8, 1, '#5e1e14'); R(g, ox + 2, 2, 1, h - 3, '#c85a44');
+      }
+    }), C4);
+
+    // ---- ability badges for the two classic commandos (the agents' own come from agents_ui.png) ----
+    const badgeRing = (g, col) => { disc(g, 16, 16, 15, '#0d0f12'); disc(g, 16, 16, 14, col); disc(g, 16, 16, 12, '#22272d'); };
+    put(scene, 'ab_jax', lowres(32, 32, (g) => {
+      badgeRing(g, '#4d8dff');
+      disc(g, 16, 18, 7, '#0d0f12'); disc(g, 16, 18, 6, '#4f6b3a'); R(g, 13, 15, 2, 6, '#6f8f52');
+      R(g, 14, 9, 5, 3, '#9aa0a6'); R(g, 19, 8, 3, 2, '#c8ccd0'); R(g, 21, 10, 2, 3, '#c8ccd0');
+    }), 2);
+    put(scene, 'ab_duke', lowres(32, 32, (g) => {
+      badgeRing(g, '#ff4d4d');
+      [[17, 6], [16, 7], [15, 8], [14, 9], [13, 10], [12, 11], [12, 12], [13, 13], [14, 14], [15, 15], [16, 15], [15, 16], [14, 17], [13, 18], [12, 19], [11, 20], [10, 21]]
+        .forEach(([x, y]) => R(g, x, y, 6, 2, '#ffd23c'));
+      R(g, 18, 20, 6, 5, '#ff4d4d'); R(g, 20, 18, 2, 9, '#ff4d4d');
+    }), 2);
+
     // ---- power-ups, bullets, effects ----
     put(scene, 'pk_rapid', lowres(26, 16, (g) => badge(g, '#ffd23c', 'R')), S);
     put(scene, 'pk_barrier', lowres(26, 16, (g) => badge(g, '#5ad0ff', 'B')), S);

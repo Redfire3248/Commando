@@ -1,7 +1,9 @@
 // Online layer (Firebase): Google accounts, friends, party invites, parties, the queue and who is online.
 // The match itself (moving players, enemies, shots) is in online.js. Does nothing until firebase-config.js has
 // real keys. Realtime Database layout:
-//   users/{uid}             { name, photo, code, best, online, lastSeen, party }
+//   users/{uid}             { name, username, photo, code, best, coins, owned: { item: true }, online, lastSeen, party }
+//   usernames/{lowercase}   uid                         callsigns are unique
+//   shop/items/{id}         { name, desc, price, kind, effect, icon, order, off }   (only the admin can change it)
 //   codes/{CODE}            uid                         friend code -> player
 //   requests/{to}/{from}    { name, at }                pending friend requests
 //   friends/{uid}/{fid}     true                        written on both sides when a request is accepted
@@ -16,6 +18,15 @@ CG.Net = {
   partyId: null, party: null,
   VERSION: '10.12.2',
   MAX: 5,
+  ADMIN_EMAILS: ['redjai1981@gmail.com'],
+
+  // the admin panel is only for the owner's Google account (and for test players on a local dev server)
+  get isAdmin() {
+    if (this.devGuest && /[?&]fakedb/.test(location.search)) return true;
+    const u = this.user;
+    return !!(u && !u.isAnonymous && u.email && this.ADMIN_EMAILS.includes(u.email.toLowerCase()) && u.emailVerified !== false);
+  },
+  get needsUsername() { return this.online && this.profile && !this.profile.username; },
 
   init() {
     const cfg = window.CG_FIREBASE_CONFIG;
@@ -99,7 +110,7 @@ CG.Net = {
     let p = (await ref.get()).val();
     const gname = (u.displayName || '').split(' ')[0].slice(0, 16);
     if (!p || !p.code) {
-      p = Object.assign({ name: gname || CG.UI.localName(), best: CG.UI.localBest() }, p || {}, { code: await this.newCode() });
+      p = Object.assign({ name: gname || CG.UI.localName(), best: CG.UI.localBest(), coins: 0 }, p || {}, { code: await this.newCode() });
       if (u.photoURL) p.photo = u.photoURL;
       await ref.update(p);
     } else if (u.photoURL && p.photo !== u.photoURL) {
@@ -118,6 +129,7 @@ CG.Net = {
     });
 
     this.watch(this.db.ref('requests/' + uid), 'value', (s) => { this.requests = s.val() || {}; CG.UI.netChanged(); });
+    this.watch(this.db.ref('shop/items'), 'value', (s) => { CG.Shop.db = s.val(); CG.UI.netChanged(); });
     this.watch(this.db.ref('invites/' + uid), 'value', (s) => {
       const before = Object.keys(this.invites);
       this.invites = s.val() || {};
@@ -160,21 +172,68 @@ CG.Net = {
     throw new Error('Could not make a friend code');
   },
 
-  async setName(name) {
-    name = name.trim().slice(0, 16);
-    if (!name) throw new Error('Type a name first');
-    await this.db.ref('users/' + this.uid + '/name').set(name);
+  // a callsign: 3-16 letters, numbers or _, nobody else may have it (case does not matter)
+  async claimUsername(name) {
+    name = (name || '').trim();
+    if (!/^[A-Za-z0-9_]{3,16}$/.test(name)) throw new Error('Use 3 to 16 letters, numbers or _');
+    const key = name.toLowerCase(), old = this.profile && this.profile.username;
+    if (old && old.toLowerCase() === key) {                // only the capitals changed
+      await this.db.ref('users/' + this.uid).update({ username: name, name });
+      Object.assign(this.profile, { username: name, name });
+      return name;
+    }
+    const res = await this.db.ref('usernames/' + key).transaction((cur) => (cur === null || cur === this.uid ? this.uid : undefined));
+    if (!res.committed) throw new Error('That callsign is taken');
+    await this.db.ref('users/' + this.uid).update({ username: name, name });
+    if (old) await this.db.ref('usernames/' + old.toLowerCase()).remove().catch(() => {});
+    Object.assign(this.profile, { username: name, name });          // the listener catches up a moment later
     if (this.partyId) await this.db.ref('parties/' + this.partyId + '/members/' + this.uid + '/name').set(name).catch(() => {});
     return name;
   },
 
+  // ---------------------------------------------------------------- coins and the shop
+  async addCoins(n) {
+    if (!this.online || !n) return;
+    await this.db.ref('users/' + this.uid + '/coins').transaction((c) => (c || 0) + n);
+  },
+  async buy(item) {
+    if (!this.online) throw new Error('Sign in first');
+    let why = '';
+    const res = await this.db.ref('users/' + this.uid).transaction((u) => {
+      if (!u) return u;
+      u.owned = u.owned || {};
+      if (u.owned[item.id]) { why = 'You already have it'; return undefined; }
+      if ((u.coins || 0) < item.price) { why = 'Not enough coins'; return undefined; }
+      u.coins = (u.coins || 0) - item.price;
+      u.owned[item.id] = true;
+      return u;
+    });
+    if (!res.committed) throw new Error(why || 'Could not buy that');
+  },
+
+  // ---------------------------------------------------------------- admin tools (the database rules check the email too)
+  adminSetItem(id, data) { return this.db.ref('shop/items/' + id).set(data); },
+  adminRemoveItem(id) { return this.db.ref('shop/items/' + id).remove(); },
+  adminResetShop() { return this.db.ref('shop/items').set(CG.Shop.DEFAULTS); },
+  async adminGiveCoins(uid, n) { await this.db.ref('users/' + uid + '/coins').transaction((c) => Math.max(0, (c || 0) + n)); },
+  async adminUsers() { return (await this.db.ref('users').get()).val() || {}; },
+
   // ---------------------------------------------------------------- friends
-  async sendRequest(code) {
-    code = code.trim().toUpperCase();
-    if (code.length !== 6) throw new Error('A friend code has 6 characters');
-    const s = await this.db.ref('codes/' + code).get();
-    if (!s.exists()) throw new Error('No player has that code');
-    const to = s.val();
+  // who has this friend code or callsign? (uid or null)
+  async findPlayer(text) {
+    text = (text || '').trim();
+    if (!text) return null;
+    if (text.length === 6) {
+      const s = await this.db.ref('codes/' + text.toUpperCase()).get();
+      if (s.exists()) return s.val();
+    }
+    const s = await this.db.ref('usernames/' + text.toLowerCase()).get();
+    return s.exists() ? s.val() : null;
+  },
+
+  async sendRequest(text) {
+    const to = await this.findPlayer(text);
+    if (!to) throw new Error('No player has that code or callsign');
     if (to === this.uid) throw new Error('That is your own code');
     if (this.friends[to]) throw new Error('You are already friends');
     await this.db.ref('requests/' + to + '/' + this.uid).set({ name: this.profile.name, at: firebase.database.ServerValue.TIMESTAMP });
@@ -203,7 +262,7 @@ CG.Net = {
   get isLeader() { return !!(this.party && this.party.leader === this.uid); },
   partySize(p) { p = p || this.party; return p ? Object.keys(p.members || {}).length + (p.bots || []).length : 0; },
 
-  me() { return { name: this.profile.name, agent: CG.UI.myAgent(), at: firebase.database.ServerValue.TIMESTAMP }; },
+  me() { return { name: this.profile.username || this.profile.name, agent: CG.UI.myAgent(), at: firebase.database.ServerValue.TIMESTAMP }; },
 
   async createParty() {
     if (this.partyId) return this.partyId;

@@ -10,6 +10,7 @@
       this.scene = scene; this.idx = idx; this.C = CG.CONFIG.PLAYER;
       this.agent = CG.AGENT[opts.agent] || CG.AGENTS[idx % CG.AGENTS.length];
       this.name = opts.name || 'P' + (idx + 1);
+      this.device = opts.device || null;
       this.bot = !!opts.bot;
       this.remote = !!(opts.device && opts.device.type === 'remote');    // moved by another player's game (online)
       this.netId = opts.id || 'p' + idx;
@@ -37,14 +38,14 @@
       Object.assign(this, {
         facing: 1, aimX: 1, aimY: 0, hp, maxHp: hp, dead: false, out: false, prone: false, onGround: false,
         invT: 0, barrierT: 0, rapid: false, spread: false, fireCd: 0, dropT: 0, ledgeT: -1e9, runT: 0, spin: 0,
-        abilityCd: 0, stormT: 0, domeT: 0, dashT: 0, god: false, freeAbility: false, dashHit: null,
+        abilityCd: 0, stormT: 0, domeT: 0, dashT: 0, adrenT: 0, god: false, freeAbility: false, dashHit: null,
       });
     }
 
     // the agent's own frames, else the old commandos recoloured, else the built-in pixel soldier
     pickArt(scene) {
       const art = CG.DATA.art, ag = this.agent;
-      if (art && art.agents && art.agents[ag.id] && scene.textures.exists('agents')) {
+      if (!ag.classic && art && art.agents && art.agents[ag.id] && scene.textures.exists('agents')) {
         const a = art.agents[ag.id];
         return { tex: 'agents', anims: a.anims, muzzle: a.muzzle, scale: art.agentScale, originY: art.agentOriginY, spin: a.spin };
       }
@@ -60,8 +61,10 @@
     update(dt, inp) {
       if (this.out) { this.tag.setVisible(false); this.bar.clear(); return; }
       const ms = dt * 1000, C = this.C, b = this.body, sc = this.scene;
-      for (const k of ['invT', 'barrierT', 'fireCd', 'dropT', 'abilityCd', 'stormT', 'domeT', 'dashT']) this[k] = Math.max(0, this[k] - ms);
+      const wasCd = this.abilityCd;
+      for (const k of ['invT', 'barrierT', 'fireCd', 'dropT', 'abilityCd', 'stormT', 'domeT', 'dashT', 'adrenT']) this[k] = Math.max(0, this[k] - ms);
       if (this.freeAbility) this.abilityCd = 0;
+      if (wasCd > 0 && this.abilityCd <= 0) sc.abilityReady(this);
       if (this.dead) { this.tag.setVisible(false); this.bar.clear(); return; }
 
       const onGround = this.onGround = b.blocked.down || b.touching.down;
@@ -75,7 +78,7 @@
         b.allowGravity = true;
         if (dir) this.facing = dir;
         this.setProne(onGround && inp.down && !dir);
-        b.velocity.x = this.prone ? 0 : dir * C.run * this.agent.speed;
+        b.velocity.x = this.prone ? 0 : dir * C.run * this.agent.speed * (this.adrenT > 0 ? 1.35 : 1) * (this.perkSpeed || 1);
         if (inp.jumpPressed && onGround) {
           if (inp.down && sc.time.now - this.ledgeT < 80) this.dropT = 260;      // drop through a ledge
           else { b.velocity.y = -C.jump; this.setProne(false); CG.Sfx.play('jump'); }
@@ -98,12 +101,13 @@
       if (b.top > CG.CONFIG.H + 60) { sc.splash(b.center.x); this.die(); return; }   // fell in the water
 
       const storm = this.stormT > 0, spread = this.spread || storm;
-      if (inp.shoot && this.dashT <= 0 && this.fireCd <= 0 && sc.countBullets(this) < C.maxBullets * (spread ? 3 : 1) * (storm ? 2 : 1)) {
+      if (inp.shoot && this.dashT <= 0 && this.fireCd <= 0 && sc.countBullets(this) < C.maxBullets * (spread ? 3 : 1) * (storm ? 3 : 1)) {
         const m = this.muzzle(), a = Math.atan2(this.aimY, this.aimX);
-        for (const off of spread ? [-0.2, 0, 0.2] : [0]) sc.fire(this, m.x, m.y, a + off);      // spread = three-way fan
+        const fan = storm ? [-0.3, -0.15, 0, 0.15, 0.3] : spread ? [-0.2, 0, 0.2] : [0];          // spread = three-way, storm = five-way
+        for (const off of fan) { const bul = sc.fire(this, m.x, m.y, a + off); if (bul && storm) bul.pierce = 1; }
         this.shots++;
         CG.Sfx.play('shoot');
-        this.fireCd = (this.rapid ? C.rapidMs : C.fireMs) * (storm ? 0.5 : 1);
+        this.fireCd = (this.rapid || this.adrenT > 0 ? C.rapidMs : C.fireMs) * (storm ? 0.45 : 1);
       }
       this.sync(dt);
     }
@@ -111,24 +115,29 @@
     useAbility() {
       if (this.abilityCd > 0 || !this.alive) return false;
       const ab = this.agent.ability, sc = this.scene;
-      this.abilityCd = ab.cd;
-      CG.Sfx.play('pickup');
+      this.abilityCd = ab.cd * (this.perkCd || 1);
+      CG.Sfx.play('ability');
+      sc.callout(this, ab.name.toUpperCase());
       switch (this.agent.id) {
         case 'razor': this.stormT = ab.dur; break;
         case 'brick': this.domeT = ab.dur; sc.domeFx(this); break;
         case 'kite':
-          this.dashT = 180; this.invT = Math.max(this.invT, 420); this.dashHit = new Set();
+          this.dashT = 180; this.invT = Math.max(this.invT, 450); this.dashHit = new Set();
           this.setProne(false);
           sc.dashFx(this);
           break;
         case 'nova':
           for (const p of sc.players) {
-            if (p.alive && !p.remote && Math.abs(p.body.center.x - this.body.center.x) < ab.range) p.heal(ab.heal);
+            if (p.remote || Math.abs(p.body.center.x - this.body.center.x) > ab.range) continue;
+            if (p.out) { p.respawn(); continue; }                                    // back in the fight
+            if (p.alive) { p.heal(ab.heal); p.invT = Math.max(p.invT, 1500); }
           }
-          if (sc.net) sc.net.shout('heal', { x: Math.round(this.body.center.x), y: Math.round(this.body.bottom), range: ab.range, n: ab.heal });
+          if (sc.net) sc.net.shout('heal', { x: Math.round(this.body.center.x), y: Math.round(this.body.bottom), range: ab.range, n: ab.heal, revive: 1 });
           sc.mendFx(this);
           break;
-        case 'volt': sc.chainArc(this, ab.targets, ab.damage); break;
+        case 'volt': sc.chainArc(this, ab.targets, ab.damage, ab.stun); break;
+        case 'jax': sc.throwGrenade(this); break;
+        case 'duke': this.adrenT = ab.dur; this.heal(1); break;
       }
       sc.events.emit('ability', this);
       return true;
@@ -187,6 +196,7 @@
     // dmg = hearts lost (bullets 1, bombs 2). Returns true if it hurt.
     hit(dmg = 1) {
       if (this.remote) return false;                   // their own game decides when they are hit
+      if (this.alive && this.scene.underDome(this)) return false;    // a teammate's Aegis covers you
       if (!this.alive || this.invT > 0 || this.barrierT > 0 || this.domeT > 0 || this.dashT > 0 || this.god) return false;
       this.hp -= dmg;
       if (this.hp <= 0) { this.hp = 0; this.die(); return true; }
@@ -201,7 +211,7 @@
       if (!this.alive) return;
       const sc = this.scene, b = this.body, v = this.visual;
       if (this.god) { this.hp = this.maxHp; return; }
-      this.dead = true; this.hp = 0; this.rapid = false; this.spread = false; this.barrierT = 0; this.stormT = 0; this.domeT = 0; this.dashT = 0;
+      this.dead = true; this.hp = 0; this.rapid = false; this.spread = false; this.barrierT = 0; this.stormT = 0; this.domeT = 0; this.dashT = 0; this.adrenT = 0;
       CG.Sfx.play('die');
       b.stop(); b.enable = false;
       this.shield.setVisible(false);
@@ -322,6 +332,13 @@
       const sc = this.scene, b = this.body, T = this.T, ms = dt * 1000;
       this.cd -= ms; this.t += dt; this.fireT -= ms;
       if (this.hurtT > 0) { this.hurtT -= ms; if (this.hurtT <= 0) this.clearTint(); }
+      if (this.stunT > 0) {                              // Chain Arc: frozen for a moment
+        this.stunT -= ms;
+        if (this.hurtT <= 0) this.setTint(Math.floor(this.stunT / 90) % 2 ? 0xb890ff : 0xffffff);
+        if (!this.T.fixed && !this.T.fly) b.velocity.x = 0;
+        if (this.stunT <= 0) this.clearTint();
+        return;
+      }
       const P = sc.nearestPlayer(this.x, this.y);
       const cam = sc.cameras.main, onScreen = this.x > cam.scrollX - 40 && this.x < cam.scrollX + CG.CONFIG.W + 40;
       const fireMs = Math.max(800, (T.fireMs || 0) * (1 - 0.1 * sc.diff));
@@ -331,7 +348,7 @@
         b.velocity.x = this.dir * T.speed * (1 + 0.1 * sc.diff);
         this.setFlipX(this.dir < 0);
         this.setFrame(b.blocked.down ? Math.floor(this.t * 12) % 6 : 6);
-        if (b.blocked.down && !sc.isSurface(this.x + this.dir * 44, b.bottom + 12)) b.velocity.y = -880;   // leap the gap
+        if (b.blocked.down && (!sc.isSurface(this.x + this.dir * 44, b.bottom + 12) || b.blocked.left || b.blocked.right)) b.velocity.y = -880;   // leap gaps and cover
       } else if (T.ai === 'rifle') {
         if (P) {
           this.setFlipX(P.body.center.x < this.x);

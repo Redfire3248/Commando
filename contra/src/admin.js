@@ -1,104 +1,146 @@
-// Admin panel: a side panel with tabs and picture buttons for testing and messing about.
-// Allowed in local games, and online only for the host. Anything done here marks the run (scene.adminUsed),
-// so its score is never saved as a best or sent to friends.
+// Admin panel — only for the owner's Google account (CG.Net.isAdmin; the database rules check the email as
+// well for the shop and coins). F2 opens and closes it, or PAUSE → ADMIN PANEL.
+//   Players / Enemies / Items / Stage   change the game being played (marks the run: no score or coins saved)
+//   Shop                                 edit the shop's items and prices (saved to the database for everyone)
+//   Accounts                             everyone's coins, best score and who is online; give or take coins
 CG.Admin = (() => {
   const $ = (id) => document.getElementById(id);
-  let tab = 'players', refresh = null;
+  let tab = 'players', refresh = null, users = null;
 
   const scene = () => {
     if (!CG.game) return null;
     const m = CG.game.scene;
     return m.isActive('Game') || m.isPaused('Game') ? m.getScene('Game') : null;
   };
-  const allowed = () => { const s = scene(); return !!s && !s.isClient; };
   const isOpen = () => !$('admin').classList.contains('hidden');
-  const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const esc = (t) => String(t === undefined ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   // a small picture of a texture (or one frame of a sheet), for the buttons
   const thumbs = {};
   function thumb(key, frame) {
-    const s = scene(), id = key + ':' + (frame || 0);
+    const s = scene() || (CG.game && CG.game.scene.getScene('Backdrop')), id = key + ':' + (frame || 0);
     if (thumbs[id]) return thumbs[id];
     if (!s || !s.textures.exists(key)) return '';
     try { thumbs[id] = s.textures.getBase64(key, frame); } catch (e) { thumbs[id] = ''; }
     return thumbs[id];
   }
   const img = (src) => (src ? `<img src="${src}" alt="">` : '<span class="noimg">?</span>');
-
-  function mark() {
-    const s = scene();
-    if (s) s.adminUsed = true;
-  }
+  const needGame = () => '<p class="admin-tip">Start a game to use this tab. (The Shop and Accounts tabs work from the menu.)</p>';
 
   // ---- tabs
   const TABS = {
     players(s) {
-      let h = `<div class="admin-row"><b>Team lives: ${s.teamLives}</b>
-        <button data-adm="lives" data-n="1">+1</button><button data-adm="lives" data-n="5">+5</button></div>`;
+      if (!s) return needGame();
+      if (s.isClient) return '<p class="admin-tip">Online, only the host can change the match.</p>';
+      let h = `<div class="admin-row"><b>Squad lives: ${s.teamLives}</b>
+        <button class="btn small" data-adm="lives" data-n="1">+1</button><button class="btn small" data-adm="lives" data-n="5">+5</button>
+        <button class="btn small" data-adm="healall">HEAL ALL</button></div>`;
       s.players.forEach((p, i) => {
         h += `<div class="admin-card" style="--c:${p.color}">
-          ${img(CG.DATA.art && CG.DATA.art.images['portrait_' + p.agent.id] ? 'assets/atlas/portrait_' + p.agent.id + '.png' : '')}
+          ${img(CG.PORTRAITS && CG.PORTRAITS[p.agent.id])}
           <div class="grow"><b>${esc(p.name)}</b> <small>${p.agent.name}${p.bot ? ' · bot' : ''}${p.remote ? ' · online' : ''}</small><br>
-          ${p.out ? 'OUT' : p.dead ? 'down' : '♥ ' + p.hp + ' / ' + p.maxHp}</div>
+          ${p.out ? 'OUT' : p.dead ? 'down' : '♥ ' + p.hp + ' / ' + p.maxHp} · ability ${p.abilityCd > 0 ? Math.ceil(p.abilityCd / 1000) + 's' : 'ready'}</div>
           <div class="btns">
-            <button data-adm="heal" data-i="${i}">HEAL</button>
-            <button data-adm="god" data-i="${i}" class="${p.god ? 'on' : ''}">GOD</button>
-            <button data-adm="free" data-i="${i}" class="${p.freeAbility ? 'on' : ''}">NO COOLDOWN</button>
-            <button data-adm="rapid" data-i="${i}" class="${p.rapid ? 'on' : ''}">RAPID</button>
-            <button data-adm="spread" data-i="${i}" class="${p.spread ? 'on' : ''}">SPREAD</button>
-            <button data-adm="shield" data-i="${i}">SHIELD</button>
-            ${p.out ? `<button data-adm="revive" data-i="${i}">REVIVE</button>` : ''}
+            <button class="btn" data-adm="heal" data-i="${i}">HEAL</button>
+            <button class="btn ${p.god ? 'on' : ''}" data-adm="god" data-i="${i}">GOD MODE</button>
+            <button class="btn ${p.freeAbility ? 'on' : ''}" data-adm="free" data-i="${i}">NO COOLDOWN</button>
+            <button class="btn ${p.rapid ? 'on' : ''}" data-adm="rapid" data-i="${i}">RAPID</button>
+            <button class="btn ${p.spread ? 'on' : ''}" data-adm="spread" data-i="${i}">SPREAD</button>
+            <button class="btn" data-adm="shield" data-i="${i}">SHIELD</button>
+            <button class="btn" data-adm="ability" data-i="${i}">USE ABILITY</button>
+            ${p.out ? `<button class="btn" data-adm="revive" data-i="${i}">REVIVE</button>` : ''}
           </div></div>`;
       });
       return h;
     },
-    spawn() {
+    spawn(s) {
+      if (!s) return needGame();
       const T = CG.Enemy.TYPES;
       const list = ['runner', 'rifle', 'grenadier', 'turret', 'drone', 'flyer'];
-      return '<p class="admin-tip">Appears at the right edge of the screen.</p><div class="admin-grid">' + list.map((t) => {
-        const d = T[t], key = d.sheet && scene().textures.exists(d.sheet) ? d.sheet : d.tex;
-        return `<button class="tile" data-adm="spawn" data-t="${t}">${img(thumb(key, d.frames || d.sheet ? 0 : undefined))}<span>${t}</span></button>`;
+      return '<p class="admin-tip">They appear at the right edge of the screen.</p><div class="admin-grid">' + list.map((t) => {
+        const d = T[t], key = d.sheet && s.textures.exists(d.sheet) ? d.sheet : d.tex;
+        return `<div class="tile btn">${img(thumb(key, d.frames || d.sheet ? 0 : undefined))}<span>${t}</span>
+          <div class="row center-row"><button class="btn small" data-adm="spawn" data-t="${t}" data-n="1">×1</button><button class="btn small" data-adm="spawn" data-t="${t}" data-n="5">×5</button></div></div>`;
       }).join('') + '</div>';
     },
-    items() {
-      const list = [['heal', 'First aid'], ['heal_big', 'Team medkit'], ['life', 'Team life'], ['rapid', 'Rapid fire'], ['spread', 'Spread'], ['barrier', 'Shield']];
-      return '<p class="admin-tip">Drops above the first player.</p><div class="admin-grid">' + list.map(([k, n]) => {
-        const key = scene().textures.exists('pk_' + k) ? 'pk_' + k : 'pk_life';
-        return `<button class="tile" data-adm="item" data-k="${k}">${img(thumb(key))}<span>${n}</span></button>`;
+    items(s) {
+      if (!s) return needGame();
+      const list = [['heal', 'First aid'], ['heal_big', 'Squad medkit'], ['life', 'Squad life'], ['rapid', 'Rapid fire'], ['spread', 'Spread'], ['barrier', 'Shield']];
+      return '<p class="admin-tip">Drops next to the first player.</p><div class="admin-grid">' + list.map(([k, n]) => {
+        const key = s.textures.exists('pk_' + k) ? 'pk_' + k : 'pk_life';
+        return `<button class="tile btn" data-adm="item" data-k="${k}">${img(thumb(key))}<span>${n}</span></button>`;
       }).join('') + '</div>';
     },
     stage(s) {
-      return `<div class="admin-grid wide">
-        <button data-adm="killall">KILL EVERY ENEMY ON SCREEN</button>
-        <button data-adm="boss">SKIP TO THE BOSS</button>
-        <button data-adm="clear">CLEAR THIS STAGE</button>
-        <button data-adm="slow" class="${s.time.timeScale < 1 ? 'on' : ''}">SLOW MOTION</button>
-        ${CG.DATA.levels.map((L, i) => `<button data-adm="goto" data-n="${i + 1}">STAGE ${i + 1} · ${L.name}</button>`).join('')}
+      if (!s) return needGame();
+      return `<div class="admin-sec">This stage</div><div class="admin-grid wide">
+        <button class="btn" data-adm="killall">KILL ALL ON SCREEN</button>
+        <button class="btn" data-adm="boss">SKIP TO THE BOSS</button>
+        <button class="btn" data-adm="clear">CLEAR THE STAGE</button>
+        <button class="btn ${s.time.timeScale < 1 ? 'on' : ''}" data-adm="slow">SLOW MOTION</button>
+      </div><div class="admin-sec">Go to stage</div><div class="admin-grid wide">
+        ${[1, 2, 3, 4, 5, 6].map((n) => `<button class="btn" data-adm="goto" data-n="${n}">STAGE ${n} · ${CG.DATA.levels[(n - 1) % CG.DATA.levels.length].name}</button>`).join('')}
       </div>`;
+    },
+    shop() {
+      if (!CG.Net.online) return '<p class="admin-tip">Sign in first.</p>';
+      const items = CG.Shop.allItems(), fromDb = CG.Shop.db && Object.keys(CG.Shop.db).length;
+      let h = `<p class="admin-tip">${fromDb ? 'These are live: changes reach every player at once.' : 'The shop is using the built-in list. Save once to put it in the database so you can edit it.'}</p>
+        <div class="admin-row"><button class="btn small" data-adm="shop-reset">${fromDb ? 'RESET TO DEFAULTS' : 'SAVE THE BUILT-IN LIST'}</button></div>`;
+      for (const it of items) {
+        h += `<div class="admin-shop" data-id="${esc(it.id)}">
+          <input data-f="name" value="${esc(it.name)}" placeholder="Name"><input data-f="price" type="number" min="0" value="${esc(it.price)}">
+          <span><button class="btn small ${it.off ? '' : 'on'}" data-adm="shop-toggle" data-id="${esc(it.id)}">${it.off ? 'HIDDEN' : 'ON SALE'}</button></span>
+          <input data-f="icon" value="${esc(it.icon)}" placeholder="Icon">
+          <select data-f="effect">${CG.Shop.EFFECTS.map((e) => `<option ${e === it.effect ? 'selected' : ''}>${e}</option>`).join('')}</select>
+          <span><button class="btn small" data-adm="shop-save" data-id="${esc(it.id)}">SAVE</button> <button class="btn small" data-adm="shop-del" data-id="${esc(it.id)}">✕</button></span>
+          <textarea data-f="desc" rows="2">${esc(it.desc)}</textarea></div>`;
+      }
+      h += `<div class="admin-sec">New item</div><div class="admin-row"><input id="adm-new-id" placeholder="id (e.g. armor)"><button class="btn small" data-adm="shop-add">ADD</button></div>`;
+      return h;
+    },
+    users() {
+      if (!CG.Net.online) return '<p class="admin-tip">Sign in first.</p>';
+      if (!users) { CG.Net.adminUsers().then((u) => { users = u; render(); }).catch((e) => { users = {}; CG.UI.toast(e.message); }); return '<p class="admin-tip">Loading accounts…</p>'; }
+      const ids = Object.keys(users).sort((a, b) => (users[b].online ? 1 : 0) - (users[a].online ? 1 : 0) || (users[b].best || 0) - (users[a].best || 0));
+      return `<div class="admin-row"><b>${ids.length} accounts</b><button class="btn small" data-adm="users-reload">RELOAD</button></div>` + ids.map((uid) => {
+        const u = users[uid];
+        return `<div class="admin-card" style="--c:${u.online ? '#5cff8a' : '#55645a'}">
+          <div class="grow"><b>${esc(u.username || u.name || '?')}</b> <small>${u.online ? 'online' : ''} · code ${esc(u.code || '')}</small><br>
+          🪙 ${u.coins || 0} · best ${u.best || 0} · items ${Object.keys(u.owned || {}).length}</div>
+          <div class="btns">${[100, 1000, -100].map((n) => `<button class="btn" data-adm="coins" data-uid="${uid}" data-n="${n}">${n > 0 ? '+' : ''}${n}</button>`).join('')}</div></div>`;
+      }).join('');
     },
   };
 
   function render() {
     const s = scene();
-    document.querySelectorAll('#admin .tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
-    $('admin-body').innerHTML = s ? TABS[tab](s) : '<p class="admin-tip">Start a game first.</p>';
+    document.querySelectorAll('#admin .admin-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
+    const p = CG.Net.profile;
+    $('admin-who').textContent = (CG.Net.user && CG.Net.user.email) || (p && p.username) || '';
+    $('admin-body').innerHTML = TABS[tab](s);
   }
 
-  const ACT = {
+  const gameAct = {
     lives: (s, d) => { s.teamLives += +d.n; },
+    healall: (s) => { s.players.forEach((p) => { if (p.alive && !p.remote) { p.hp = p.maxHp; s.plusFx(p.body.center.x, p.body.top); } }); },
     heal: (s, d) => { const p = s.players[d.i]; if (p.alive) { p.hp = p.maxHp; s.plusFx(p.body.center.x, p.body.top); } },
     god: (s, d) => { const p = s.players[d.i]; p.god = !p.god; },
     free: (s, d) => { const p = s.players[d.i]; p.freeAbility = !p.freeAbility; },
     rapid: (s, d) => { const p = s.players[d.i]; p.rapid = !p.rapid; },
     spread: (s, d) => { const p = s.players[d.i]; p.spread = !p.spread; },
     shield: (s, d) => { s.players[d.i].barrierT = CG.CONFIG.PLAYER.barrierMs; },
+    ability: (s, d) => { const p = s.players[d.i]; if (!p.remote) { p.abilityCd = 0; p.useAbility(); } },
     revive: (s, d) => { const p = s.players[d.i]; if (p.out && !p.remote) p.respawn(); },
     spawn: (s, d) => {
-      const T = CG.CONFIG.TILE, x = s.camX + CG.CONFIG.W - 80, L = CG.DATA.level;
-      const y = d.t === 'drone' ? 4.5 * T : d.t === 'flyer' ? 4 * T : L.groundRow * T;
-      const e = new CG.Enemy(s, d.t, x, y, d.t === 'flyer' ? ['rapid', 'spread', 'barrier', 'life'][Math.floor(Math.random() * 4)] : undefined);
-      e.netId = ++s.netSeq;
-      s.enemies.add(e);
+      const T = CG.CONFIG.TILE, L = CG.DATA.level;
+      for (let k = 0; k < +d.n; k++) {
+        const x = s.camX + CG.CONFIG.W - 80 - k * 70;
+        const y = d.t === 'drone' ? 4.5 * T : d.t === 'flyer' ? 4 * T : L.groundRow * T;
+        const e = new CG.Enemy(s, d.t, x, y, d.t === 'flyer' ? ['rapid', 'spread', 'barrier', 'life'][k % 4] : undefined);
+        e.netId = ++s.netSeq;
+        s.enemies.add(e);
+      }
     },
     item: (s, d) => {
       const p = s.players.find((q) => q.alive) || s.players[0];
@@ -120,30 +162,56 @@ CG.Admin = (() => {
     slow: (s) => { const k = s.time.timeScale < 1 ? 1 : 0.4; s.time.timeScale = k; s.physics.world.timeScale = 1 / k; s.tweens.timeScale = k; },
     goto: (s, d) => { s.scene.restart(Object.assign({}, s.cfg, { stage: +d.n, adminUsed: true })); },
   };
+  const shopRow = (id) => {
+    const row = document.querySelector(`.admin-shop[data-id="${CSS.escape(id)}"]`), it = CG.Shop.allItems().find((x) => x.id === id) || {};
+    const v = (f) => row.querySelector(`[data-f="${f}"]`).value;
+    return { name: v('name'), price: Math.max(0, parseInt(v('price'), 10) || 0), icon: v('icon'), effect: v('effect'), desc: v('desc'),
+      kind: ['gold', 'star'].includes(v('effect')) ? 'cosmetic' : 'perk', order: it.order || 50, off: !!it.off };
+  };
+  // the shop tab writes a full list the first time (so later edits only change one item)
+  const ensureDb = () => (CG.Shop.db && Object.keys(CG.Shop.db).length ? Promise.resolve() : CG.Net.adminResetShop());
+  const netAct = {
+    'shop-reset': () => CG.Net.adminResetShop(),
+    'shop-save': (d) => ensureDb().then(() => CG.Net.adminSetItem(d.id, shopRow(d.id))),
+    'shop-toggle': (d) => ensureDb().then(() => { const it = shopRow(d.id); it.off = !it.off; return CG.Net.adminSetItem(d.id, it); }),
+    'shop-del': (d) => ensureDb().then(() => CG.Net.adminRemoveItem(d.id)),
+    'shop-add': () => {
+      const id = ($('adm-new-id').value || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+      if (!id) return Promise.reject(new Error('Type an id'));
+      return ensureDb().then(() => CG.Net.adminSetItem(id, { name: 'New item', desc: '', price: 500, kind: 'perk', effect: 'hp', icon: '★', order: 60 }));
+    },
+    coins: (d) => CG.Net.adminGiveCoins(d.uid, +d.n).then(() => { users = null; }),
+    'users-reload': () => { users = null; return Promise.resolve(); },
+  };
 
   function open() {
-    if (!allowed()) { CG.UI.toast(scene() ? 'Only the host can use the admin panel online' : 'Start a game first'); return; }
+    if (!CG.Net.isAdmin) return;                          // not the owner's account: F2 does nothing
     $('admin').classList.remove('hidden');
     render();
     clearInterval(refresh);
-    refresh = setInterval(() => { if (isOpen() && tab === 'players' && !document.querySelector('#admin:hover')) render(); }, 700);
+    refresh = setInterval(() => { if (isOpen() && tab === 'players' && scene() && !document.querySelector('#admin:hover')) render(); }, 700);
   }
   function close() { $('admin').classList.add('hidden'); clearInterval(refresh); }
 
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('#admin .tabs button');
+    const t = e.target.closest('#admin .admin-tabs button');
     if (t) { tab = t.dataset.tab; render(); return; }
     const b = e.target.closest('[data-adm]');
-    if (!b) return;
-    const s = scene();
-    if (!s || !allowed()) return;
-    ACT[b.dataset.adm](s, b.dataset);
-    mark();
-    render();
+    if (!b || !CG.Net.isAdmin) return;
+    const a = b.dataset.adm;
+    if (gameAct[a]) {
+      const s = scene();
+      if (!s || s.isClient) return;
+      gameAct[a](s, b.dataset);
+      s.adminUsed = true;
+      render();
+    } else if (netAct[a]) {
+      netAct[a](b.dataset).then(() => { CG.UI.toast('Saved'); setTimeout(render, 300); }).catch((err) => CG.UI.toast(err.message || String(err)));
+    }
   });
   document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT') return;
-    if (e.code === 'F9' || e.code === 'Backquote') { e.preventDefault(); if (isOpen()) close(); else open(); }
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.code === 'F2') { e.preventDefault(); if (isOpen()) close(); else open(); }
   });
 
   return { open, close, isOpen };

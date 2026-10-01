@@ -82,6 +82,21 @@ CG.DATA.levels = [
 CG.DATA.level = CG.DATA.levels[0];     // the stage being played; the Game scene swaps this
 
 CG.Level = {
+  // Cover: low walls and crates standing on the ground every so often. Same places every time (and on every
+  // player's screen online). Kept clear of the start, the boss and where ground enemies appear.
+  covers(L) {
+    const out = [], busy = new Set();
+    L.enemies.forEach(([t, c, r]) => { if (!r || r === L.groundRow) for (let k = -2; k <= 2; k++) busy.add(c + k); });
+    const kinds = L.theme === 'snow' ? ['snowbags', 'crate', 'barrier', 'icecrate', 'snowbags'] : ['sandbags', 'crate', 'barrier', 'crates', 'drums'];
+    let c = 12;
+    while (c < L.boss.wallCol - 14) {
+      if (!busy.has(c) && !busy.has(c + 1)) {
+        out.push({ kind: kinds[(c * 7 + 3) % kinds.length], col: c });
+        c += 9 + (c * 13) % 7;
+      } else c++;
+    }
+    return out;
+  },
   groundAt(col) {
     return CG.DATA.level.ground.some(([a, b]) => col >= a && col < b);
   },
@@ -91,6 +106,8 @@ CG.Level = {
     for (let c = Math.max(0, Math.floor(col)); c < L.w; c++) if (this.groundAt(c) && this.groundAt(c + 1)) return c;
     return L.w - 4;
   },
+  // The stages used to have pits; the ground is now one unbroken floor (cover replaced the gaps).
+  noPits() { CG.DATA.levels.forEach((L) => { L.ground = [[0, L.w]]; }); },
   // Checks every stage's enemies stand on something. Logs a warning for any that would fall.
   check() {
     CG.DATA.levels.forEach((L) => {
@@ -103,3 +120,5 @@ CG.Level = {
   },
 };
 CG.Level.check();
+
+CG.Level.noPits();

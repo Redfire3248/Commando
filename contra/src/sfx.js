@@ -58,6 +58,8 @@ CG.Sfx = (() => {
     jump: () => tone('triangle', 320, 640, 0.12, 0.35),
     die: () => { tone('sawtooth', 620, 70, 0.55, 0.5); noise(0.25, 0.4, 1200, 200); },
     pickup: () => { tone('square', 660, 660, 0.08, 0.3); tone('square', 990, 990, 0.12, 0.3, 0.08); },
+    ability: () => { tone('sawtooth', 220, 880, 0.18, 0.28); tone('square', 880, 1320, 0.14, 0.2, 0.1); },
+    ready: () => { tone('triangle', 1320, 1320, 0.06, 0.18); tone('triangle', 1760, 1760, 0.08, 0.18, 0.06); },
     clear: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone('square', f, f, 0.16, 0.3, i * 0.13)),
     over: () => [392, 330, 262, 196].forEach((f, i) => tone('triangle', f, f, 0.28, 0.4, i * 0.24)),
     start: () => { tone('square', 440, 440, 0.08, 0.3); tone('square', 660, 660, 0.14, 0.3, 0.09); },

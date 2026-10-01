@@ -1,9 +1,12 @@
 // Menus (plain HTML over the game canvas) and the flow between them:
-//   login (Google) → menu → PLAY: who is playing (+ bots) → choose agents → game
-//                         → PLAY ONLINE: party (invite friends, pick agent, start or find players) → game
+//   sign in (Google, required) → choose a callsign (first time) → home
+//   home → PLAY: who is playing (+ bots) → choose agents → game
+//        → PLAY ONLINE: squad (invite friends, pick agent, start or find players) → game
+//        → SHOP · FRIENDS · SETTINGS · HOW TO PLAY
+// Offline play is only offered when the online service is not set up or cannot be reached.
 CG.UI = (() => {
   const $ = (id) => document.getElementById(id);
-  const PANELS = ['login', 'menu', 'lobby', 'select', 'party', 'how', 'friends', 'pause', 'over'];
+  const PANELS = ['login', 'username', 'menu', 'lobby', 'select', 'party', 'shop', 'settings', 'how', 'friends', 'pause', 'over'];
   const BEST = 'commando.best', NAME = 'commando.name', AGENT = 'commando.agent';
   let lastPlayers = null, scene = null, booted = false, offline = false, current = null;
 
@@ -17,12 +20,13 @@ CG.UI = (() => {
     if (!n) { n = 'Soldier' + Math.floor(100 + Math.random() * 900); store.set(NAME, n); }
     return n;
   }
-  const myName = () => (CG.Net.profile ? CG.Net.profile.name : localName());
+  const myName = () => (CG.Net.profile ? CG.Net.profile.username || CG.Net.profile.name : localName());
   const myAgent = () => (CG.AGENT[store.get(AGENT, '')] ? store.get(AGENT, '') : 'razor');
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const visible = (id) => !$(id).classList.contains('hidden');
-  const art = (key) => (CG.DATA.art && CG.DATA.art.images && CG.DATA.art.images[key]) || '';
-  const portrait = (id, off) => art('portrait_' + id + (off ? '_off' : '')) || art('portrait_' + id);
+  const portrait = (id) => (CG.PORTRAITS && CG.PORTRAITS[id]) || '';
+  const abIcon = (id) => (CG.ABICONS && CG.ABICONS[id]) || '';
+  const N = () => CG.Net;
 
   function show(id) {
     current = id;
@@ -30,7 +34,10 @@ CG.UI = (() => {
     if (id === 'menu') renderMenu();
     if (id === 'friends') refreshFriends();
     if (id === 'party') renderParty();
-    const first = id && id !== 'lobby' && id !== 'select' && $(id).querySelector('button:not(.hidden)');
+    if (id === 'shop') renderShop();
+    if (id === 'settings') renderSettings();
+    if (id === 'username') { const i = $('un-input'); i.value = (N().profile && N().profile.username) || ''; setTimeout(() => i.focus(), 50); }
+    const first = id && !['lobby', 'select', 'username'].includes(id) && $(id).querySelector('button:not(.hidden):not([disabled])');
     if (first && !CG.Touch.enabled) first.focus();
   }
 
@@ -43,37 +50,72 @@ CG.UI = (() => {
     toastT = setTimeout(() => t.classList.add('hidden'), 3200);
   }
 
-  // ---------------------------------------------------------------- sign in / menu
+  // ---------------------------------------------------------------- where to go: sign in, callsign or home
+  function canPlayOffline() { const s = N().state; return s === 'off' || s === 'error'; }
   function home() {
-    const N = CG.Net;
-    if (!offline && N.state === 'signedout') show('login');
-    else show('menu');
+    const net = N();
+    if (offline && canPlayOffline()) { show('menu'); return; }
+    if (net.state === 'off') { offline = true; show('menu'); return; }          // online service not set up
+    if (!net.online) { show('login'); renderLogin(); return; }
+    if (net.needsUsername) { show('username'); return; }
+    show('menu');
   }
+  function renderLogin() {
+    const s = N().state;
+    $('google-btn').disabled = s === 'loading';
+    $('offline-btn').classList.toggle('hidden', !canPlayOffline());
+    $('login-msg').textContent = s === 'loading' ? 'Connecting…' : s === 'error' ? 'Could not reach the server: ' + N().error : $('login-msg').dataset.keep || '';
+  }
+  function loginMessage(m) { $('login-msg').dataset.keep = m || ''; $('login-msg').textContent = m || ''; }
+
+  function netChanged() {
+    if (!booted) return;
+    const net = N();
+    if (current === 'login') {
+      if (net.online) home(); else renderLogin();
+      return;
+    }
+    if (!net.online && !offline && ['menu', 'shop', 'party', 'friends', 'settings', 'username'].includes(current)) { home(); return; }
+    if (current === 'menu' && net.needsUsername) { show('username'); return; }
+    if (current === 'menu') renderMenu();
+    else if (current === 'friends') refreshFriends();
+    else if (current === 'party') renderParty();
+    else if (current === 'shop') renderShop();
+    else if (current === 'settings') renderSettings();
+  }
+
+  // ---------------------------------------------------------------- home
+  let showIdx = -1;
   function renderMenu() {
-    const N = CG.Net, prof = N.profile, on = N.online;
+    const net = N(), prof = net.profile, on = net.online;
     $('menu-name').textContent = myName();
+    $('menu-coins').textContent = (prof && prof.coins) || 0;
+    $('menu-coins').parentElement.classList.toggle('hidden', !on);
     $('menu-best').textContent = Math.max(localBest(), (prof && prof.best) || 0);
     $('menu-photo').classList.toggle('hidden', !(prof && prof.photo));
     if (prof && prof.photo) $('menu-photo').src = prof.photo;
-    document.querySelectorAll('#menu .online-only').forEach((b) => b.classList.toggle('hidden', !on));
-    $('signin-btn').classList.toggle('hidden', on || N.state !== 'signedout');
-    const inv = Object.keys(N.invites || {});
-    $('menu-invites').innerHTML = inv.map((pid) => `<div class="item invite"><span class="grow">🎖 <b>${esc(N.invites[pid].name)}</b> invited you to a party</span>
-      <button data-act="inv-accept" data-uid="${esc(pid)}">JOIN</button><button data-act="inv-decline" data-uid="${esc(pid)}">NO</button></div>`).join('');
+    document.querySelectorAll('.online-only').forEach((b) => b.classList.toggle('hidden', !on));
+    const inv = Object.keys(net.invites || {});
+    $('menu-invites').innerHTML = inv.map((pid) => `<div class="invite"><span>🎖 <b>${esc(net.invites[pid].name)}</b> invited you to their squad</span>
+      <button class="btn small primary" data-act="inv-accept" data-uid="${esc(pid)}">JOIN</button><button class="btn small" data-act="inv-decline" data-uid="${esc(pid)}">✕</button></div>`).join('');
+    renderShowcase();
   }
-  function loginMessage(m) { $('login-msg').textContent = m || ''; }
-
-  let loginPrompted = false;
-  function netChanged() {
-    const N = CG.Net;
-    if (!booted) return;
-    // first time we learn nobody is signed in: ask once (after that, SIGN IN is on the menu)
-    if (!loginPrompted && N.state === 'signedout' && !offline && current === 'menu') { loginPrompted = true; show('login'); return; }
-    if (current === 'login' && N.online) show('menu');
-    else if (current === 'menu') renderMenu();
-    else if (current === 'friends') refreshFriends();
-    else if (current === 'party') renderParty();
-    if (current === 'login' && N.state === 'error') loginMessage('Could not reach the server: ' + N.error);
+  function renderShowcase() {
+    if (showIdx < 0) showIdx = Math.max(0, CG.AGENTS.findIndex((a) => a.id === myAgent()));
+    const a = CG.AGENTS[showIdx], ab = a.ability;
+    $('showcase').innerHTML = `
+      <button class="btn arrow" data-act="show-prev">◀</button>
+      <div class="hero" style="--c:${a.color}">
+        ${portrait(a.id) ? `<img src="${portrait(a.id)}" alt="">` : ''}
+        <div class="name">${a.name}</div><div class="role">${a.role}</div>
+        <div class="fav">${a.id === myAgent() ? '★ your agent' : ''}</div>
+      </div>
+      <div class="info" style="--c:${a.color}">
+        <div class="stats"><span>${'♥'.repeat(a.hp)}</span><span>speed ${Math.round(a.speed * 100)}%</span></div>
+        <div class="ab">${abIcon(a.id) ? `<img src="${abIcon(a.id)}" alt="">` : ''}<div><b>${ab.name}</b><br>${ab.desc}</div></div>
+        <button class="btn small ${a.id === myAgent() ? 'on' : ''}" data-act="show-fav">${a.id === myAgent() ? 'SELECTED' : 'MAKE MY AGENT'}</button>
+      </div>
+      <button class="btn arrow" data-act="show-next">▶</button>`;
   }
 
   const running = () => booted && CG.game.scene.isActive('Game');
@@ -102,9 +144,9 @@ CG.UI = (() => {
   }
   function pause() {
     if (!running() || (scene && scene.over)) return;
-    if (scene && scene.net) { show('pause'); $('pause-admin').classList.toggle('hidden', !scene.net.host); return; }   // online: the match keeps going
+    $('pause-admin').classList.toggle('hidden', !N().isAdmin || !!(scene && scene.isClient));
+    if (scene && scene.net) { show('pause'); return; }          // online: the match keeps going
     CG.game.scene.pause('Game');
-    $('pause-admin').classList.remove('hidden');
     show('pause');
   }
   function resume() {
@@ -117,14 +159,19 @@ CG.UI = (() => {
     CG.game.scene.stop('Game');
     if (!CG.game.scene.isActive('Backdrop')) CG.game.scene.start('Backdrop');
     CG.Touch.show(false);
-    if (CG.Net.partyId) show('party'); else show('menu');
+    if (N().partyId) show('party'); else home();
   }
-  function gameOver(score, stage, noSave) {
-    const best = localBest();
-    if (!noSave && score > best) store.set(BEST, String(score));
-    if (!noSave) CG.Net.submitScore(score);
+  function gameOver(score, stage, opts) {
+    opts = opts || {};
+    const best = localBest(), admin = !!opts.admin;
+    if (!admin && score > best) store.set(BEST, String(score));
+    if (!admin) N().submitScore(score);
+    const coins = admin ? 0 : CG.Shop.coinsFor(score);
+    if (coins && N().online) N().addCoins(coins).catch(() => {});
     $('over-score').textContent = score;
-    $('over-best').textContent = noSave ? (scene && scene.adminUsed ? 'Admin panel used: score not saved' : 'Online match') : score > best ? 'New best!' : 'Best ' + best;
+    $('over-coins').classList.toggle('hidden', !coins || !N().online);
+    $('over-coins').querySelector('b').textContent = coins;
+    $('over-best').textContent = admin ? 'Admin panel used: nothing saved' : opts.online ? 'Online match' : score > best ? 'New best!' : 'Best ' + best;
     $('over-retry').classList.toggle('hidden', !lastPlayers);
     CG.Touch.show(false);
     show('over');
@@ -156,13 +203,13 @@ CG.UI = (() => {
     for (let i = 0; i < MAX; i++) {
       const d = joined[i];
       html += d
-        ? `<div class="slot" style="--c:${CG.PLAYER_COLORS[i]}"><b>P${i + 1}</b><span class="grow">${d.type === 'bot' ? '🤖 ' : ''}${esc(d.type === 'pad' ? LABEL.pad(d.index) : LABEL[d.type])}</span><button data-act="leave" data-uid="${esc(d.id)}">✕</button></div>`
+        ? `<div class="slot" style="--c:${CG.PLAYER_COLORS[i]}"><b>P${i + 1}</b><span class="grow">${d.type === 'bot' ? '🤖 ' : ''}${esc(d.type === 'pad' ? LABEL.pad(d.index) : LABEL[d.type])}</span><button class="btn small" data-act="leave" data-uid="${esc(d.id)}">✕</button></div>`
         : `<div class="slot empty"><b>P${i + 1}</b><span class="grow">Press FIRE to join</span></div>`;
     }
     $('lobby-slots').innerHTML = html;
     const humans = joined.filter((d) => d.type !== 'bot').length;
     $('lobby-start').disabled = humans === 0;
-    $('lobby-start').textContent = humans ? 'CHOOSE AGENTS  (' + joined.length + (joined.length === 1 ? ' player)' : ' players)') : 'WAITING FOR PLAYERS';
+    $('lobby-start').textContent = humans ? 'CHOOSE AGENTS ▸' : 'WAITING FOR PLAYERS';
     $('lobby-touch').classList.toggle('hidden', !CG.Touch.enabled || joined.some((d) => d.id === 'touch'));
     $('lobby-bot').disabled = joined.length >= MAX;
   }
@@ -187,7 +234,7 @@ CG.UI = (() => {
   }
   function toSelect() {
     if (!joined.some((d) => d.type !== 'bot')) return;
-    let devices = joined.map((d) => ({ id: d.id, type: d.type, index: d.index }));
+    const devices = joined.map((d) => ({ id: d.id, type: d.type, index: d.index }));
     // a lone keyboard player gets both key layouts and the mouse
     const kb = devices.filter((d) => d.type === 'kbA' || d.type === 'kbB');
     if (kb.length === 1) kb[0].type = 'kbAll';
@@ -200,7 +247,7 @@ CG.UI = (() => {
   const KEY_ANY = ['KeyX', 'KeyZ', 'KeyJ', 'Space'];          // single-player keys: take the first free keyboard seat
   function lobbyKey(e) {
     if (e.code === 'Enter') { toSelect(); return; }
-    if (e.code === 'Escape') { toMenu(); return; }
+    if (e.code === 'Escape') { home(); return; }
     if (e.code === 'KeyB') { addBot(); return; }
     let seat = KEY_JOIN[e.code];
     if (!seat && KEY_ANY.includes(e.code)) seat = joined.some((d) => d.id === 'kbA') ? 'kbB' : 'kbA';
@@ -208,7 +255,7 @@ CG.UI = (() => {
   }
   function addBot() { if (joined.length < MAX) { botN++; join('bot' + botN, 'bot'); } }
 
-  // ---------------------------------------------------------------- choose agents (Valorant style: each agent once)
+  // ---------------------------------------------------------------- choose agents (each agent once)
   let picks = [];
   function openSelect(devices) {
     let human = 0;
@@ -227,14 +274,14 @@ CG.UI = (() => {
     $('agent-cards').innerHTML = CG.AGENTS.map((a, i) => {
       const who = picks.filter((p) => !p.bot && (p.locked ? p.agent === a.id : p.cursor === i));
       const isTaken = taken(a.id);
-      return `<button class="card ${isTaken ? 'taken' : ''} ${looking === a ? 'look' : ''}" data-act="pick" data-uid="${a.id}" style="--c:${a.color}">
-        ${portrait(a.id, isTaken) ? `<img src="${portrait(a.id, isTaken)}" alt="">` : ''}
+      return `<button class="agent ${isTaken ? 'taken' : ''} ${looking === a ? 'look' : ''}" data-act="pick" data-uid="${a.id}" style="--c:${a.color}">
+        ${portrait(a.id) ? `<img src="${portrait(a.id)}" alt="">` : ''}
         <b>${a.name}</b><small>${a.role}</small>
         <span class="marks">${who.map((p) => `<i style="background:${CG.PLAYER_COLORS[picks.indexOf(p)]}" title="${esc(p.name)}">${p.locked ? '✔' : ''}</i>`).join('')}</span>
       </button>`;
     }).join('');
     const ab = looking.ability;
-    $('agent-info').innerHTML = `${art('ab_' + looking.id) ? `<img src="${art('ab_' + looking.id)}" alt="">` : ''}
+    $('agent-info').innerHTML = `${abIcon(looking.id) ? `<img src="${abIcon(looking.id)}" alt="">` : ''}
       <div><b style="color:${looking.color}">${looking.name}</b> · ${looking.role} · ${'♥'.repeat(looking.hp)} · speed ${Math.round(looking.speed * 100)}%<br>
       <span class="ab">${ab.name}</span> — ${ab.desc}</div>`;
     $('select-slots').innerHTML = picks.map((p, i) => `<div class="pick" style="--c:${CG.PLAYER_COLORS[i]}">
@@ -255,8 +302,7 @@ CG.UI = (() => {
     CG.Sfx.play('pickup');
     renderSelect();
     if (picks.every((q) => q.bot || q.locked)) {
-      // bots take what is left
-      picks.filter((q) => q.bot).forEach((q) => {
+      picks.filter((q) => q.bot).forEach((q) => {                       // bots take what is left
         const free = CG.AGENTS.filter((a) => !taken(a.id, q));
         q.agent = (free[Math.floor(Math.random() * free.length)] || CG.AGENTS[0]).id;
         q.locked = true;
@@ -283,7 +329,7 @@ CG.UI = (() => {
     if (back[c]) unlock(back[c]);
   }
 
-  // gamepads: in the lobby A or X joins, B leaves, Start begins; in agent select left/right, A locks, B unlocks
+  // gamepads: in the lobby A or X joins, B leaves, Y adds a bot, Start begins; in agent select left/right, A locks, B unlocks
   setInterval(() => {
     if (!navigator.getGamepads || !(visible('lobby') || visible('select'))) return;
     for (const gp of navigator.getGamepads()) {
@@ -308,31 +354,30 @@ CG.UI = (() => {
     }
   }, 50);
 
-  // ---------------------------------------------------------------- online party
+  // ---------------------------------------------------------------- online squad
   async function openParty() {
-    const N = CG.Net;
-    if (!N.online) { toast('Sign in with Google to play online'); return; }
+    if (!N().online) { toast('Sign in to play online'); return; }
     show('party');
-    try { await N.createParty(); } catch (e) { $('party-msg').textContent = e.message; }
+    try { await N().createParty(); } catch (e) { $('party-msg').textContent = e.message; }
     renderParty();
   }
   function renderParty() {
-    const N = CG.Net, p = N.party;
-    if (!p) { $('party-members').innerHTML = '<i>Making a party…</i>'; return; }
-    const lead = N.isLeader, members = Object.keys(p.members || {}).sort((a, b) => (p.members[a].at || 0) - (p.members[b].at || 0));
+    const net = N(), p = net.party;
+    if (!p) { $('party-members').innerHTML = '<i>Making a squad…</i>'; return; }
+    const lead = net.isLeader, members = Object.keys(p.members || {}).sort((a, b) => (p.members[a].at || 0) - (p.members[b].at || 0));
     let html = members.map((uid, i) => {
       const m = p.members[uid], ag = CG.AGENT[m.agent] || CG.AGENTS[0];
       return `<div class="slot" style="--c:${CG.PLAYER_COLORS[i % 5]}">
         ${portrait(ag.id) ? `<img class="face" src="${portrait(ag.id)}" alt="">` : ''}
-        <span class="grow">${uid === p.leader ? '👑 ' : ''}<b class="nm">${esc(m.name)}</b> · ${ag.name}${uid === N.uid ? ' (you)' : ''}</span></div>`;
+        <span class="grow">${uid === p.leader ? '👑 ' : ''}<b class="nm">${esc(m.name)}</b> · ${ag.name}${uid === net.uid ? ' (you)' : ''}</span></div>`;
     }).join('');
     (p.bots || []).forEach((agent, i) => {
       html += `<div class="slot" style="--c:#8a998a"><span class="grow">🤖 BOT · ${(CG.AGENT[agent] || CG.AGENTS[0]).name}</span>
-        ${lead ? `<button data-act="party-unbot" data-uid="${i}">✕</button>` : ''}</div>`;
+        ${lead ? `<button class="btn small" data-act="party-unbot" data-uid="${i}">✕</button>` : ''}</div>`;
     });
-    if (lead && N.partySize() < N.MAX) html += '<button data-act="party-bot">+ ADD BOT</button>';
+    if (lead && net.partySize() < net.MAX) html += '<button class="btn small" data-act="party-bot">+ ADD BOT</button>';
     $('party-members').innerHTML = html;
-    const mine = (p.members[N.uid] && p.members[N.uid].agent) || myAgent();
+    const mine = (p.members[net.uid] && p.members[net.uid].agent) || myAgent();
     $('party-agents').innerHTML = CG.AGENTS.map((a) => `<button class="mini ${a.id === mine ? 'on' : ''}" data-act="party-agent" data-uid="${a.id}" style="--c:${a.color}" title="${a.ability.name}: ${esc(a.ability.desc)}">
       ${portrait(a.id) ? `<img src="${portrait(a.id)}" alt="">` : ''}<span>${a.name}</span></button>`).join('');
     const queued = p.state === 'queue';
@@ -341,40 +386,63 @@ CG.UI = (() => {
     $('party-queue').textContent = queued ? 'CANCEL SEARCH' : 'FIND PLAYERS';
     $('party-status').textContent = queued ? 'Looking for other players… (starts on its own after 30 s)'
       : lead ? 'Invite friends, then start — or find other players to team up with' : 'Waiting for the leader to start';
-    const fr = Object.keys(N.friends).filter((f) => !(p.members || {})[f])
-      .sort((a, b) => (N.friends[b].online ? 1 : 0) - (N.friends[a].online ? 1 : 0));
+    const fr = Object.keys(net.friends).filter((f) => !(p.members || {})[f])
+      .sort((a, b) => (net.friends[b].online ? 1 : 0) - (net.friends[a].online ? 1 : 0));
     $('party-friends').innerHTML = fr.length ? fr.map((uid) => {
-      const f = N.friends[uid];
-      return `<div class="item"><span class="dot ${f.online ? 'on' : ''}"></span><span class="grow">${esc(f.name)}</span>
-        <button data-act="party-invite" data-uid="${esc(uid)}" ${f.online ? '' : 'disabled'}>INVITE</button></div>`;
-    }).join('') : '<i>Add friends first (FRIENDS on the menu)</i>';
+      const f = net.friends[uid];
+      return `<div class="item"><span class="dot ${f.online ? 'on' : ''}"></span><span class="grow">${esc(f.username || f.name)}</span>
+        <button class="btn small" data-act="party-invite" data-uid="${esc(uid)}" ${f.online ? '' : 'disabled'}>INVITE</button></div>`;
+    }).join('') : '<i>Add friends first (FRIENDS on the home screen)</i>';
   }
 
-  // ---------------------------------------------------------------- friends screen
+  // ---------------------------------------------------------------- shop
+  function renderShop() {
+    const net = N(), coins = (net.profile && net.profile.coins) || 0;
+    $('shop-coins').textContent = coins;
+    $('shop-items').innerHTML = CG.Shop.items().map((it) => {
+      const own = CG.Shop.owned(it.id);
+      return `<div class="shop-item ${own ? 'owned' : ''}" style="--c:${it.kind === 'cosmetic' ? '#c878ff' : '#ff9a3c'}">
+        <div class="top"><div class="icon">${esc(it.icon || '★')}</div><div><b>${esc(it.name)}</b><div class="kind">${esc(it.kind || 'perk')}</div></div></div>
+        <p>${esc(it.desc || '')}</p>
+        ${own ? '<div class="owned-tag">✔ OWNED</div>' : `<div class="row"><span class="price"><span class="coin"></span>${it.price}</span>
+          <button class="btn small primary" data-act="buy" data-uid="${esc(it.id)}" ${coins < it.price ? 'disabled' : ''}>BUY</button></div>`}
+      </div>`;
+    }).join('');
+  }
+
+  // ---------------------------------------------------------------- settings
+  function renderSettings() {
+    $('set-name').textContent = myName();
+    $('sound-btn').textContent = CG.Sfx.on ? 'ON' : 'OFF';
+    const o = CG.Touch.opts;
+    document.querySelectorAll('[data-act="touch-style"]').forEach((b) => b.classList.toggle('on', b.dataset.uid === o.style));
+    document.querySelectorAll('[data-act="touch-size"]').forEach((b) => b.classList.toggle('on', +b.dataset.uid === +o.size));
+    $('touch-auto').textContent = o.autofire ? 'ON' : 'OFF';
+    $('touch-auto').classList.toggle('on', !!o.autofire);
+    document.querySelectorAll('#settings .online-only').forEach((b) => b.classList.toggle('hidden', !N().online));
+  }
+
+  // ---------------------------------------------------------------- friends
   function say(id, msg) { $(id).textContent = msg || ''; }
   function refreshFriends() {
-    const N = CG.Net, off = !N.online;
+    const net = N(), off = !net.online;
     $('fr-setup').classList.toggle('hidden', !off);
     $('fr-body').classList.toggle('hidden', off);
-    if (off) {
-      $('fr-setup').textContent = N.state === 'loading' ? 'Connecting…' : N.state === 'error' ? 'Could not connect: ' + N.error : 'Sign in with Google to add friends.';
-      return;
-    }
-    if (document.activeElement !== $('fr-name')) $('fr-name').value = N.profile.name;
-    $('fr-code').textContent = N.profile.code;
-    const reqs = Object.keys(N.requests);
+    if (off) return;
+    $('fr-code').textContent = net.profile.code;
+    const reqs = Object.keys(net.requests);
     $('fr-requests').innerHTML = reqs.length ? reqs.map((uid) => `
-      <div class="item"><span class="grow">${esc(N.requests[uid].name || 'Someone')}</span>
-        <button data-act="fr-accept" data-uid="${esc(uid)}">ACCEPT</button>
-        <button data-act="fr-decline" data-uid="${esc(uid)}">DECLINE</button></div>`).join('') : '<i>None</i>';
-    const fr = Object.keys(N.friends).sort((a, b) => (N.friends[b].online ? 1 : 0) - (N.friends[a].online ? 1 : 0) || (N.friends[b].best || 0) - (N.friends[a].best || 0));
+      <div class="item"><span class="grow">${esc(net.requests[uid].name || 'Someone')}</span>
+        <button class="btn small primary" data-act="fr-accept" data-uid="${esc(uid)}">ACCEPT</button>
+        <button class="btn small" data-act="fr-decline" data-uid="${esc(uid)}">DECLINE</button></div>`).join('') : '<i>None</i>';
+    const fr = Object.keys(net.friends).sort((a, b) => (net.friends[b].online ? 1 : 0) - (net.friends[a].online ? 1 : 0) || (net.friends[b].best || 0) - (net.friends[a].best || 0));
     $('fr-list').innerHTML = fr.length ? fr.map((uid) => {
-      const f = N.friends[uid];
-      return `<div class="item"><span class="dot ${f.online ? 'on' : ''}"></span><span class="grow">${esc(f.name)}</span>
+      const f = net.friends[uid];
+      return `<div class="item"><span class="dot ${f.online ? 'on' : ''}"></span><span class="grow">${esc(f.username || f.name)}</span>
         <span class="best">Best ${f.best || 0}</span>
-        <button data-act="party-invite" data-uid="${esc(uid)}" ${f.online ? '' : 'disabled'}>INVITE</button>
-        <button data-act="fr-remove" data-uid="${esc(uid)}">REMOVE</button></div>`;
-    }).join('') : '<i>No friends yet — share your code</i>';
+        <button class="btn small" data-act="party-invite" data-uid="${esc(uid)}" ${f.online ? '' : 'disabled'}>INVITE</button>
+        <button class="btn small" data-act="fr-remove" data-uid="${esc(uid)}">REMOVE</button></div>`;
+    }).join('') : '<i>No friends yet — share your code or callsign</i>';
   }
   // run an online action and show what happened
   function run(fn, okMsg, where) {
@@ -384,13 +452,24 @@ CG.UI = (() => {
   }
 
   const ACTIONS = {
-    google: () => run(() => CG.Net.signInGoogle().then(() => { offline = false; }), '', 'login-msg'),
-    signin: () => run(() => CG.Net.signInGoogle(), ''),
+    google: () => run(() => N().signInGoogle(), '', 'login-msg'),
     offline: () => { offline = true; show('menu'); },
-    signout: () => run(() => CG.Net.signOut().then(() => { offline = false; home(); }), 'Signed out'),
+    signout: () => run(() => N().signOut().then(() => { offline = false; home(); }), 'Signed out'),
+    'un-save': () => run(() => N().claimUsername($('un-input').value).then(() => { toast('Callsign saved'); home(); }), '', 'un-msg'),
+    'un-change': () => { $('un-cancel').classList.remove('hidden'); show('username'); },
+    'un-cancel': () => show('settings'),
     lobby: openLobby,
     party: openParty,
-    sound: () => { $('sound-btn').textContent = 'SOUND: ' + (CG.Sfx.toggle() ? 'ON' : 'OFF'); },
+    shop: () => show('shop'),
+    settings: () => show('settings'),
+    buy: (id) => { const it = CG.Shop.items().find((x) => x.id === id); if (it) run(() => N().buy(it).then(() => { CG.Sfx.play('pickup'); renderShop(); }), it.name + ' bought!', 'shop-msg'); },
+    sound: () => { CG.Sfx.toggle(); renderSettings(); },
+    'touch-style': (v) => { CG.Touch.opts.style = v; CG.Touch.save(); renderSettings(); },
+    'touch-size': (v) => { CG.Touch.opts.size = +v; CG.Touch.save(); renderSettings(); },
+    'touch-auto': () => { CG.Touch.opts.autofire = !CG.Touch.opts.autofire; CG.Touch.save(); CG.Touch.syncButtons(); renderSettings(); },
+    'show-prev': () => { showIdx = (showIdx + CG.AGENTS.length - 1) % CG.AGENTS.length; renderShowcase(); },
+    'show-next': () => { showIdx = (showIdx + 1) % CG.AGENTS.length; renderShowcase(); },
+    'show-fav': () => { const id = CG.AGENTS[showIdx].id; store.set(AGENT, id); N().setAgent(id); renderShowcase(); },
     landscape,
     start: toSelect,
     leave: (id) => leave(id),
@@ -403,31 +482,30 @@ CG.UI = (() => {
     },
     friends: () => show('friends'),
     how: () => show('how'),
-    menu: () => (visible('party') || visible('select') || visible('lobby') ? show('menu') : toMenu()),
+    menu: () => (running() || paused() ? toMenu() : home()),
     resume, quit: toMenu,
     admin: () => { resume(); CG.Admin.open(); },
     'admin-close': () => CG.Admin.close(),
     retry: () => (lastPlayers ? play(lastPlayers) : toMenu()),
-    'inv-accept': (pid) => run(() => CG.Net.acceptInvite(pid).then(() => show('party')), ''),
-    'inv-decline': (pid) => run(() => CG.Net.declineInvite(pid), ''),
-    'party-agent': (id) => { store.set(AGENT, id); CG.Net.setAgent(id); renderParty(); },
-    'party-invite': (uid) => run(() => CG.Net.invite(uid), 'Invite sent', visible('party') ? 'party-msg' : 'fr-msg'),
-    'party-start': () => run(() => CG.Net.startMatch(), '', 'party-msg'),
-    'party-queue': () => run(() => (CG.Net.party && CG.Net.party.state === 'queue' ? CG.Queue.cancel() : CG.Queue.join()), '', 'party-msg'),
-    'party-leave': () => run(() => CG.Net.leaveParty().then(() => show('menu')), ''),
+    'inv-accept': (pid) => run(() => N().acceptInvite(pid).then(() => show('party')), ''),
+    'inv-decline': (pid) => run(() => N().declineInvite(pid), ''),
+    'party-agent': (id) => { store.set(AGENT, id); N().setAgent(id); renderParty(); },
+    'party-invite': (uid) => run(() => N().invite(uid), 'Invite sent', visible('party') ? 'party-msg' : 'fr-msg'),
+    'party-start': () => run(() => N().startMatch(), '', 'party-msg'),
+    'party-queue': () => run(() => (N().party && N().party.state === 'queue' ? CG.Queue.cancel() : CG.Queue.join()), '', 'party-msg'),
+    'party-leave': () => run(() => N().leaveParty().then(() => home()), ''),
     'party-bot': () => {
-      const p = CG.Net.party, bots = (p.bots || []).slice(), used = Object.values(p.members).map((m) => m.agent).concat(bots);
+      const p = N().party, bots = (p.bots || []).slice(), used = Object.values(p.members).map((m) => m.agent).concat(bots);
       const free = CG.AGENTS.filter((a) => !used.includes(a.id));
-      bots.push((free[0] || CG.AGENTS[bots.length % 5]).id);
-      run(() => CG.Net.setBots(bots), '', 'party-msg');
+      bots.push((free[0] || CG.AGENTS[bots.length % CG.AGENTS.length]).id);
+      run(() => N().setBots(bots), '', 'party-msg');
     },
-    'party-unbot': (i) => { const bots = (CG.Net.party.bots || []).slice(); bots.splice(+i, 1); run(() => CG.Net.setBots(bots), '', 'party-msg'); },
-    'fr-save': () => run(() => CG.Net.setName($('fr-name').value).then((n) => store.set(NAME, n)), 'Name saved', 'fr-msg'),
-    'fr-copy': () => run(() => navigator.clipboard.writeText(CG.Net.profile.code), 'Code copied', 'fr-msg'),
-    'fr-send': () => run(() => CG.Net.sendRequest($('fr-add').value).then(() => { $('fr-add').value = ''; }), 'Request sent', 'fr-msg'),
-    'fr-accept': (uid) => run(() => CG.Net.accept(uid), 'Friend added', 'fr-msg'),
-    'fr-decline': (uid) => run(() => CG.Net.decline(uid), '', 'fr-msg'),
-    'fr-remove': (uid) => run(() => CG.Net.unfriend(uid), 'Friend removed', 'fr-msg'),
+    'party-unbot': (i) => { const bots = (N().party.bots || []).slice(); bots.splice(+i, 1); run(() => N().setBots(bots), '', 'party-msg'); },
+    'fr-copy': () => run(() => navigator.clipboard.writeText(N().profile.code), 'Code copied', 'fr-msg'),
+    'fr-send': () => run(() => N().sendRequest($('fr-add').value).then(() => { $('fr-add').value = ''; }), 'Request sent', 'fr-msg'),
+    'fr-accept': (uid) => run(() => N().accept(uid), 'Friend added', 'fr-msg'),
+    'fr-decline': (uid) => run(() => N().decline(uid), '', 'fr-msg'),
+    'fr-remove': (uid) => run(() => N().unfriend(uid), 'Friend removed', 'fr-msg'),
   };
 
   document.addEventListener('click', (e) => {
@@ -435,15 +513,16 @@ CG.UI = (() => {
     if (b && !b.disabled && ACTIONS[b.dataset.act]) ACTIONS[b.dataset.act](b.dataset.uid);
   });
   document.addEventListener('mouseover', (e) => {          // hovering a card shows that agent's details
-    const c = e.target.closest('#agent-cards .card');
+    const c = e.target.closest('#agent-cards .agent');
     if (!c) return;
     const p = picks.find((q) => !q.bot && !q.locked);
     if (p) { const i = CG.AGENTS.findIndex((a) => a.id === c.dataset.uid); if (i !== p.cursor) { p.cursor = i; renderSelect(); } }
   });
   document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT') return;
+    if (e.target.tagName === 'INPUT') { if (e.code === 'Enter' && visible('username')) ACTIONS['un-save'](); return; }
     if (visible('lobby')) { lobbyKey(e); return; }
     if (visible('select')) { selectKey(e); return; }
+    if (visible('menu') && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) { ACTIONS[e.code === 'ArrowLeft' ? 'show-prev' : 'show-next'](); return; }
     if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
       if (visible('pause')) resume(); else if (running()) pause();
     }
@@ -454,13 +533,10 @@ CG.UI = (() => {
   return {
     ready() {
       booted = true;
-      $('sound-btn').textContent = 'SOUND: ' + (CG.Sfx.on ? 'ON' : 'OFF');
-      // still checking who is signed in: the menu shows now, the sign-in screen follows if nobody is
-      show('menu');
-      netChanged();
+      home();
     },
     onGameStart(s) { scene = s; },
     localDevice() { return { type: 'any' }; },
-    gameOver, matchEnded, refreshFriends, netChanged, loginMessage, localBest, localName, myAgent, show, toast, play, playOnline,
+    gameOver, matchEnded, refreshFriends, netChanged, loginMessage, localBest, localName, myAgent, myName, show, toast, play, playOnline,
   };
 })();

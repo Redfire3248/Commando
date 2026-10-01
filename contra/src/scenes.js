@@ -4,8 +4,27 @@
 
   // Three layers that scroll at different speeds. Painted strips from backgrounds.png are used where they were
   // sliced (they are short wide strips, so each is drawn at a fixed height and repeated sideways).
-  function backdrop(scene, theme) {
+  // backgrounds15.png: one full scene per stage. Each stage theme has a few; every time the stages repeat the
+  // next one is used. (Numbers are the panels in reading order.)
+  const BG15 = { jungle: [1, 2, 3, 4, 14, 7], base: [5, 6, 12, 13, 15, 8], snow: [9, 10, 11] };
+  function backdrop(scene, theme, stage) {
     const { W, H } = CG.CONFIG;
+    const list = CG.DATA.art && CG.DATA.art.bg15;
+    if (list && list.length >= 15) {
+      const lap = Math.floor(((stage || 1) - 1) / CG.DATA.levels.length), pick = BG15[theme] || BG15.jungle;
+      const key = 'bg15_' + pick[lap % pick.length];
+      if (scene.textures.exists(key)) {
+        const src = scene.textures.get(key).getSourceImage();
+        const gy = CG.DATA.level ? CG.DATA.level.groundRow * CG.CONFIG.TILE : H * 0.83;
+        const sc = Math.max(H, (gy + 40) / 0.9) / src.height;       // the panel's dark bottom band sits behind the ground
+        scene.add.rectangle(0, 0, W, H, 0x05070a).setOrigin(0).setScrollFactor(0).setDepth(-11);
+        scene.bgFar = scene.add.tileSprite(0, 0, W, Math.ceil(src.height * sc), key).setOrigin(0).setTileScale(sc, sc).setScrollFactor(0).setDepth(-10);
+        scene.bgFar.scrollK = 1 / sc;
+        scene.bgTrees = scene.add.tileSprite(0, 0, 4, 4, '__DEFAULT').setVisible(false);
+        scene.bgTrees.scrollK = 0;
+        return;
+      }
+    }
     const P = (CG.DATA.art && CG.DATA.art.backgrounds && CG.DATA.art.backgrounds[theme]) || {};
     const has = (k) => k && scene.textures.exists(k);
     const strip = (key, y, h, depth) => {
@@ -24,7 +43,9 @@
     }
     scene.bgFar = has(P.far) ? strip(P.far, farY, farH, -9)
       : scene.add.tileSprite(0, 0, W, H, 'bg_far_' + theme).setOrigin(0).setScrollFactor(0).setDepth(-9);
-    scene.bgTrees = has(P.near) ? strip(P.near, nearY, nearH, -8)
+    // the painted near layer (fences, barrels) read as things on the floor sliding past, so it is not used;
+    // over a painted far layer there is no near layer at all
+    scene.bgTrees = has(P.far) ? scene.add.tileSprite(0, 0, 4, 4, '__DEFAULT').setVisible(false)
       : scene.add.tileSprite(0, 0, W, H, 'bg_trees_' + theme).setOrigin(0).setScrollFactor(0).setDepth(-8);
     // tileSprite scroll is in texture pixels, so a scaled strip scrolls slower: keep the speed the same on screen
     scene.bgFar.scrollK = 1 / (scene.bgFar.tileScaleX || 1);
@@ -60,6 +81,17 @@
       const painted = this.textures.exists('fx_boom');
       this.anims.create({ key: 'boom', frames: this.anims.generateFrameNumbers(painted ? 'fx_boom' : 'px_boom', { start: 0, end: painted ? 3 : 4 }), frameRate: painted ? 14 : 18 });
       if (this.textures.exists('fx_splash')) this.anims.create({ key: 'splash', frames: this.anims.generateFrameNumbers('fx_splash', { start: 0, end: 1 }), frameRate: 7 });
+      // pictures for the menus: the agents' portraits and ability icons (painted sheet, else a frame of the sheet)
+      CG.PORTRAITS = {}; CG.ABICONS = {};
+      const img = (k) => art && art.images && art.images[k];
+      for (const a of CG.AGENTS) {
+        if (img('portrait_' + a.id)) CG.PORTRAITS[a.id] = img('portrait_' + a.id);
+        else if (art && art.players && this.textures.exists(a.fallback)) {
+          try { CG.PORTRAITS[a.id] = this.textures.getBase64(a.fallback, art.players[a.fallbackWho].anims.stand_fwd[0]); } catch (e) { /* no picture */ }
+        }
+        if (img('ab_' + a.id)) CG.ABICONS[a.id] = img('ab_' + a.id);
+        else if (this.textures.exists('ab_' + a.id)) CG.ABICONS[a.id] = this.textures.getBase64('ab_' + a.id);
+      }
       this.scene.start('Backdrop');
       CG.UI.ready();
     }
@@ -68,7 +100,7 @@
   // ------------------------------------------------------------------ moving jungle behind the menus
   CG.BackdropScene = class extends Phaser.Scene {
     constructor() { super('Backdrop'); }
-    create() { backdrop(this, 'jungle'); this.x = 0; }
+    create() { backdrop(this, 'jungle', 1); this.x = 0; }
     update(t, delta) {
       this.x += delta * 0.06;
       this.bgFar.tilePositionX = this.x * 0.3 * this.bgFar.scrollK;
@@ -95,7 +127,7 @@
       this.enemyScale = (CG.CONFIG.SHEET_ART && CG.DATA.art && CG.DATA.art.enemyScale) || 1;
       this.bossCamX = L.boss.wallCol * T + 3 * T - W;
 
-      backdrop(this, L.theme);
+      backdrop(this, L.theme, this.cfg.stage);
       this.physics.world.setBounds(0, 0, L.w * T, H + 600);
       this.cameras.main.setBounds(0, 0, L.w * T, H);
       this.buildTerrain();
@@ -108,6 +140,7 @@
       this.bullets = this.physics.add.group({ allowGravity: false, maxSize: 90 });
       this.ebullets = this.physics.add.group({ allowGravity: false, maxSize: 120 });
       this.ebombs = this.physics.add.group({ maxSize: 40 });                   // grenades and bombs: these fall
+      this.grenades = this.physics.add.group({ maxSize: 12 });                 // Jax's frag grenades
       this.enemies = this.add.group();
       this.pickups = this.physics.add.group();
 
@@ -116,6 +149,14 @@
       // one pool of lives for the whole team: 3 for one player, 2 more for each extra player
       this.teamLives = this.cfg.teamLives !== null && this.cfg.teamLives !== undefined ? this.cfg.teamLives : C.lives + 2 * (this.players.length - 1);
       this.adminUsed = !!this.cfg.adminUsed;
+      // shop perks for this device's account holder (player 1 here, or my own soldier online)
+      const fx = CG.Net.online ? CG.Shop.effects() : {};
+      const mine = this.cfg.online ? this.players.find((p) => p.owner === CG.Net.uid && !p.bot) : this.players.find((p) => !p.bot && !p.remote);
+      if (mine) {
+        CG.Shop.apply(mine, fx);
+        if (fx.life && !this.cfg.online && (this.cfg.teamLives === null || this.cfg.teamLives === undefined)) this.teamLives++;
+      }
+      this.touchPlayer = this.players.find((p) => p.device && (p.device.type === 'touch' || p.device.type === 'any'));
       this.netSeq = 0;
       this.net = this.cfg.online && CG.Online.mid ? CG.Online.attach(this) : null;
       this.isClient = !!(this.net && !this.net.host);       // online but not the host: the host runs the stage
@@ -151,16 +192,27 @@
     // per player: portrait, name, hearts, ability icon with its cooldown; the team's lives in the middle
     buildHud() {
       const { W } = CG.CONFIG, fixed = (o) => o.setScrollFactor(0).setDepth(100);
+      // phones show the game small: the players' part of the HUD is drawn bigger there
+      const k = CG.Touch.enabled ? 1.45 : 1;
+      this.hudL = this.add.container(0, 0).setScrollFactor(0).setDepth(100).setScale(k);
+      const left = (o) => { this.hudL.add(o); return o; };
       const has = (k) => this.textures.exists(k);
       this.hud = this.players.map((p, i) => {
         const x = 24 + i * 300, y = 22, id = p.agent.id, h = {};
-        h.port = has('portrait_' + id) ? fixed(this.add.image(x, y, 'portrait_' + id).setOrigin(0)) : null;
+        h.port = has('portrait_' + id) ? left(this.add.image(x, y, 'portrait_' + id).setOrigin(0)) : null;
         if (h.port) h.port.setScale(64 / h.port.height);
-        h.name = fixed(this.add.text(x + 72, y - 2, p.name, ts(22, p.color)).setShadow(0, 2, '#000', 4));
-        h.hearts = fixed(this.add.container(x + 72, y + 40));
-        h.ab = has('ab_' + id) ? fixed(this.add.image(x + 250, y + 30, 'ab_' + id)) : null;
+        else if (p.art.tex !== 'pl' + (p.idx % 5)) {
+          // no painted portrait (the classic commandos): the head and shoulders of their standing frame
+          const f = this.add.image(0, 0, p.art.tex, p.art.anims.stand_fwd[0]).setOrigin(0);
+          const cw = f.width, cx = cw / 2 - 55, cy = f.height * 0.3, k = 64 / 110;
+          f.setCrop(cx, cy, 110, 110).setScale(k).setPosition(x - cx * k, y - cy * k);
+          h.port = left(f);
+        }
+        h.name = left(this.add.text(x + 72, y - 2, p.name, ts(22, p.color)).setShadow(0, 2, '#000', 4));
+        h.hearts = left(this.add.container(x + 72, y + 40));
+        h.ab = has('ab_' + id) ? left(this.add.image(x + 250, y + 30, 'ab_' + id)) : null;
         if (h.ab) h.ab.setScale(44 / h.ab.height);
-        h.cd = fixed(this.add.graphics());
+        h.cd = left(this.add.graphics());
         h.lastHp = -1; h.lastMax = -1;
         return h;
       });
@@ -223,14 +275,16 @@
           const edge = c === a && has(k('g_left')) ? k('g_left') : c === b - 1 && has(k('g_right')) ? k('g_right') : variant('g_top', c % 3);
           tile(c * T, gy, edge);
           for (let r = L.groundRow + 1; r < L.h; r++) tile(c * T, r * T, variant('g_in', (c + r) % 2));
-          // painted scenery for this stage's theme (behind everyone, never in the way)
-          const props = (CG.CONFIG.SHEET_ART && CG.DATA.art && CG.DATA.art.props && CG.DATA.art.props[L.theme]) || [];
-          const prop = props.length && (c * 73 + 11) % 13 < 3 ? props[(c * 31 + 7) % props.length] : null;
-          if (prop && has(prop) && c > a + 1 && c < b - 2 && c < L.boss.wallCol - 3 && this.artScale[prop]) {
-            this.add.image(c * T + T / 2, gy + 8, prop).setOrigin(0.5, 1).setScale(this.artScale[prop]).setDepth(3);
-          }
         }
       });
+      // cover: solid, stops every bullet, can be stood on. Painted cover (cover50.png) replaces the pixel boxes by key.
+      this.covers = this.physics.add.staticGroup();
+      for (const cv of CG.Level.covers(L)) {
+        const key = 'cv_' + cv.kind, img = this.add.image(cv.col * T, gy + 2, key).setOrigin(0, 1).setDepth(6);
+        const sc = this.artScale[key];
+        if (sc) img.setScale(sc);
+        zone(this.covers, img.x + 4, img.y - img.displayHeight + 6, img.displayWidth - 8, img.displayHeight - 8);
+      }
       L.ledges.forEach(([c, r, w]) => {
         const cc = zone(this.ledges, c * T, r * T, w * T, 20).body.checkCollision;
         cc.down = cc.left = cc.right = false;
@@ -268,19 +322,40 @@
       ph.add.collider(this.enemies, this.solids);
       ph.add.collider(this.enemies, this.ledges, null, canLand);
       ph.add.collider(this.pickups, this.solids);
+      ph.add.collider(bodies, this.covers);
+      // frag grenades burst on the ground, on cover or on an enemy
+      const burst = (g) => { if (g.active) this.fragBurst(g); };
+      ph.add.collider(this.grenades, this.solids, (a, b) => burst(mover(a, b)));
+      ph.add.collider(this.grenades, this.covers, (a, b) => burst(mover(a, b)));
+      ph.add.overlap(this.grenades, this.enemies, (a, b) => burst(a.isFrag ? a : b));
+      ph.add.collider(this.enemies, this.covers);
+      ph.add.collider(this.pickups, this.covers);
+      const stop = (a, b) => { const bul = isStatic(a) ? b : a; if (bul.active) { this.sparks.explode(3, bul.x, bul.y); this.kill(bul); } };
+      ph.add.overlap(this.bullets, this.covers, stop);
+      ph.add.overlap(this.ebullets, this.covers, stop);
+      ph.add.collider(this.ebombs, this.covers, (a, b) => {
+        const m = mover(a, b);
+        if (m.active) { this.boom(m.x, m.y, 10); CG.Sfx.play('boom'); this.kill(m); }
+      });
       ph.add.collider(this.pickups, this.ledges, null, canLand);
 
       ph.add.overlap(this.bullets, this.enemies, (a, b) => {
         const [bul, e] = pick(a, b, (o) => o.isBullet);
         if (!bul.active || !e.active) return;
         this.sparks.explode(4, bul.x, bul.y);
-        this.kill(bul);
+        if (bul.pierce > 0) { bul.pierce--; bul.hitSet = bul.hitSet || new Set(); if (bul.hitSet.has(e)) return; bul.hitSet.add(e); } else this.kill(bul);
         if (!bul.ghost) e.damage(1);
       });
       ph.add.overlap(bodies, this.ebullets, (a, b) => {
         const [z, bul] = pick(a, b, (o) => !!o.owner);
         if (!bul.active || z.owner.dead) return;
+        const shield = this.underDome(z.owner, true);
         this.kill(bul);
+        if (shield) {                                    // Aegis: the shot goes back the way it came
+          const back = this.fire(shield, bul.x, bul.y, Math.atan2(-bul.body.velocity.y, -bul.body.velocity.x));
+          if (back) back.setTint(0x8ac8ff);
+          return;
+        }
         z.owner.hit();
       });
       // grenades and bombs burst on the ground and kill on touch
@@ -321,18 +396,20 @@
     }
     fire(player, x, y, a, ghost) {
       const b = this.shot(this.bullets, 'bullet', x, y, a, CG.CONFIG.PLAYER.bulletSpeed, 16);
-      if (!b) return;
-      b.isBullet = true; b.shooter = player; b.ghost = !!ghost;
-      if (player.stormT > 0 && this.anims.exists('fx_storm')) {
+      if (!b) return null;
+      b.isBullet = true; b.shooter = player; b.ghost = !!ghost; b.pierce = 0;
+      if (player && player.perkGold) b.setTint(0xffd27a); else b.clearTint();
+      if (player && player.stormT > 0 && this.anims.exists('fx_storm')) {
         const f = this.add.sprite(x, y, 'fx_storm', 0).setOrigin(0, 0.5).setRotation(a).setScale(0.35).setDepth(12);
         f.play('fx_storm');
         this.time.delayedCall(60, () => f.destroy());
-        return;
+        return b;
       }
       const sc = this.artScale.flash;
       const f = this.add.image(x, y, 'flash').setDepth(12).setRotation(a);
       if (sc) f.setOrigin(0, 0.5).setScale(sc * 0.7).setBlendMode(ADD);
       this.tweens.add({ targets: f, alpha: 0, duration: 60, onComplete: () => f.destroy() });
+      return b;
     }
     efire(x, y, a) {
       this.shot(this.ebullets, 'ebullet', x, y, a, CG.CONFIG.ENEMY_BULLET_SPEED + 35 * this.diff, 16);
@@ -484,7 +561,7 @@
       this.over = true;
       this.say('GAME OVER', 5000);
       CG.Sfx.play('over');
-      this.time.delayedCall(1400, () => CG.UI.gameOver(this.score, this.cfg.stage, this.adminUsed || !!this.net));
+      this.time.delayedCall(1400, () => CG.UI.gameOver(this.score, this.cfg.stage, { admin: this.adminUsed, online: !!this.net }));
     }
 
     // ---------------------------------------------------------------- abilities and their effects
@@ -495,6 +572,50 @@
       f.play(key);
       if (!this.anims.get(key).repeat) f.once('animationcomplete', () => f.destroy());
       return f;
+    }
+    // the ability's name pops up over the player
+    callout(p, text) {
+      const t = this.add.text(p.body.center.x, p.body.top - 70, text, ts(30, p.agent.color)).setOrigin(0.5).setDepth(40).setShadow(0, 3, '#000', 6);
+      this.tweens.add({ targets: t, y: t.y - 60, alpha: 0, delay: 500, duration: 700, ease: 'Quad.out', onComplete: () => t.destroy() });
+      this.cameras.main.flash(90, 255, 255, 255, false);
+      this.cameras.main.shake(120, 0.004);
+    }
+    abilityReady(p) {
+      if (p.remote) return;
+      const i = this.players.indexOf(p), h = this.hud && this.hud[i];
+      if (h && h.ab) this.tweens.add({ targets: h.ab, scale: { from: h.ab.scale * 1.5, to: h.ab.scale }, duration: 350, ease: 'Back.out' });
+      if (!p.bot) CG.Sfx.play('ready');
+    }
+    // is this player inside a teammate's Aegis dome? Returns the dome's owner (or null)
+    underDome(p, self) {
+      for (const q of this.players) {
+        if (q.domeT > 0 && q.alive && (self || q !== p) && Math.abs(q.body.center.x - p.body.center.x) < q.agent.ability.range
+          && Math.abs(q.body.bottom - p.body.bottom) < 140) return q;
+      }
+      return null;
+    }
+    throwGrenade(p) {
+      const g = this.grenades.get(p.body.center.x, p.body.top + 20, 'bomb');
+      if (!g) return;
+      g.setTexture('bomb').setActive(true).setVisible(true).setDepth(9).setScale(1.4).setTint(0x7fb3ff);
+      g.isFrag = true; g.owner = p;
+      g.body.enable = true; g.body.allowGravity = true;
+      g.body.setSize(18, 18, true);
+      g.body.reset(p.body.center.x, p.body.top + 20);
+      g.body.setVelocity(p.facing * 560 + p.body.velocity.x * 0.5, -760);
+      g.body.setAngularVelocity(p.facing * 600);
+    }
+    fragBurst(g) {
+      const ab = CG.AGENT.jax.ability, x = g.x, y = g.y;
+      g.setActive(false).setVisible(false); g.body.stop(); g.body.enable = false;
+      this.boom(x, y - 20, 30);
+      this.boom(x - 70, y - 10, 12); this.boom(x + 70, y - 10, 12);
+      CG.Sfx.play('bigboom');
+      this.cameras.main.shake(200, 0.01);
+      for (const e of this.enemies.getChildren().slice()) {
+        if (!e.active) continue;
+        if (Phaser.Math.Distance.Between(x, y, e.body.center.x, e.body.center.y) < ab.radius + e.body.halfWidth) e.damage(ab.damage);
+      }
     }
     hurtFx(p) {
       this.sparks.explode(6, p.body.center.x, p.body.center.y);
@@ -525,6 +646,7 @@
       const c = p.body.center;
       const f = this.fxSprite('fx_dash', c.x + p.facing * 60, c.y, 1.2, { depth: 9 });
       if (f) f.setFlipX(p.facing < 0);
+      p.dashRefund = false;
       this.time.delayedCall(180, () => this.fxSprite('fx_blink', p.body.center.x, p.body.center.y, 0.8));
     }
     // Phase Dash: every enemy the dash passes through takes damage once
@@ -537,11 +659,12 @@
           p.dashHit.add(e);
           this.fxSprite('fx_slash', b.center.x, b.center.y, 0.6);
           e.damage(p.agent.ability.damage);
+          if (!e.active && !p.dashRefund) { p.dashRefund = true; p.abilityCd *= 0.5; }
         }
       }
     }
     // Chain Arc: lightning from the player to the nearest enemy on screen, then on to the next nearest
-    chainArc(p, n, dmg) {
+    chainArc(p, n, dmg, stun) {
       const cam = this.cameras.main, W = CG.CONFIG.W;
       const pool = this.enemies.getChildren().filter((e) => e.active && e.x > cam.scrollX - 20 && e.x < cam.scrollX + W + 20);
       let from = { x: p.body.center.x, y: p.body.center.y }, hits = [];
@@ -560,6 +683,7 @@
       hits.forEach((e, i) => this.time.delayedCall(i * 60, () => {
         if (!e.active) return;
         this.fxSprite('fx_spark', e.body.center.x, e.body.center.y, 0.7);
+        if (stun && !e.T.boss) e.stunT = stun;
         e.damage(dmg);
       }));
       if (!hits.length) this.fxSprite('fx_charge', p.body.center.x, p.body.center.y, 0.8);
@@ -618,6 +742,7 @@
       this.bullets.children.iterate((b) => { if (b && b.active && off(b)) this.kill(b); });
       this.ebullets.children.iterate((b) => { if (b && b.active && off(b)) this.kill(b); });
       this.ebombs.children.iterate((b) => { if (b && b.active && (b.y > H + 60 || b.x < this.camX - 200)) this.kill(b); });
+      this.grenades.children.iterate((g) => { if (g && g.active && (g.y > H + 60 || g.x > this.camX + W + 200)) this.kill(g); });
       if (!this.isClient) this.pickups.children.iterate((k) => { if (k && k.active && (k.x < this.camX - 100 || k.y > H + 100)) k.destroy(); });
 
       // boss fight: camera locked at the fortress, soldiers keep arriving from behind
@@ -634,6 +759,10 @@
 
       this.updateHud();
       this.updateDomes();
+      if (this.touchPlayer && CG.Touch.enabled) {
+        const p = this.touchPlayer;
+        CG.Touch.cooldown(p.abilityCd / (p.agent.ability.cd * (p.perkCd || 1)));
+      }
       this.scoreText.setText(String(this.score).padStart(7, '0'));
     }
   };

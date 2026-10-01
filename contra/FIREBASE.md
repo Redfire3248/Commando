@@ -5,6 +5,13 @@ friend codes), party invites, parties, the matchmaking queue, **online co-op mat
 
 It is free on Firebase's Spark plan.
 
+## Season 3 update — paste the rules again
+
+Season 3 adds callsigns (`usernames`), the shop (`shop`, only the admin's email can change it) and the admin's
+access to everyone's coins. Open **Realtime Database → Rules**, replace everything with the rules in step 4
+below and click **Publish**. The admin is `redjai1981@gmail.com` (it is written into the rules and into
+`CG.Net.ADMIN_EMAILS` in `src/net.js`; change both to move it to another account).
+
 ## If your project is already set up (season 1) — do these three things
 
 1. **Turn on Google sign-in.** Firebase console → **Build → Authentication → Sign-in method** → **Google** →
@@ -37,13 +44,27 @@ Then **Settings → Authorized domains → Add domain** → your website (for ex
 {
   "rules": {
     "users": {
+      ".read": "auth != null && auth.token.email === 'redjai1981@gmail.com'",
       "$uid": {
         ".read": "auth != null",
-        ".write": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (auth.uid === $uid || auth.token.email === 'redjai1981@gmail.com')",
         "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16" },
-        "best": { ".validate": "newData.isNumber()" }
+        "username": { ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_]{3,16}$/)" },
+        "best": { ".validate": "newData.isNumber()" },
+        "coins": { ".validate": "newData.isNumber() && newData.val() >= 0" }
       }
     },
+    "usernames": {
+      "$name": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid) || (data.val() === auth.uid && !newData.exists()))"
+      }
+    },
+    "shop": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'redjai1981@gmail.com'"
+    },
+    "admins": { ".read": "auth != null" },
     "codes": {
       "$code": {
         ".read": "auth != null",

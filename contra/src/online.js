@@ -193,7 +193,9 @@ CG.Online = {
     if (!sc || !m || m.from === N.uid || Date.now() - (m.at || 0) > 8000) return;
     if (m.t === 'heal') {
       for (const p of sc.players) {
-        if (p.owner === N.uid && p.alive && (m.all || Math.abs(p.body.center.x - m.x) < m.range)) p.heal(m.n);
+        if (p.owner !== N.uid || !(m.all || Math.abs(p.body.center.x - m.x) < m.range)) continue;
+        if (p.out && m.revive) p.respawn();
+        else if (p.alive) { p.heal(m.n); if (m.revive) p.invT = Math.max(p.invT, 1500); }
       }
       if (!m.all) sc.fxSprite('fx_mend', m.x, m.y + 10, 1.4, { origin: [0.5, 1], depth: 6 });
     } else if (m.t === 'arc') {
@@ -214,7 +216,7 @@ CG.Online = {
     sc.netCamX = s.cx;
     if (s.bo && !sc.bossOn) { sc.bossOn = true; sc.say(CG.DATA.level.boss.say, 1800); }
     if (s.cl && !sc.cleared) { sc.cleared = true; sc.say('STAGE CLEAR', 2400); CG.Sfx.play('clear'); }
-    if (s.ov && !sc.over) { sc.over = true; sc.say('GAME OVER', 5000); CG.Sfx.play('over'); sc.time.delayedCall(1400, () => CG.UI.gameOver(sc.score, sc.cfg.stage, true)); }
+    if (s.ov && !sc.over) { sc.over = true; sc.say('GAME OVER', 5000); CG.Sfx.play('over'); sc.time.delayedCall(1400, () => CG.UI.gameOver(sc.score, sc.cfg.stage, { online: true })); }
 
     // enemies: create the new ones, move the rest, blow up the ones that are gone
     const seen = new Set();

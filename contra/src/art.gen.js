@@ -126,7 +126,22 @@ CG.DATA.art = {
   "bgp_far_base": "assets/atlas/bgp_far_base.png",
   "bgp_near_base": "assets/atlas/bgp_near_base.png",
   "bgp_sky_snow": "assets/atlas/bgp_sky_snow.png",
-  "bgp_near_snow": "assets/atlas/bgp_near_snow.png"
+  "bgp_near_snow": "assets/atlas/bgp_near_snow.png",
+  "bg15_1": "assets/atlas/bg15_1.png",
+  "bg15_2": "assets/atlas/bg15_2.png",
+  "bg15_3": "assets/atlas/bg15_3.png",
+  "bg15_4": "assets/atlas/bg15_4.png",
+  "bg15_5": "assets/atlas/bg15_5.png",
+  "bg15_6": "assets/atlas/bg15_6.png",
+  "bg15_7": "assets/atlas/bg15_7.png",
+  "bg15_8": "assets/atlas/bg15_8.png",
+  "bg15_9": "assets/atlas/bg15_9.png",
+  "bg15_10": "assets/atlas/bg15_10.png",
+  "bg15_11": "assets/atlas/bg15_11.png",
+  "bg15_12": "assets/atlas/bg15_12.png",
+  "bg15_13": "assets/atlas/bg15_13.png",
+  "bg15_14": "assets/atlas/bg15_14.png",
+  "bg15_15": "assets/atlas/bg15_15.png"
  },
  "sheets": {
   "commandos": {
@@ -955,7 +970,22 @@ CG.DATA.art = {
   "bgp_far_base",
   "bgp_near_base",
   "bgp_sky_snow",
-  "bgp_near_snow"
+  "bgp_near_snow",
+  "bg15_1",
+  "bg15_2",
+  "bg15_3",
+  "bg15_4",
+  "bg15_5",
+  "bg15_6",
+  "bg15_7",
+  "bg15_8",
+  "bg15_9",
+  "bg15_10",
+  "bg15_11",
+  "bg15_12",
+  "bg15_13",
+  "bg15_14",
+  "bg15_15"
  ],
  "backgrounds": {
   "jungle": {
@@ -970,5 +1000,22 @@ CG.DATA.art = {
    "sky": "bgp_sky_snow",
    "near": "bgp_near_snow"
   }
- }
+ },
+ "bg15": [
+  "bg15_1",
+  "bg15_2",
+  "bg15_3",
+  "bg15_4",
+  "bg15_5",
+  "bg15_6",
+  "bg15_7",
+  "bg15_8",
+  "bg15_9",
+  "bg15_10",
+  "bg15_11",
+  "bg15_12",
+  "bg15_13",
+  "bg15_14",
+  "bg15_15"
+ ]
 };
