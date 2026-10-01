@@ -156,3 +156,139 @@ ROW 4 — FROZEN PASS OBJECTS. Cell 1: a LEDGE — a flat slab of snow-covered r
 
 ROW 5 — JUNGLE EXTRAS. Cell 1: a palm tree trunk with fronds. Cell 2: a bamboo cluster. Cell 3: hanging vines. Cell 4: a wooden watchtower. Cell 5: a rope bridge section, flat level top. Cell 6: a stone idol. Cell 7: a jungle flower bush. Cell 8: a fallen log. Cell 9: a wooden bunker entrance. Cell 10: a camouflage net.
 ```
+
+---
+
+# Season 2 — agents, backgrounds, scenery, abilities
+
+All of these match the look of `commandos.png` (gritty painted 1980s action-movie art). **Attach nothing.**
+Save each result into `contra/assets/` under the name given and tell me, then I slice it.
+
+## 5 — All five agents in one sheet → `agents.png` (10 columns × 10 rows, 2 rows per agent)
+
+**Attach:** nothing. Every agent has the same 20 poses in the same cells, so they all animate the same way.
+
+```
+Hand-painted 2D game art for a side-scrolling run-and-gun action game. Gritty 1980s action-movie look: bold readable silhouettes, strong rim lighting from the upper right, crisp painted edges, subtle brush texture, no photorealism, no pixel art. Strict orthographic side view, no perspective, no camera tilt.
+
+GRID: one square sprite sheet laid out as a strict grid: EXACTLY 10 columns and 10 rows, 100 cells, each cell exactly 256×256 pixels, total image exactly 2560×2560 pixels. EXACTLY one sprite in every cell, 10 sprites in every row, no empty cells. Cells read left to right, top row first. Each sprite sits completely inside its own cell with at least 12 pixels of empty space on every side, never touching or crossing into a neighbouring cell. Every agent is drawn at the same scale, about 190 pixels tall when standing, and looks exactly the same in all of their cells. Standing and running poses are centred and stand on the same baseline 20 pixels above the bottom of the cell. Every agent faces RIGHT in every frame.
+
+BACKGROUND: REMOVE THE BACKGROUND COMPLETELY. Fully transparent PNG with a real alpha channel — no background colour, no white, no grey, NO CHECKERBOARD PATTERN, no gradient, no scenery, no floor line, no shadows, no glow box behind any sprite. No grid lines, no borders, no text, no letters, no numbers, no names, no labels, no watermark, no dust, no speed lines, no muzzle flashes, no bullets.
+
+LEGS: the NEAR leg is painted slightly lighter and the FAR leg slightly darker; in every run frame both legs are in clearly different positions from the frame before.
+
+THE FIVE AGENTS — each holds their own gun in both hands in every one of their frames, the same design and size every time, with the barrel pointing exactly in the direction named for the frame:
+ROWS 1–2 — RAZOR (male heavy gunner): a huge broad-shouldered man, shaved head, thick black beard, ORANGE headband with two short tails, olive-green sleeveless tank top, brass ammunition belt across the chest, desert-tan camouflage cargo trousers, black combat boots, fingerless gloves. GUN: a heavy six-barrel rotary minigun, black steel, round ammo drum underneath, orange stripe.
+ROWS 3–4 — NOVA (female field medic): an athletic woman with dark brown skin and short curly black hair, WHITE headband with a small red cross, TEAL tactical vest over a black long-sleeve shirt, medical pouch on the hip, grey camouflage trousers, black combat boots. GUN: a compact white-and-grey pulse rifle with a glowing teal energy cell.
+ROWS 5–6 — KITE (female scout): a lean, quick woman with fiery red hair in a high ponytail, GREEN bandana on the forehead, short black tactical jacket with rolled sleeves, green jungle-camouflage trousers, light brown lace-up boots, a knife strapped to the thigh. GUN: a short black submachine gun with a long curved magazine and a green grip.
+ROWS 7–8 — BRICK (male breacher): a massive armoured man, dark steel combat helmet with the visor pushed up, square stubbled jaw, thick STEEL-BLUE armour plates on chest and shoulders, dark grey trousers with knee pads, heavy black boots, a small round riot shield strapped to the left forearm. GUN: a pump-action combat shotgun, black steel barrel, ribbed pump grip, blue stripe on the stock.
+ROWS 9–10 — VOLT (male tech marksman): a wiry man with spiky white-blond hair, round brass goggles pushed up on the forehead, long PURPLE tactical coat with the tails flaring behind, black utility harness with small battery packs, black trousers and boots. GUN: a long gunmetal rail rifle with two parallel rails along the barrel and three small glowing purple coils.
+
+THE 20 POSES — every agent uses exactly these, in this order, across their two rows:
+FIRST ROW OF EACH AGENT
+Cells 1 to 6 — RUN, gun aimed straight FORWARD, a full six-step cycle, body leaning forward. Cell 1: near leg stretched far forward with the heel down, far leg stretched far behind on its toe. Cell 2: near foot flat under the body, knee bent, body lowest, far foot lifting behind. Cell 3: standing on the near leg, far knee raised high in front. Cell 4: far leg stretched far forward, near leg far behind on its toe. Cell 5: far foot flat under the body, near foot lifting behind. Cell 6: standing on the far leg, near knee raised high.
+Cell 7 — STANDING, feet apart, gun aimed straight FORWARD.
+Cell 8 — STANDING, gun aimed STRAIGHT UP.
+Cell 9 — STANDING, gun aimed DIAGONALLY UP (45 degrees up and forward).
+Cell 10 — STANDING, gun aimed DIAGONALLY DOWN (45 degrees down and forward).
+SECOND ROW OF EACH AGENT
+Cells 1 to 3 — RUN with the gun aimed DIAGONALLY UP: near leg far forward; legs passing with one knee raised; far leg far forward.
+Cells 4 to 6 — RUN with the gun aimed DIAGONALLY DOWN, the same three steps.
+Cell 7 — PRONE: lying flat on the stomach along the baseline, propped on the elbows, gun aimed straight FORWARD.
+Cells 8, 9 — SOMERSAULT JUMP: curled into a tight ball, knees to chest, gun tucked in; cell 8 head at the top, cell 9 the same ball turned half a turn, head at the bottom.
+Cell 10 — DEATH: knocked backwards through the air, back arched, arms thrown wide, gun slipping from the hands.
+```
+
+## 6 — Agent portraits, ability icons, pick-ups → `agents_ui.png` (10 × 5)
+```
+Hand-painted 2D game art for a run-and-gun action game, gritty 1980s action-movie look, bold painted edges, strong rim light from the upper right, no photorealism, no pixel art.
+
+GRID: one sheet laid out as a strict grid: EXACTLY 10 columns and 5 rows, 50 cells, each cell exactly 256×256 pixels, total image exactly 2560×1280 pixels. EXACTLY one item in every cell, centred, with at least 12 pixels of empty space on every side.
+
+BACKGROUND: REMOVE THE BACKGROUND COMPLETELY. Fully transparent PNG with a real alpha channel — no background colour, NO CHECKERBOARD PATTERN, no gradient, no scenery, no shadows. No grid lines, no borders, no text, no letters, no numbers, no labels, no watermark.
+
+THE FIVE AGENTS (used in rows 1 and 2):
+RAZOR — huge bearded man, shaved head, orange headband, olive tank top, brass ammo belt, rotary minigun.
+NOVA — athletic woman, dark brown skin, short curly black hair, white headband with a red cross, teal tactical vest, pulse rifle with a teal cell.
+KITE — lean woman, red hair in a high ponytail, green bandana, black tactical jacket, small submachine gun.
+BRICK — massive armoured man, steel helmet with the visor up, stubble, steel-blue armour plates, round riot shield, pump shotgun.
+VOLT — wiry man, spiky white-blond hair, brass goggles on the forehead, long purple coat, rail rifle with purple coils.
+
+ROW 1 — PORTRAITS, head and shoulders, three-quarter view facing right, filling most of the cell: cells 1 to 5 are RAZOR, NOVA, KITE, BRICK, VOLT. Cells 6 to 10: the same five portraits in darker, desaturated colours (locked / taken).
+ROW 2 — ABILITY ICONS, each a bold symbol inside a round dark steel badge with a coloured rim: cell 1 RAZOR "Bullet Storm": three bullets fanning out over a spinning barrel, orange. Cell 2 NOVA "Mend": a glowing plus sign with a ring around it, teal. Cell 3 KITE "Phase Dash": a running silhouette with speed streaks, green. Cell 4 BRICK "Aegis": a round shield in front of a dome, steel blue. Cell 5 VOLT "Chain Arc": a forked lightning bolt jumping between three dots, purple. Cells 6 to 10: the same five icons greyed out (on cooldown).
+ROW 3 — PICK-UPS: cell 1 a small first-aid kit (white box, red cross); cell 2 a large military medkit (olive case, red cross); cell 3 a red heart-shaped dog tag (team life); cell 4 an ammo crate; cells 5 to 8 four gun pick-ups lying flat, pointing right: a rotary minigun, a pulse rifle, a pump shotgun, a rail rifle; cell 9 a steel winged badge with a lightning bolt; cell 10 a steel winged badge with a shield.
+ROW 4 — HUD BITS: cell 1 a small red heart; cell 2 the same heart empty (dark outline only); cell 3 a dog-tag pair (lives); cell 4 a skull (down); cell 5 a crown (party leader); cells 6 to 10 five small round colour badges: blue, red, green, yellow, purple.
+ROW 5 — MENU ICONS, white on a round dark badge: friends (two people), party (three people), queue (hourglass), invite (envelope), settings (gear), admin (wrench), bot (robot head), Google-style sign-in (a plain key, no logo), trophy, exit door.
+```
+
+## 7 — Ability effects → `ability_fx.png` (10 × 5)
+```
+Hand-painted 2D game effects for a run-and-gun action game, gritty 1980s action-movie look, crisp painted edges, no photorealism, no pixel art. Effects are bright and readable over a dark jungle background.
+
+GRID: one sheet laid out as a strict grid: EXACTLY 10 columns and 5 rows, 50 cells, each cell exactly 256×256 pixels, total image exactly 2560×1280 pixels. EXACTLY one effect frame in every cell, centred, with at least 12 pixels of empty space on every side.
+
+BACKGROUND: REMOVE THE BACKGROUND COMPLETELY. Fully transparent PNG with a real alpha channel — no background colour, NO CHECKERBOARD PATTERN, no black box behind the effects, no scenery. No grid lines, no borders, no text, no letters, no numbers, no labels, no watermark.
+
+ROW 1 — RAZOR BULLET STORM: cells 1 to 4 a big orange-white muzzle blast pointing right, four flicker frames; cells 5 to 7 a short hot orange tracer bullet flying right, three frames; cells 8 to 10 spinning brass shell casings, three frames.
+ROW 2 — NOVA MEND: cells 1 to 5 a teal healing ring expanding outward along the ground, from small to large and fading; cells 6 to 10 rising teal plus-sign sparkles, five frames.
+ROW 3 — KITE PHASE DASH: cells 1 to 4 a long green speed streak / afterimage trail pointing right, from bright to fading; cells 5 to 7 a green burst where she appears; cells 8 to 10 a small green impact slash.
+ROW 4 — BRICK AEGIS: cells 1 to 3 a translucent steel-blue energy dome forming (small, half, full); cells 4 to 6 the full dome flickering; cells 7 to 10 the dome cracking and breaking apart.
+ROW 5 — VOLT CHAIN ARC: cells 1 to 4 a long horizontal purple-white lightning bolt, four different jagged shapes, each filling the cell from the left edge to the right edge; cells 5 to 7 a purple electric spark burst on impact; cells 8 to 10 a purple charge-up glow gathering into a point.
+```
+
+## 8 — Painted backgrounds (one image per layer and theme, 9 prompts)
+
+Each layer scrolls at a different speed. **The left edge must continue seamlessly into the right edge.**
+Sky layers are solid; mountain and tree layers have a transparent top so the sky shows through.
+
+### 8a — Jungle sky → `bg_sky_jungle.png`
+```
+Hand-painted 2D game background, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. A wide panoramic SKY ONLY for a side-scrolling jungle war game: a hot hazy late-afternoon sky, warm orange and gold near the horizon fading to deep teal-blue at the top, long soft streaks of cloud, a low hazy sun on the left. No ground, no trees, no mountains, no birds, no aircraft, no text, no watermark, no borders. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT: the colours and clouds at the left edge continue exactly into the right edge.
+```
+### 8b — Jungle mountains → `bg_far_jungle.png`
+```
+Hand-painted 2D game background layer, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. Distant misty jungle mountains and volcanic peaks seen from the side, blue-green and hazy with atmospheric perspective, a few waterfalls, occupying only the LOWER HALF of the image; the bottom edge is fully covered by the hills. REMOVE THE BACKGROUND COMPLETELY above the mountains: fully transparent PNG with a real alpha channel, no sky, no clouds, NO CHECKERBOARD PATTERN, no colour fill. No text, no watermark, no borders. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT: the ridge line at the left edge continues exactly into the right edge.
+```
+### 8c — Jungle trees → `bg_trees_jungle.png`
+```
+Hand-painted 2D game background layer, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. A dense line of jungle trees seen from the side: tall palm trees, broad-leaf trees, hanging vines and ferns, dark green with warm rim light from the left, occupying the LOWER 60 PERCENT of the image; the bottom edge is fully covered by thick dark foliage. REMOVE THE BACKGROUND COMPLETELY above and between the treetops: fully transparent PNG with a real alpha channel, no sky, NO CHECKERBOARD PATTERN, no colour fill. No text, no watermark, no borders, no animals, no people. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT.
+```
+### 8d — Steel Yard sky → `bg_sky_base.png`
+```
+Hand-painted 2D game background, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. A wide panoramic NIGHT SKY ONLY over a military base: deep navy to near-black at the top, a dull orange glow of floodlights near the horizon, thin drifting smoke, a few stars, two pale searchlight beams crossing. No ground, no buildings, no text, no watermark, no borders. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT.
+```
+### 8e — Steel Yard skyline → `bg_far_base.png`
+```
+Hand-painted 2D game background layer, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. A distant silhouette skyline of a huge night-time military base seen from the side: radar dishes, smokestacks with red warning lights, hangars, cranes, water towers, dark blue-grey with small warm windows, occupying only the LOWER HALF of the image; the bottom edge is fully covered. REMOVE THE BACKGROUND COMPLETELY above the skyline: fully transparent PNG with a real alpha channel, no sky, NO CHECKERBOARD PATTERN, no colour fill. No text, no watermark, no borders. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT.
+```
+### 8f — Steel Yard fences and structures → `bg_trees_base.png`
+```
+Hand-painted 2D game background layer, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. A closer row of military base structures seen from the side: chain-link fences with barbed wire, guard towers, stacked shipping containers, fuel tanks, pipes and floodlight poles, dark steel grey with orange floodlight rim light, occupying the LOWER 55 PERCENT of the image; the bottom edge is fully covered. REMOVE THE BACKGROUND COMPLETELY above and between the structures: fully transparent PNG with a real alpha channel, no sky, NO CHECKERBOARD PATTERN, no colour fill. No text, no watermark, no borders, no people. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT.
+```
+### 8g — Frozen Pass sky → `bg_sky_snow.png`
+```
+Hand-painted 2D game background, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. A wide panoramic cold winter SKY ONLY over high mountains: pale grey-blue with heavy snow clouds, a cold white sun glow behind the clouds, light falling snow. No ground, no mountains, no text, no watermark, no borders. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT.
+```
+### 8h — Frozen Pass mountains → `bg_far_snow.png`
+```
+Hand-painted 2D game background layer, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. Distant jagged snow-covered mountain peaks seen from the side, icy blue shadows and white snowfields, hazy with distance, occupying only the LOWER HALF of the image; the bottom edge is fully covered. REMOVE THE BACKGROUND COMPLETELY above the peaks: fully transparent PNG with a real alpha channel, no sky, NO CHECKERBOARD PATTERN, no colour fill. No text, no watermark, no borders. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT.
+```
+### 8i — Frozen Pass pines → `bg_trees_snow.png`
+```
+Hand-painted 2D game background layer, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. A dense line of tall snow-covered pine trees seen from the side, dark green-blue under heavy white snow, a few broken trunks and rocks, occupying the LOWER 60 PERCENT of the image; the bottom edge is fully covered by snowy trees. REMOVE THE BACKGROUND COMPLETELY above and between the treetops: fully transparent PNG with a real alpha channel, no sky, NO CHECKERBOARD PATTERN, no colour fill. No text, no watermark, no borders, no animals, no people. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT.
+```
+
+## 9 — Trees and scenery → `scenery.png` (10 × 5)
+```
+Hand-painted 2D game art for a side-scrolling run-and-gun action game, gritty 1980s action-movie look, strong rim lighting from the upper right, crisp painted edges, no photorealism, no pixel art. Strict side view, no perspective.
+
+GRID: one sheet laid out as a strict grid: EXACTLY 10 columns and 5 rows, 50 cells, each cell exactly 256×256 pixels, total image exactly 2560×1280 pixels. EXACTLY one object in every cell, each standing on the same baseline 12 pixels above the bottom of its cell, centred left to right, with at least 12 pixels of space at the sides and top. Tall objects (trees, towers) fill most of the cell height.
+
+BACKGROUND: REMOVE THE BACKGROUND COMPLETELY. Fully transparent PNG with a real alpha channel — no background colour, NO CHECKERBOARD PATTERN, no gradient, no scenery, no ground strip, no shadows. No grid lines, no borders, no text, no letters, no numbers, no labels, no watermark.
+
+ROW 1 — JUNGLE TREES: a tall palm tree; a leaning palm tree; a pair of palm trees; a broad jungle tree with a thick trunk; a tree with hanging vines; a dead burnt tree; a banana plant; a tall bamboo cluster; a giant fern; a tree stump with mushrooms.
+ROW 2 — JUNGLE SCENERY: a thick bush; a flowering bush; a mossy boulder; a fallen log; a stone idol; a wooden watchtower; a straw hut; a rope-and-plank fence; a sandbag wall; a broken jeep.
+ROW 3 — STEEL YARD: a floodlight tower; a radio mast; a stack of oil barrels; a shipping container; a fuel tank on legs; a sandbag gun nest; a chain-link fence section with barbed wire; a concrete barrier; a stack of tyres; a crashed helicopter wreck.
+ROW 4 — FROZEN PASS: a tall snowy pine; a small snowy pine; a bare frozen tree; a snow-covered boulder; an ice crystal cluster; a snowdrift; a snowy tent; a frozen supply crate; a broken wooden fence with snow; a frozen lantern post.
+ROW 5 — BATTLEFIELD (any stage): a wooden warning sign with no writing; a barbed-wire tangle; a shell crater rim; a tank trap; a stack of ammo crates; a broken stone wall; a flag pole with a torn blank flag; a burning oil drum; a field radio on a crate; a skull on a stick.
+```
