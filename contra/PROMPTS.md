@@ -169,7 +169,7 @@ Save each result into `contra/assets/` under the name given and tell me; I slice
 ```
 GENERATE THIS IMAGE NOW from the description below. There is NO reference image: do not ask for one, create everything from scratch.
 
-16-BIT PIXEL ART sprite sheet for a side-scrolling run-and-gun game in the style of classic early-1990s console run-and-gun games. Every character is drawn on a tiny canvas about 48 art-pixels tall, then scaled up exactly 4 times with hard nearest-neighbour edges, so every art-pixel is a crisp 4×4 block of ONE flat colour. Limited palette, flat colours with 2- or 3-step shading, a 1-pixel dark outline around every character. NO anti-aliasing, NO blur, NO soft edges, NO gradients, NO glow, NO painterly brush strokes, NO high-detail illustration. Strict side view, no perspective.
+16-BIT PIXEL ART sprite sheet for a side-scrolling run-and-gun game, an original retro 16-bit look with chunky square pixels. Every character is drawn on a tiny canvas about 48 art-pixels tall, then scaled up exactly 4 times with hard nearest-neighbour edges, so every art-pixel is a crisp 4×4 block of ONE flat colour. Limited palette, flat colours with 2- or 3-step shading, a 1-pixel dark outline around every character. NO anti-aliasing, NO blur, NO soft edges, NO gradients, NO glow, NO painterly brush strokes, NO high-detail illustration. Strict side view, no perspective.
 
 GRID: one square sprite sheet laid out as a strict grid: EXACTLY 10 columns and 10 rows, 100 cells, each cell exactly 256×256 pixels, total image exactly 2560×2560 pixels. EXACTLY one sprite in every cell, 10 in every row, no empty cells. Cells read left to right, top row first. Each sprite sits completely inside its own cell with plenty of empty space around it, never touching a neighbouring cell. Every agent is the same size (about 192 pixels tall standing = 48 art-pixels) on the same pixel scale in every cell. Standing and running poses are centred and stand on the same baseline 20 pixels above the bottom of the cell. Everyone faces RIGHT.
 
@@ -195,7 +195,7 @@ SECOND ROW: Cells 1 to 3 — RUN with the rifle aimed DIAGONALLY UP (three steps
 ```
 GENERATE THIS IMAGE NOW from the description below. There is NO reference image: do not ask for one, create everything from scratch.
 
-16-BIT PIXEL ART for a side-scrolling run-and-gun game in the style of classic early-1990s console games. Everything is drawn small and scaled up exactly 4 times with hard nearest-neighbour edges, so every art-pixel is a crisp 4×4 block of one flat colour. Limited palette, flat colours with simple shading, a 1-pixel dark outline. NO anti-aliasing, NO blur, NO gradients, NO glow, NO painterly detail.
+16-BIT PIXEL ART for a side-scrolling run-and-gun game, an original retro 16-bit look with chunky square pixels. Everything is drawn small and scaled up exactly 4 times with hard nearest-neighbour edges, so every art-pixel is a crisp 4×4 block of one flat colour. Limited palette, flat colours with simple shading, a 1-pixel dark outline. NO anti-aliasing, NO blur, NO gradients, NO glow, NO painterly detail.
 
 GRID: one sheet laid out as a strict grid: EXACTLY 10 columns and 5 rows, 50 cells, each cell exactly 256×256 pixels, total image exactly 2560×1280 pixels. EXACTLY one item in every cell, centred, with empty space around it.
 
@@ -214,7 +214,7 @@ ROW 5 — MENU ICONS, white symbols on a round dark badge: two people (friends);
 ```
 GENERATE THIS IMAGE NOW from the description below. There is NO reference image: do not ask for one, create everything from scratch.
 
-16-BIT PIXEL ART effects for a side-scrolling run-and-gun game in the style of classic early-1990s console games. Drawn small and scaled up exactly 4 times with hard nearest-neighbour edges, so every art-pixel is a crisp 4×4 block of one flat colour. Bright flat colours with a few shades, NO soft glow, NO blur, NO gradients, NO anti-aliasing, NO painterly detail.
+16-BIT PIXEL ART effects for a side-scrolling run-and-gun game, an original retro 16-bit look with chunky square pixels. Drawn small and scaled up exactly 4 times with hard nearest-neighbour edges, so every art-pixel is a crisp 4×4 block of one flat colour. Bright flat colours with a few shades, NO soft glow, NO blur, NO gradients, NO anti-aliasing, NO painterly detail.
 
 GRID: one sheet laid out as a strict grid: EXACTLY 10 columns and 5 rows, 50 cells, each cell exactly 256×256 pixels, total image exactly 2560×1280 pixels. EXACTLY one effect frame in every cell, centred.
 
@@ -229,37 +229,35 @@ ROW 5 — CHAIN ARC (purple): cells 1 to 4 a long jagged purple-and-white lightn
 
 ## 8 — All backgrounds → `backgrounds.png` (9 strips in one image)
 ```
-GENERATE THIS IMAGE NOW from the description below. There is NO reference image: do not ask for one, create everything from scratch.
+GENERATE THIS IMAGE NOW from the description below. There is NO reference image: create everything from scratch.
 
-16-BIT PIXEL ART background layers for a side-scrolling run-and-gun game in the style of classic early-1990s console run-and-gun games. Everything is drawn at low resolution and scaled up exactly 4 times with hard nearest-neighbour edges, so every art-pixel is a crisp 4×4 block of one flat colour. Limited palette, flat colour bands and simple dithering for skies, NO anti-aliasing, NO blur, NO smooth gradients, NO glow, NO painterly brush strokes. Everything is seen straight from the side like a stage set; no perspective, no people, no animals, no text.
+An original retro 16-bit PIXEL ART background sheet for a side-scrolling action game: chunky square pixels with hard edges, a limited colour palette, flat colour bands with simple dithering, no blur, no smooth gradients, no glow. Everything is seen straight from the side, like a flat stage set. No people, no animals, no text, no labels, no borders, no watermark.
 
-LAYOUT: one square image, exactly 2560×2560 pixels, made of NINE horizontal STRIPS stacked from top to bottom. Every strip is the FULL WIDTH of the image and one ninth of its height (about 284 pixels tall). Each strip's content stays strictly inside its own band; strips never overlap. No borders, no dividing lines, no grid lines, no labels, no numbers, no watermark.
+One SQUARE image split into NINE equal horizontal STRIPS stacked from top to bottom. Every strip runs the full width of the image and is one ninth of its height. Each strip's picture stays inside its own strip. Every strip repeats seamlessly left to right: its left edge continues into its right edge at the same height.
 
-EVERY STRIP TILES SEAMLESSLY LEFT TO RIGHT: whatever touches the left edge continues exactly into the right edge (same horizon height, same ridge line), so it can repeat sideways forever with no visible seam.
+Strips 1, 4 and 7 are skies and are filled completely. In all the other strips the shapes rise from the bottom of the strip, the bottom edge is fully covered, and everything above and between the shapes is TRANSPARENT (real transparency, no colour fill, no checkerboard pattern).
 
-TRANSPARENCY: strips 1, 4 and 7 (skies) are fully filled edge to edge. In strips 2, 3, 5, 6, 8 and 9 REMOVE THE BACKGROUND COMPLETELY above and between the shapes: fully transparent PNG with a real alpha channel — no sky colour, no fill, NO CHECKERBOARD PATTERN. In those strips the shapes rise from the BOTTOM edge, and the bottom edge is completely covered from the far left to the far right.
+JUNGLE
+1. Sunset sky in horizontal colour bands: dark teal at the top, then blue, purple, orange and yellow at the bottom, a few flat clouds, a big pixel sun low on the left.
+2. Distant blue-green jungle mountains with two thin waterfalls, peaks two thirds of the strip high.
+3. A dense row of dark green palm trees and jungle trees with hanging vines, dark undergrowth along the bottom.
 
-STAGE 1 — JUNGLE
-STRIP 1 — JUNGLE SKY: hot sunset sky in horizontal colour bands — dark teal at the top, then blue, purple, orange and yellow near the bottom — with a few flat pixel clouds and a big pixel sun low on the left. Sky only.
-STRIP 2 — JUNGLE MOUNTAINS (far): distant blue-green mountains with flat colour shading and two thin pixel waterfalls, peaks reaching two thirds up the strip. Transparent above.
-STRIP 3 — JUNGLE TREES (near): a dense row of dark green palm trees and broad jungle trees with hanging vines, treetops reaching nearly to the top of the strip in places. Transparent above and between the treetops; solid dark undergrowth along the bottom.
+MILITARY BASE AT NIGHT
+4. Navy-to-black night sky bands, an orange glow along the bottom, a few single-pixel stars, two pale searchlight beams.
+5. A distant dark blue-grey skyline of radar dishes, smokestacks with red lights, hangars, cranes and water towers with tiny yellow windows.
+6. Close chain-link fences with barbed wire, guard towers, stacked shipping containers, fuel tanks and floodlight poles, dark grey with orange highlights, a concrete wall along the bottom.
 
-STAGE 2 — STEEL YARD (a military base at night)
-STRIP 4 — NIGHT SKY: navy-to-black colour bands, an orange floodlight band along the bottom, a few single-pixel stars, two pale searchlight beams crossing. Sky only.
-STRIP 5 — BASE SKYLINE (far): a dark blue-grey silhouette of radar dishes, smokestacks with red lights, hangars, cranes and water towers, with tiny yellow windows, reaching two thirds up the strip. Transparent above.
-STRIP 6 — BASE STRUCTURES (near): chain-link fences with barbed wire, guard towers, stacked containers, fuel tanks and floodlight poles in dark grey with orange highlights, reaching nearly to the top in places. Transparent above and between; solid concrete wall along the bottom.
-
-STAGE 3 — FROZEN PASS (snowy mountains)
-STRIP 7 — WINTER SKY: pale grey-blue colour bands with heavy flat pixel snow clouds and scattered white snowflake pixels. Sky only.
-STRIP 8 — SNOW PEAKS (far): jagged white-and-icy-blue mountain peaks with flat shading, reaching two thirds up the strip. Transparent above.
-STRIP 9 — SNOWY PINES (near): a dense row of dark blue-green pine trees with white snow on the branches, treetops reaching nearly to the top in places. Transparent above and between; solid snowy ground along the bottom.
+SNOWY MOUNTAINS
+7. Pale grey-blue winter sky bands with heavy flat snow clouds and scattered white snowflake pixels.
+8. Distant jagged white and icy-blue mountain peaks.
+9. A dense row of dark blue-green pine trees with snow on the branches, snowy ground along the bottom.
 ```
 
 ## 9 — Trees and scenery → `scenery.png` (10 × 5)
 ```
 GENERATE THIS IMAGE NOW from the description below. There is NO reference image: do not ask for one, create everything from scratch.
 
-16-BIT PIXEL ART scenery for a side-scrolling run-and-gun game in the style of classic early-1990s console games. Everything is drawn small and scaled up exactly 4 times with hard nearest-neighbour edges, so every art-pixel is a crisp 4×4 block of one flat colour. Limited palette, flat colours with 2- or 3-step shading, a 1-pixel dark outline. NO anti-aliasing, NO blur, NO gradients, NO glow, NO painterly detail. Strict side view.
+16-BIT PIXEL ART scenery for a side-scrolling run-and-gun game, an original retro 16-bit look with chunky square pixels. Everything is drawn small and scaled up exactly 4 times with hard nearest-neighbour edges, so every art-pixel is a crisp 4×4 block of one flat colour. Limited palette, flat colours with 2- or 3-step shading, a 1-pixel dark outline. NO anti-aliasing, NO blur, NO gradients, NO glow, NO painterly detail. Strict side view.
 
 GRID: one sheet laid out as a strict grid: EXACTLY 10 columns and 5 rows, 50 cells, each cell exactly 256×256 pixels, total image exactly 2560×1280 pixels. EXACTLY one object in every cell, standing on the same baseline 12 pixels above the bottom of its cell, centred left to right. Trees and towers fill most of the cell height.
 
