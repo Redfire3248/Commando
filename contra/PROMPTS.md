@@ -167,6 +167,8 @@ Save each result into `contra/assets/` under the name given and tell me; I slice
 
 ## 5 — All five agents → `agents.png` (10 × 10, two rows per agent)
 ```
+GENERATE THIS IMAGE NOW from the description below. There is NO reference image: do not ask for one, create everything from scratch.
+
 16-BIT PIXEL ART sprite sheet for a side-scrolling run-and-gun game in the style of classic early-1990s console run-and-gun games. Every character is drawn on a tiny canvas about 48 art-pixels tall, then scaled up exactly 4 times with hard nearest-neighbour edges, so every art-pixel is a crisp 4×4 block of ONE flat colour. Limited palette, flat colours with 2- or 3-step shading, a 1-pixel dark outline around every character. NO anti-aliasing, NO blur, NO soft edges, NO gradients, NO glow, NO painterly brush strokes, NO high-detail illustration. Strict side view, no perspective.
 
 GRID: one square sprite sheet laid out as a strict grid: EXACTLY 10 columns and 10 rows, 100 cells, each cell exactly 256×256 pixels, total image exactly 2560×2560 pixels. EXACTLY one sprite in every cell, 10 in every row, no empty cells. Cells read left to right, top row first. Each sprite sits completely inside its own cell with plenty of empty space around it, never touching a neighbouring cell. Every agent is the same size (about 192 pixels tall standing = 48 art-pixels) on the same pixel scale in every cell. Standing and running poses are centred and stand on the same baseline 20 pixels above the bottom of the cell. Everyone faces RIGHT.
@@ -191,6 +193,8 @@ SECOND ROW: Cells 1 to 3 — RUN with the rifle aimed DIAGONALLY UP (three steps
 
 ## 6 — Portraits, ability icons, pick-ups, HUD → `agents_ui.png` (10 × 5)
 ```
+GENERATE THIS IMAGE NOW from the description below. There is NO reference image: do not ask for one, create everything from scratch.
+
 16-BIT PIXEL ART for a side-scrolling run-and-gun game in the style of classic early-1990s console games. Everything is drawn small and scaled up exactly 4 times with hard nearest-neighbour edges, so every art-pixel is a crisp 4×4 block of one flat colour. Limited palette, flat colours with simple shading, a 1-pixel dark outline. NO anti-aliasing, NO blur, NO gradients, NO glow, NO painterly detail.
 
 GRID: one sheet laid out as a strict grid: EXACTLY 10 columns and 5 rows, 50 cells, each cell exactly 256×256 pixels, total image exactly 2560×1280 pixels. EXACTLY one item in every cell, centred, with empty space around it.
@@ -208,6 +212,8 @@ ROW 5 — MENU ICONS, white symbols on a round dark badge: two people (friends);
 
 ## 7 — Ability effects → `ability_fx.png` (10 × 5)
 ```
+GENERATE THIS IMAGE NOW from the description below. There is NO reference image: do not ask for one, create everything from scratch.
+
 16-BIT PIXEL ART effects for a side-scrolling run-and-gun game in the style of classic early-1990s console games. Drawn small and scaled up exactly 4 times with hard nearest-neighbour edges, so every art-pixel is a crisp 4×4 block of one flat colour. Bright flat colours with a few shades, NO soft glow, NO blur, NO gradients, NO anti-aliasing, NO painterly detail.
 
 GRID: one sheet laid out as a strict grid: EXACTLY 10 columns and 5 rows, 50 cells, each cell exactly 256×256 pixels, total image exactly 2560×1280 pixels. EXACTLY one effect frame in every cell, centred.
@@ -223,6 +229,8 @@ ROW 5 — CHAIN ARC (purple): cells 1 to 4 a long jagged purple-and-white lightn
 
 ## 8 — All backgrounds → `backgrounds.png` (9 strips in one image)
 ```
+GENERATE THIS IMAGE NOW from the description below. There is NO reference image: do not ask for one, create everything from scratch.
+
 16-BIT PIXEL ART background layers for a side-scrolling run-and-gun game in the style of classic early-1990s console run-and-gun games. Everything is drawn at low resolution and scaled up exactly 4 times with hard nearest-neighbour edges, so every art-pixel is a crisp 4×4 block of one flat colour. Limited palette, flat colour bands and simple dithering for skies, NO anti-aliasing, NO blur, NO smooth gradients, NO glow, NO painterly brush strokes. Everything is seen straight from the side like a stage set; no perspective, no people, no animals, no text.
 
 LAYOUT: one square image, exactly 2560×2560 pixels, made of NINE horizontal STRIPS stacked from top to bottom. Every strip is the FULL WIDTH of the image and one ninth of its height (about 284 pixels tall). Each strip's content stays strictly inside its own band; strips never overlap. No borders, no dividing lines, no grid lines, no labels, no numbers, no watermark.
@@ -249,6 +257,8 @@ STRIP 9 — SNOWY PINES (near): a dense row of dark blue-green pine trees with w
 
 ## 9 — Trees and scenery → `scenery.png` (10 × 5)
 ```
+GENERATE THIS IMAGE NOW from the description below. There is NO reference image: do not ask for one, create everything from scratch.
+
 16-BIT PIXEL ART scenery for a side-scrolling run-and-gun game in the style of classic early-1990s console games. Everything is drawn small and scaled up exactly 4 times with hard nearest-neighbour edges, so every art-pixel is a crisp 4×4 block of one flat colour. Limited palette, flat colours with 2- or 3-step shading, a 1-pixel dark outline. NO anti-aliasing, NO blur, NO gradients, NO glow, NO painterly detail. Strict side view.
 
 GRID: one sheet laid out as a strict grid: EXACTLY 10 columns and 5 rows, 50 cells, each cell exactly 256×256 pixels, total image exactly 2560×1280 pixels. EXACTLY one object in every cell, standing on the same baseline 12 pixels above the bottom of its cell, centred left to right. Trees and towers fill most of the cell height.
