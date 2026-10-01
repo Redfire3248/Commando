@@ -249,6 +249,223 @@ def build_terrain2(a):
     print('  Steel Yard + Frozen Pass terrain and props:', len(cells), 'sprites')
 
 
+
+# ------------------------------------------------------------------------------------ season 2: pixel-art agents, UI, ability effects
+AGENT_IDS = ['razor', 'nova', 'kite', 'brick', 'volt']
+# Which sheet row holds each agent's first row (run forward + standing) and second row (diagonal runs, prone,
+# jump, death). The sheet made on 2026-10-01 has 8 rows: Kite only got her first row and Volt only his second,
+# so the missing poses borrow that agent's nearest frames (see AGENT_FALLBACK) until a fixed sheet arrives.
+AGENT_ROWS = {'razor': (0, 1), 'nova': (2, 3), 'kite': (4, None), 'brick': (5, 6), 'volt': (None, 7)}
+# pose name: (row 'A' or 'B', sprites, how to line it up, aim direction for the muzzle)
+AGENT_POSES = [
+    ('run_fwd', 'A', [0, 1, 2, 3, 4, 5], 'feet', (1, 0)),
+    ('stand_fwd', 'A', [6], 'feet', (1, 0)), ('stand_up', 'A', [7], 'feet', (0, -1)),
+    ('stand_dup', 'A', [8], 'feet', (1, -1)), ('stand_ddown', 'A', [9], 'feet', (1, 1)),
+    ('run_dup', 'B', [0, 1, 2], 'feet', (1, -1)), ('run_ddown', 'B', [3, 4, 5], 'feet', (1, 1)),
+    ('prone', 'B', [6], 'feet', (1, 0)), ('ball', 'B', [7, 8], 'mid', None), ('death', 'B', [9], 'mid', None),
+]
+# stand-ins for a missing row: pose -> (row, sprites)
+AGENT_FALLBACK = {
+    'B': {'run_dup': ('A', [0, 1, 2]), 'run_ddown': ('A', [3, 4, 5]), 'prone': ('A', [9]),
+          'ball': ('A', [4]), 'death': ('A', [6])},
+    'A': {'run_fwd': ('B', [3, 4, 5]), 'stand_fwd': ('B', [3]), 'stand_up': ('B', [0]),
+          'stand_dup': ('B', [0]), 'stand_ddown': ('B', [4])},
+}
+
+
+def sprite_rows(a, thr=30):
+    """Splits a sheet into rows (bands with empty space between them) and the sprites in each row, left to
+    right. Returns [[(crop, x0, y0), ...], ...] with pixels copied untouched."""
+    m = a[..., 3] > thr
+    proj = m.sum(1)
+    bands, start = [], None
+    for y, v in enumerate(proj):
+        if v and start is None:
+            start = y
+        if not v and start is not None:
+            bands.append((start, y)); start = None
+    if start is not None:
+        bands.append((start, len(proj)))
+    lab, _ = ndimage.label(ndimage.binary_dilation(m, iterations=2))
+    rows = []
+    for b0, b1 in bands:
+        sub = lab[b0:b1]
+        sprites = []
+        for i, sl in enumerate(ndimage.find_objects(sub)):
+            if sl is None:
+                continue
+            part = (sub[sl] == i + 1) & m[b0:b1][sl]
+            if part.sum() < 150:
+                continue
+            y0, x0 = b0 + sl[0].start, sl[1].start
+            crop = a[y0:y0 + part.shape[0], x0:x0 + part.shape[1]].copy()
+            crop[~part] = 0
+            sprites.append((crop, x0, y0))
+        rows.append(sorted(sprites, key=lambda s: s[1]))
+    return [r for r in rows if r]
+
+
+def build_agents():
+    a = load('agents.png')
+    if a is None:
+        return
+    rows = sprite_rows(a)
+    print('  agents: sprites per row', [len(r) for r in rows])
+    main_cw = a.shape[1] / 10
+    srcs = [(r, main_cw, 1.0) for r in rows]            # (sprites, cell width, draw-scale relative to agents.png)
+    layout = dict(AGENT_ROWS)
+    # agents_fix.png (10x2): row 1 = Kite's second row, row 2 = Volt's first row. Drawn at its own size, so its
+    # frames get their own draw scale (the cell width of agents.png over the cell width of this sheet).
+    if os.path.exists(os.path.join(ROOT, 'assets', 'agents_fix.png')):
+        f = load('agents_fix.png')
+        frows = sprite_rows(f)
+        print('  agents_fix: sprites per row', [len(r) for r in frows])
+        if len(frows) >= 2 and len(frows[0]) >= 10 and len(frows[1]) >= 10:
+            fcw = f.shape[1] / 10
+            srcs += [(frows[0], fcw, main_cw / fcw), (frows[1], fcw, main_cw / fcw)]
+            layout['kite'] = (AGENT_ROWS['kite'][0], len(srcs) - 2)
+            layout['volt'] = (len(srcs) - 1, AGENT_ROWS['volt'][1])
+    frames, agents = [], {}
+    stand_h = rows[0][6][0].shape[0]
+    for aid in AGENT_IDS:
+        ra, rb = layout[aid]
+        have = {'A': srcs[ra] if ra is not None else None, 'B': srcs[rb] if rb is not None else None}
+        anims, tips, spin = {}, {}, False
+        for name, row, idxs, mode, aim in AGENT_POSES:
+            src_row, src_idx = row, idxs
+            if have[row] is None:
+                src_row, src_idx = AGENT_FALLBACK[row][name]
+                if name == 'ball':
+                    spin = True                      # no curled-up frames: the game spins a crouching frame instead
+                    mode = 'mid'
+            start = len(frames)
+            sprites, cw, rel = have[src_row]
+            for k in src_idx:
+                crop, x0, _ = sprites[k]
+                h, w = crop.shape[:2]
+                x = OX + x0 - (k + 0.5) * cw          # keep each sprite where the artist put it in its cell
+                y = BASE - h if mode == 'feet' else BASE - stand_h / rel / 2 - h / 2
+                if mode == 'mid':
+                    x = OX - w / 2
+                frames.append((crop, round(x), round(y)))
+                if aim and k == src_idx[0]:          # rifle tip = the solid pixel furthest along the aim
+                    ys, xs = np.nonzero(crop[..., 3] > 150)
+                    i = int(np.argmax(xs * aim[0] + ys * aim[1]))
+                    tips[name] = [round((round(x) + xs[i] - OX) * rel), round((round(y) + ys[i] - BASE) * rel)]
+            anims[name] = [start, len(frames) - 1, round(rel, 4)]
+        agents[aid] = {'anims': anims, 'muzzle': {k: tips[v] for k, v in MUZZLE.items()}, 'spin': spin,
+                       'partial': None in layout[aid]}
+    cols = 10
+    sheet = Image.new('RGBA', (cols * CELL, -(-len(frames) // cols) * CELL), (0, 0, 0, 0))
+    for i, (crop, x, y) in enumerate(frames):
+        cell = Image.new('RGBA', (CELL, CELL), (0, 0, 0, 0))
+        cell.paste(Image.fromarray(crop), (x, y))
+        sheet.paste(cell, ((i % cols) * CELL, (i // cols) * CELL))
+    manifest['sheets']['agents'] = {'path': save(sheet, 'agents'), 'fw': CELL, 'fh': CELL}
+    manifest['agents'] = agents
+    manifest['agentScale'] = round(140 / stand_h, 4)
+    manifest['agentOriginY'] = BASE / CELL
+    manifest.setdefault('pixel', []).append('agents')
+    print('  agents:', len(frames), 'frames, standing height', stand_h, 'px')
+
+
+# agents_ui.png, 10x5 grid: (cell, key, width drawn in game; 0 = only used by the menus)
+UI_ITEMS = [(i, 'portrait_' + n, 0) for i, n in enumerate(AGENT_IDS)] + \
+           [(5 + i, 'portrait_' + n + '_off', 0) for i, n in enumerate(AGENT_IDS)] + \
+           [(10 + i, 'ab_' + n, 64) for i, n in enumerate(AGENT_IDS)] + \
+           [(15 + i, 'ab_' + n + '_off', 64) for i, n in enumerate(AGENT_IDS)] + [
+    (20, 'pk_heal', 58), (21, 'pk_heal_big', 76), (22, 'pk_teamlife', 52), (23, 'pk_life', 52),
+    (24, 'pk_rapid', 84), (25, 'pk_spread', 84), (26, 'pk_barrier', 84), (27, 'e_flyer', 110),
+    (28, 'pk_ammo', 70), (29, 'flare', 40),
+    (30, 'hud_heart', 26), (31, 'hud_heart_empty', 26), (32, 'life', 40), (33, 'hud_skull', 30), (34, 'hud_crown', 30),
+    (35, 'dot_0', 0), (36, 'dot_1', 0), (37, 'dot_2', 0), (38, 'dot_3', 0), (39, 'dot_4', 0),
+    (40, 'ic_friends', 0), (41, 'ic_party', 0), (42, 'ic_queue', 0), (43, 'ic_invite', 0), (44, 'ic_settings', 0),
+    (45, 'ic_admin', 0), (46, 'ic_bot', 0), (47, 'ic_key', 0), (48, 'ic_trophy', 0), (49, 'ic_exit', 0),
+]
+
+
+def build_agents_ui():
+    a = load('agents_ui.png')
+    if a is None:
+        return
+    cells = cut_cells(a)
+    for idx, key, width in UI_ITEMS:
+        if idx not in cells:
+            continue
+        img = Image.fromarray(cells[idx][0])
+        manifest['images'][key] = save(img, key)
+        manifest['scale'][key] = round((width or img.width) / img.width, 4)
+        manifest.setdefault('pixel', []).append(key)
+    print('  agents UI:', len(cells), 'items')
+
+
+# ability_fx.png, 10x5 grid: (key, cells, how frames line up: 'c' centred, 'b' bottom, 'l' left edge)
+FX = [
+    ('fx_storm', [0, 1, 2, 3], 'l'), ('fx_tracer', [4, 5, 6], 'c'), ('fx_shells', [7, 8, 9], 'c'),
+    ('fx_mend', [10, 11, 12, 13, 14], 'b'), ('fx_plus', [15, 16, 17, 18, 19], 'c'),
+    ('fx_dash', [20, 21, 22, 23], 'c'), ('fx_blink', [24, 25, 26], 'c'), ('fx_slash', [27, 28, 29], 'c'),
+    ('fx_dome', [30, 31, 32, 33, 34, 35], 'b'), ('fx_dome_break', [36, 37, 38, 39], 'b'),
+    ('fx_arc', [40, 41, 42, 43], 'c'), ('fx_spark', [44, 45, 46], 'c'), ('fx_charge', [47, 48, 49], 'c'),
+]
+
+
+def build_ability_fx():
+    a = load('ability_fx.png')
+    if a is None:
+        return
+    cells = cut_cells(a)
+    for key, idxs, mode in FX:
+        crops = [cells[k][0] for k in idxs if k in cells]
+        if len(crops) != len(idxs):
+            continue
+        fw, fh = max(c.shape[1] for c in crops) + 2, max(c.shape[0] for c in crops) + 2
+        img = Image.new('RGBA', (fw * len(crops), fh), (0, 0, 0, 0))
+        for i, c in enumerate(crops):
+            h, w = c.shape[:2]
+            x = 0 if mode == 'l' else (fw - w) // 2
+            y = fh - h if mode == 'b' else (fh - h) // 2
+            img.paste(Image.fromarray(c), (i * fw + x, y))
+        manifest['sheets'][key] = {'path': save(img, key), 'fw': fw, 'fh': fh}
+        manifest.setdefault('pixel', []).append(key)
+    print('  ability effects:', len(cells), 'frames')
+
+
+# backgrounds.png: nine full-width strips, (sky, far, near) for jungle, base and snow. The sheet made on
+# 2026-10-01 has no transparency: some far/near strips have plain white painted above their shapes, and those
+# can't be layered over a sky, so they are left out (the code-drawn layer stays). Strips are cut, never erased.
+BG_THEMES = ['jungle', 'base', 'snow']
+BG_LAYERS = ['sky', 'far', 'near']
+
+
+def build_backgrounds():
+    p = os.path.join(ROOT, 'assets', 'backgrounds.png')
+    if not os.path.exists(p):
+        return
+    a = np.array(Image.open(p).convert('RGBA'))
+    H = a.shape[0]
+    rgb = a[..., :3].astype(int)
+    jump = np.abs(np.diff(rgb.mean(1), axis=0)).sum(1)
+    cuts = [0]
+    for k in range(1, 9):                       # each boundary: the sharpest change near k/9 of the height
+        lo, hi = int(k * H / 9 - H / 28), int(k * H / 9 + H / 28)
+        cuts.append(lo + int(np.argmax(jump[lo:hi])) + 1)
+    cuts.append(H)
+    out = {}
+    for i in range(9):
+        theme, layer = BG_THEMES[i // 3], BG_LAYERS[i % 3]
+        strip_ = a[cuts[i] + 1:cuts[i + 1] - 1]
+        h = strip_.shape[0]
+        white = (strip_[:max(1, h // 5), :, :3].min(2) > 235).mean()
+        if layer != 'sky' and (white > 0.3 or (strip_[..., 3] < 20).mean() > 0.9):
+            print('  backgrounds:', theme, layer, 'has a filled background above it - not used')
+            continue
+        key = 'bgp_' + layer + '_' + theme
+        manifest['images'][key] = save(Image.fromarray(strip_), key)
+        out.setdefault(theme, {})[layer] = key
+        manifest.setdefault('pixel', []).append(key)
+    manifest['backgrounds'] = out
+    print('  backgrounds:', {t: sorted(v) for t, v in out.items()})
+
 if __name__ == '__main__':
     print('Slicing art from', os.path.join(ROOT, 'assets'))
     a = load('commandos.png')
@@ -260,6 +477,10 @@ if __name__ == '__main__':
     a = load('terrain2.png')
     if a is not None:
         build_terrain2(a)
+    build_agents()
+    build_agents_ui()            # after the commandos: its pixel-art pick-ups replace the painted ones
+    build_ability_fx()
+    build_backgrounds()
     with open(os.path.join(ROOT, 'src', 'art.gen.js'), 'w', encoding='utf-8') as f:
         f.write('// GENERATED by tools/build_art.py — do not edit by hand.\n')
         f.write('CG.DATA.art = ' + json.dumps(manifest, indent=1) + ';\n')

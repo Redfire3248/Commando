@@ -2,7 +2,7 @@
 // read() returns one state per player: { left, right, up, down, shoot, jump, jumpPressed }
 (function () {
   // ---- on-screen controls (touch devices) feed player 1 ----
-  const T = CG.Touch = { enabled: false, s: { left: false, right: false, up: false, down: false, shoot: false, jump: false } };
+  const T = CG.Touch = { enabled: false, s: { left: false, right: false, up: false, down: false, shoot: false, jump: false, ability: false } };
   const root = document.getElementById('touch');
   function enable() { T.enabled = true; }
   if (window.matchMedia && matchMedia('(pointer: coarse)').matches) enable();
@@ -55,7 +55,9 @@
   //   { type: 'kbA' }              WASD + F shoot + G jump
   //   { type: 'kbB' }              Arrows + K shoot + L jump
   //   { type: 'pad', index: n }    gamepad n: stick or D-pad, A jump, X or RT shoot
-  //   { type: 'touch' }            the on-screen stick and buttons
+  //   { type: 'touch' }            the on-screen D-pad and buttons
+  //   { type: 'bot' }              a computer teammate (CG.Bot)
+  // Ability: C / E / right click alone, H on keyboard 1, O on keyboard 2, Y or RB on a gamepad, the ABILITY button.
   CG.Input = class {
     constructor(scene, devices) {
       this.scene = scene; this.devices = devices;
@@ -63,39 +65,63 @@
       // capture is off so typing a name in the friends menu still works
       const mk = (m) => { const o = {}; for (const a in m) o[a] = m[a].map((c) => kb.addKey(c, false)); return o; };
       this.maps = {
-        kbA: mk({ left: [K.A], right: [K.D], up: [K.W], down: [K.S], shoot: [K.F], jump: [K.G] }),
-        kbB: mk({ left: [K.LEFT], right: [K.RIGHT], up: [K.UP], down: [K.DOWN], shoot: [K.K], jump: [K.L] }),
+        kbA: mk({ left: [K.A], right: [K.D], up: [K.W], down: [K.S], shoot: [K.F], jump: [K.G], ability: [K.H] }),
+        kbB: mk({ left: [K.LEFT], right: [K.RIGHT], up: [K.UP], down: [K.DOWN], shoot: [K.K], jump: [K.L], ability: [K.O] }),
         kbAll: mk({
           left: [K.LEFT, K.A], right: [K.RIGHT, K.D], up: [K.UP, K.W], down: [K.DOWN, K.S],
-          shoot: [K.X, K.J, K.F], jump: [K.Z, K.K, K.G, K.SPACE],
+          shoot: [K.X, K.J, K.F], jump: [K.Z, K.K, K.G, K.SPACE], ability: [K.C, K.E, K.SHIFT],
         }),
       };
       this.prevJump = devices.map(() => false);
+      this.prevAbility = devices.map(() => false);
+      this.botMem = devices.map(() => ({}));
+    }
+
+    readKeys(type) {
+      const s = { left: false, right: false, up: false, down: false, shoot: false, jump: false, ability: false };
+      const m = this.maps[type];
+      for (const a in m) s[a] = m[a].some((k) => k.isDown);
+      const p = this.scene.input.activePointer;
+      if (type === 'kbAll' && p && p.isDown && !p.wasTouch && p.leftButtonDown()) s.shoot = true;
+      if (type === 'kbAll' && p && p.isDown && !p.wasTouch && p.rightButtonDown()) s.ability = true;
+      return s;
+    }
+
+    readPad(pad, s) {
+      const B = (b) => !!(pad.buttons[b] && pad.buttons[b].pressed);
+      const ax = pad.axes[0] || 0, ay = pad.axes[1] || 0;
+      s.left = s.left || ax < -0.35 || B(14); s.right = s.right || ax > 0.35 || B(15);
+      s.up = s.up || ay < -0.5 || B(12); s.down = s.down || ay > 0.5 || B(13);
+      s.jump = s.jump || B(0); s.shoot = s.shoot || B(2) || B(7); s.ability = s.ability || B(3) || B(5);
     }
 
     read() {
       const pads = navigator.getGamepads ? navigator.getGamepads() : [];
       return this.devices.map((d, i) => {
-        const s = { left: false, right: false, up: false, down: false, shoot: false, jump: false };
-        if (this.maps[d.type]) {
-          const m = this.maps[d.type];
-          for (const a in m) s[a] = m[a].some((k) => k.isDown);
-          const p = this.scene.input.activePointer;
-          if (d.type === 'kbAll' && p && p.isDown && !p.wasTouch && p.leftButtonDown()) s.shoot = true;
+        let s = { left: false, right: false, up: false, down: false, shoot: false, jump: false, ability: false };
+        if (d.type === 'any') {                     // online: this device's keyboard, mouse, first gamepad and touch screen
+          s = Object.assign(this.readKeys('kbAll'), {});
+          const t = CG.Touch.s;
+          for (const k in s) s[k] = s[k] || !!t[k];
+          const pad = pads[0];
+          if (pad) this.readPad(pad, s);
+        } else if (d.type === 'bot') {
+          const p = this.scene.players[i];
+          if (p) s = CG.Bot.think(this.scene, p, this.botMem[i]);
+        } else if (d.type === 'remote') {
+          // an online teammate: their own game moves them, so no input here
+        } else if (this.maps[d.type]) {
+          s = this.readKeys(d.type);
         } else if (d.type === 'touch') {
           Object.assign(s, CG.Touch.s);
         } else if (d.type === 'pad') {
           const pad = pads[d.index];
-          if (pad) {
-            const B = (b) => !!(pad.buttons[b] && pad.buttons[b].pressed);
-            const ax = pad.axes[0] || 0, ay = pad.axes[1] || 0;
-            s.left = ax < -0.35 || B(14); s.right = ax > 0.35 || B(15);
-            s.up = ay < -0.5 || B(12); s.down = ay > 0.5 || B(13);
-            s.jump = B(0); s.shoot = B(2) || B(7);
-          }
+          if (pad) this.readPad(pad, s);
         }
         s.jumpPressed = s.jump && !this.prevJump[i];
         this.prevJump[i] = s.jump;
+        s.abilityPressed = s.ability && !this.prevAbility[i];
+        this.prevAbility[i] = s.ability;
         return s;
       });
     }

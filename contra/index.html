@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0b1410">
-<title>COMMANDO — GUNHOLLOW</title>
+<title>COMMANDO</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
@@ -16,31 +16,81 @@
 <body>
 <div id="game"></div>
 
-<!-- main menu -->
-<div id="menu" class="overlay">
+<!-- sign in -->
+<div id="login" class="overlay hidden">
   <div class="panel title-panel">
     <h1>COMMANDO</h1>
-    <p class="sub">one hit · three lives · no mercy</p>
-    <div class="who">Playing as <b id="menu-name">Soldier</b> · Best <b id="menu-best">0</b></div>
-    <button data-act="lobby" class="big">PLAY <small>1 to 5 players</small></button>
-    <button data-act="friends">FRIENDS</button>
-    <button data-act="how">HOW TO PLAY</button>
-    <button data-act="sound" id="sound-btn" class="span">SOUND: ON</button>
+    <p class="sub">five agents · one team · no mercy</p>
+    <button data-act="google" class="big google"><span class="g">G</span> CONTINUE WITH GOOGLE</button>
+    <div id="login-msg" class="msg"></div>
+    <button data-act="offline" class="link">Play offline without an account</button>
   </div>
 </div>
 
-<!-- join screen -->
+<!-- main menu -->
+<div id="menu" class="overlay hidden">
+  <div class="panel title-panel">
+    <h1>COMMANDO</h1>
+    <p class="sub">five agents · one team · no mercy</p>
+    <div class="who"><img id="menu-photo" class="photo hidden" alt=""> <b id="menu-name">Soldier</b> · Best <b id="menu-best">0</b></div>
+    <div id="menu-invites" class="list"></div>
+    <button data-act="lobby" class="big">PLAY <small>this device · 1 to 5 players + bots</small></button>
+    <button data-act="party" class="big online-only">PLAY ONLINE <small>party · invite friends · queue</small></button>
+    <button data-act="friends" class="online-only">FRIENDS</button>
+    <button data-act="how">HOW TO PLAY</button>
+    <button data-act="sound" id="sound-btn">SOUND: ON</button>
+    <button data-act="signout" id="signout-btn" class="online-only">SIGN OUT</button>
+    <button data-act="signin" id="signin-btn" class="hidden">SIGN IN WITH GOOGLE</button>
+  </div>
+</div>
+
+<!-- local join screen -->
 <div id="lobby" class="overlay hidden">
   <div class="panel wide">
     <h2>WHO IS PLAYING?</h2>
     <p class="sub center">Everyone press your FIRE button to join</p>
     <div id="lobby-slots" class="list"></div>
     <p class="hint" id="lobby-hint">
-      Keyboard 1: <b>F</b> (moves with W A S D, G jumps) · Keyboard 2: <b>K</b> (moves with arrows, L jumps) ·
+      Keyboard 1: <b>F</b> (moves with W A S D, G jumps, H ability) · Keyboard 2: <b>K</b> (arrows, L jumps, O ability) ·
       Gamepad: <b>A</b> or <b>X</b>. Playing alone on a keyboard? You get both layouts.
     </p>
-    <button data-act="join-touch" id="lobby-touch" class="hidden">JOIN ON THIS TOUCH SCREEN</button>
+    <div class="row center-row">
+      <button data-act="join-touch" id="lobby-touch" class="hidden">JOIN ON THIS TOUCH SCREEN</button>
+      <button data-act="add-bot" id="lobby-bot">+ ADD BOT</button>
+    </div>
     <button data-act="start" id="lobby-start" class="big" disabled>WAITING FOR PLAYERS</button>
+    <button data-act="menu">BACK</button>
+  </div>
+</div>
+
+<!-- agent select -->
+<div id="select" class="overlay hidden">
+  <div class="panel huge">
+    <h2>CHOOSE YOUR AGENT</h2>
+    <p class="sub center" id="select-hint">Left / right to look · FIRE to lock in · or tap a card</p>
+    <div id="agent-cards" class="cards"></div>
+    <div id="agent-info" class="agent-info"></div>
+    <div id="select-slots" class="picks"></div>
+    <button data-act="menu">BACK</button>
+  </div>
+</div>
+
+<!-- online party -->
+<div id="party" class="overlay hidden">
+  <div class="panel wide">
+    <h2>PARTY</h2>
+    <p class="sub center" id="party-status">Invite friends, then start or queue</p>
+    <div id="party-members" class="list"></div>
+    <h3>Your agent</h3>
+    <div id="party-agents" class="mini-cards"></div>
+    <div class="row center-row">
+      <button data-act="party-start" id="party-start" class="big">START MATCH</button>
+      <button data-act="party-queue" id="party-queue" class="big">FIND PLAYERS</button>
+    </div>
+    <div id="party-msg" class="msg"></div>
+    <h3>Invite friends</h3>
+    <div id="party-friends" class="list"></div>
+    <button data-act="party-leave">LEAVE PARTY</button>
     <button data-act="menu">BACK</button>
   </div>
 </div>
@@ -54,16 +104,16 @@
       <tr><td>Move / aim</td><td>Arrows or WASD</td><td>W A S D</td><td>Arrows</td><td>Stick / D-pad</td></tr>
       <tr><td>Shoot</td><td>X, J or click</td><td>F</td><td>K</td><td>X or RT</td></tr>
       <tr><td>Jump</td><td>Z, K or Space</td><td>G</td><td>L</td><td>A</td></tr>
+      <tr><td>Ability</td><td>C, E, Shift or right click</td><td>H</td><td>O</td><td>Y or RB</td></tr>
     </table>
     <ul>
-      <li>Up to 5 players on one screen: two on the keyboard, the rest on gamepads (or one on a touch screen).</li>
-      <li>Hold a direction while shooting to aim 8 ways. Hold up to shoot straight up.</li>
-      <li>Hold down on the ground to lie flat — most shots pass over you.</li>
-      <li>Down + Jump on a ledge drops through it.</li>
-      <li>Shoot the flying capsules for power-ups: R rapid fire, S spread shot, B shield, 1 extra life.</li>
-      <li>Three stages, each with its own boss, then they repeat harder.</li>
-      <li>Anything that touches you kills you. Falling in the water kills you.</li>
-      <li>Esc or P pauses.</li>
+      <li>Pick one of five agents. Each has their own health, speed and ability; everyone carries the same rifle.</li>
+      <li>You have hearts: a bullet takes one, a bomb two. Water is instant death.</li>
+      <li>The team shares one pool of lives. When it runs out, a fallen player waits for the next stage.</li>
+      <li>First-aid kits heal 2 hearts, the big medkit heals the whole team, the medal gives the team a life.</li>
+      <li>Add bots to fill your team. Up to 5 players on one screen, or play online with friends.</li>
+      <li>Hold a direction while shooting to aim 8 ways. Down on the ground lies flat. Down + Jump drops through a ledge.</li>
+      <li>Esc or P pauses. F9 opens the admin panel (scores are not saved after using it).</li>
     </ul>
     <button data-act="menu">BACK</button>
   </div>
@@ -73,10 +123,7 @@
 <div id="friends" class="overlay hidden">
   <div class="panel wide">
     <h2>FRIENDS</h2>
-    <div id="fr-setup" class="note hidden">
-      Online features are not switched on yet. Follow the steps in <b>contra/FIREBASE.md</b>, paste your keys into
-      <b>contra/firebase-config.js</b>, then reload.
-    </div>
+    <div id="fr-setup" class="note hidden">Sign in with Google to add friends.</div>
     <div id="fr-body" class="hidden">
       <div class="row">
         <label>Your name <input id="fr-name" maxlength="16" autocomplete="off"></label>
@@ -92,7 +139,6 @@
       <div id="fr-requests" class="list"><i>None</i></div>
       <h3>Friends</h3>
       <div id="fr-list" class="list"><i>No friends yet</i></div>
-      <div class="row"><button data-act="fr-google">KEEP MY ACCOUNT WITH GOOGLE</button></div>
     </div>
     <button data-act="menu">BACK</button>
   </div>
@@ -103,6 +149,7 @@
   <div class="panel">
     <h2>PAUSED</h2>
     <button data-act="resume" class="big">RESUME</button>
+    <button data-act="admin" id="pause-admin">ADMIN PANEL</button>
     <button data-act="quit">QUIT TO MENU</button>
   </div>
 </div>
@@ -110,13 +157,32 @@
 <!-- game over -->
 <div id="over" class="overlay hidden">
   <div class="panel">
-    <h2>GAME OVER</h2>
+    <h2 id="over-title">GAME OVER</h2>
     <p class="score">Score <b id="over-score">0</b></p>
     <p class="sub" id="over-best"></p>
-    <button data-act="retry" class="big">TRY AGAIN</button>
+    <button data-act="retry" class="big" id="over-retry">TRY AGAIN</button>
     <button data-act="menu">MENU</button>
   </div>
 </div>
+
+<!-- admin panel: single player / local games, or the host of an online match. Using it stops the score being saved. -->
+<div id="admin" class="hidden">
+  <div class="admin-head">
+    <b>ADMIN</b>
+    <div class="tabs">
+      <button data-tab="players" class="on">PLAYERS</button>
+      <button data-tab="spawn">ENEMIES</button>
+      <button data-tab="items">ITEMS</button>
+      <button data-tab="stage">STAGE</button>
+    </div>
+    <button data-act="admin-close">✕</button>
+  </div>
+  <div id="admin-body"></div>
+  <div class="admin-foot">Using the admin panel marks this run: its score is not saved.</div>
+</div>
+
+<!-- party invite / notices -->
+<div id="toast" class="hidden"></div>
 
 <!-- on-screen controls (touch devices) -->
 <div id="touch" class="hidden">
@@ -124,6 +190,7 @@
   <div id="btns">
     <button data-btn="shoot" id="b-shoot">FIRE</button>
     <button data-btn="jump" id="b-jump">JUMP</button>
+    <button data-btn="ability" id="b-ability">SKILL</button>
   </div>
   <button id="b-pause">II</button>
 </div>
@@ -141,10 +208,14 @@
 <script src="src/level.js"></script>
 <script src="src/art.gen.js"></script>
 <script src="src/art.js"></script>
+<script src="src/agents.js"></script>
 <script src="src/input.js"></script>
+<script src="src/bots.js"></script>
 <script src="src/entities.js"></script>
 <script src="src/scenes.js"></script>
 <script src="src/net.js"></script>
+<script src="src/online.js"></script>
+<script src="src/admin.js"></script>
 <script src="src/ui.js"></script>
 <script src="src/main.js"></script>
 </body>

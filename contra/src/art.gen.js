@@ -74,7 +74,59 @@ CG.DATA.art = {
   "prop_45": "assets/atlas/prop_45.png",
   "prop_46": "assets/atlas/prop_46.png",
   "prop_47": "assets/atlas/prop_47.png",
-  "prop_48": "assets/atlas/prop_48.png"
+  "prop_48": "assets/atlas/prop_48.png",
+  "portrait_razor": "assets/atlas/portrait_razor.png",
+  "portrait_nova": "assets/atlas/portrait_nova.png",
+  "portrait_kite": "assets/atlas/portrait_kite.png",
+  "portrait_brick": "assets/atlas/portrait_brick.png",
+  "portrait_volt": "assets/atlas/portrait_volt.png",
+  "portrait_razor_off": "assets/atlas/portrait_razor_off.png",
+  "portrait_nova_off": "assets/atlas/portrait_nova_off.png",
+  "portrait_kite_off": "assets/atlas/portrait_kite_off.png",
+  "portrait_brick_off": "assets/atlas/portrait_brick_off.png",
+  "portrait_volt_off": "assets/atlas/portrait_volt_off.png",
+  "ab_razor": "assets/atlas/ab_razor.png",
+  "ab_nova": "assets/atlas/ab_nova.png",
+  "ab_kite": "assets/atlas/ab_kite.png",
+  "ab_brick": "assets/atlas/ab_brick.png",
+  "ab_volt": "assets/atlas/ab_volt.png",
+  "ab_razor_off": "assets/atlas/ab_razor_off.png",
+  "ab_nova_off": "assets/atlas/ab_nova_off.png",
+  "ab_kite_off": "assets/atlas/ab_kite_off.png",
+  "ab_brick_off": "assets/atlas/ab_brick_off.png",
+  "ab_volt_off": "assets/atlas/ab_volt_off.png",
+  "pk_heal": "assets/atlas/pk_heal.png",
+  "pk_heal_big": "assets/atlas/pk_heal_big.png",
+  "pk_teamlife": "assets/atlas/pk_teamlife.png",
+  "pk_spread": "assets/atlas/pk_spread.png",
+  "pk_ammo": "assets/atlas/pk_ammo.png",
+  "flare": "assets/atlas/flare.png",
+  "hud_heart": "assets/atlas/hud_heart.png",
+  "hud_heart_empty": "assets/atlas/hud_heart_empty.png",
+  "life": "assets/atlas/life.png",
+  "hud_skull": "assets/atlas/hud_skull.png",
+  "hud_crown": "assets/atlas/hud_crown.png",
+  "dot_0": "assets/atlas/dot_0.png",
+  "dot_1": "assets/atlas/dot_1.png",
+  "dot_2": "assets/atlas/dot_2.png",
+  "dot_3": "assets/atlas/dot_3.png",
+  "dot_4": "assets/atlas/dot_4.png",
+  "ic_friends": "assets/atlas/ic_friends.png",
+  "ic_party": "assets/atlas/ic_party.png",
+  "ic_queue": "assets/atlas/ic_queue.png",
+  "ic_invite": "assets/atlas/ic_invite.png",
+  "ic_settings": "assets/atlas/ic_settings.png",
+  "ic_admin": "assets/atlas/ic_admin.png",
+  "ic_bot": "assets/atlas/ic_bot.png",
+  "ic_key": "assets/atlas/ic_key.png",
+  "ic_trophy": "assets/atlas/ic_trophy.png",
+  "ic_exit": "assets/atlas/ic_exit.png",
+  "bgp_sky_jungle": "assets/atlas/bgp_sky_jungle.png",
+  "bgp_sky_base": "assets/atlas/bgp_sky_base.png",
+  "bgp_far_base": "assets/atlas/bgp_far_base.png",
+  "bgp_near_base": "assets/atlas/bgp_near_base.png",
+  "bgp_sky_snow": "assets/atlas/bgp_sky_snow.png",
+  "bgp_near_snow": "assets/atlas/bgp_near_snow.png"
  },
  "sheets": {
   "commandos": {
@@ -101,15 +153,85 @@ CG.DATA.art = {
    "path": "assets/atlas/fx_splash.png",
    "fw": 134,
    "fh": 168
+  },
+  "agents": {
+   "path": "assets/atlas/agents.png",
+   "fw": 288,
+   "fh": 288
+  },
+  "fx_storm": {
+   "path": "assets/atlas/fx_storm.png",
+   "fw": 156,
+   "fh": 127
+  },
+  "fx_tracer": {
+   "path": "assets/atlas/fx_tracer.png",
+   "fw": 195,
+   "fh": 38
+  },
+  "fx_shells": {
+   "path": "assets/atlas/fx_shells.png",
+   "fw": 233,
+   "fh": 98
+  },
+  "fx_mend": {
+   "path": "assets/atlas/fx_mend.png",
+   "fw": 156,
+   "fh": 135
+  },
+  "fx_plus": {
+   "path": "assets/atlas/fx_plus.png",
+   "fw": 89,
+   "fh": 131
+  },
+  "fx_dash": {
+   "path": "assets/atlas/fx_dash.png",
+   "fw": 180,
+   "fh": 84
+  },
+  "fx_blink": {
+   "path": "assets/atlas/fx_blink.png",
+   "fw": 230,
+   "fh": 134
+  },
+  "fx_slash": {
+   "path": "assets/atlas/fx_slash.png",
+   "fw": 197,
+   "fh": 90
+  },
+  "fx_dome": {
+   "path": "assets/atlas/fx_dome.png",
+   "fw": 240,
+   "fh": 117
+  },
+  "fx_dome_break": {
+   "path": "assets/atlas/fx_dome_break.png",
+   "fw": 208,
+   "fh": 122
+  },
+  "fx_arc": {
+   "path": "assets/atlas/fx_arc.png",
+   "fw": 206,
+   "fh": 94
+  },
+  "fx_spark": {
+   "path": "assets/atlas/fx_spark.png",
+   "fw": 159,
+   "fh": 127
+  },
+  "fx_charge": {
+   "path": "assets/atlas/fx_charge.png",
+   "fw": 93,
+   "fh": 99
   }
  },
  "scale": {
   "bullet": 0.4554,
   "flash": 0.8824,
-  "pk_rapid": 0.6512,
-  "pk_barrier": 0.6364,
-  "pk_life": 0.8235,
-  "e_flyer": 0.75,
+  "pk_rapid": 0.5122,
+  "pk_barrier": 0.5185,
+  "pk_life": 0.5149,
+  "e_flyer": 0.6667,
   "fx_boom": 0.5818,
   "fx_splash": 1.1194,
   "e_turret": 0.7467,
@@ -148,7 +270,53 @@ CG.DATA.art = {
   "prop_45": 0.8434,
   "prop_46": 0.7143,
   "prop_47": 0.6306,
-  "prop_48": 0.8805
+  "prop_48": 0.8805,
+  "portrait_razor": 1.0,
+  "portrait_nova": 1.0,
+  "portrait_kite": 1.0,
+  "portrait_brick": 1.0,
+  "portrait_volt": 1.0,
+  "portrait_razor_off": 1.0,
+  "portrait_nova_off": 1.0,
+  "portrait_kite_off": 1.0,
+  "portrait_brick_off": 1.0,
+  "portrait_volt_off": 1.0,
+  "ab_razor": 0.4238,
+  "ab_nova": 0.4267,
+  "ab_kite": 0.4183,
+  "ab_brick": 0.4103,
+  "ab_volt": 0.4156,
+  "ab_razor_off": 0.4211,
+  "ab_nova_off": 0.4183,
+  "ab_kite_off": 0.4238,
+  "ab_brick_off": 0.4129,
+  "ab_volt_off": 0.4211,
+  "pk_heal": 0.4915,
+  "pk_heal_big": 0.5241,
+  "pk_teamlife": 0.5532,
+  "pk_spread": 0.5153,
+  "pk_ammo": 0.4861,
+  "flare": 0.381,
+  "hud_heart": 0.2261,
+  "hud_heart_empty": 0.2301,
+  "life": 0.3571,
+  "hud_skull": 0.3191,
+  "hud_crown": 0.2564,
+  "dot_0": 1.0,
+  "dot_1": 1.0,
+  "dot_2": 1.0,
+  "dot_3": 1.0,
+  "dot_4": 1.0,
+  "ic_friends": 1.0,
+  "ic_party": 1.0,
+  "ic_queue": 1.0,
+  "ic_invite": 1.0,
+  "ic_settings": 1.0,
+  "ic_admin": 1.0,
+  "ic_bot": 1.0,
+  "ic_key": 1.0,
+  "ic_trophy": 1.0,
+  "ic_exit": 1.0
  },
  "players": [
   {
@@ -322,5 +490,485 @@ CG.DATA.art = {
    "prop_38",
    "prop_39"
   ]
+ },
+ "agents": {
+  "razor": {
+   "anims": {
+    "run_fwd": [
+     0,
+     5,
+     1.0
+    ],
+    "stand_fwd": [
+     6,
+     6,
+     1.0
+    ],
+    "stand_up": [
+     7,
+     7,
+     1.0
+    ],
+    "stand_dup": [
+     8,
+     8,
+     1.0
+    ],
+    "stand_ddown": [
+     9,
+     9,
+     1.0
+    ],
+    "run_dup": [
+     10,
+     12,
+     1.0
+    ],
+    "run_ddown": [
+     13,
+     15,
+     1.0
+    ],
+    "prone": [
+     16,
+     16,
+     1.0
+    ],
+    "ball": [
+     17,
+     18,
+     1.0
+    ],
+    "death": [
+     19,
+     19,
+     1.0
+    ]
+   },
+   "muzzle": {
+    "fwd": [
+     47,
+     -83
+    ],
+    "up": [
+     -6,
+     -149
+    ],
+    "dup": [
+     63,
+     -123
+    ],
+    "ddown": [
+     41,
+     -10
+    ],
+    "prone": [
+     56,
+     -23
+    ]
+   },
+   "spin": false,
+   "partial": false
+  },
+  "nova": {
+   "anims": {
+    "run_fwd": [
+     20,
+     25,
+     1.0
+    ],
+    "stand_fwd": [
+     26,
+     26,
+     1.0
+    ],
+    "stand_up": [
+     27,
+     27,
+     1.0
+    ],
+    "stand_dup": [
+     28,
+     28,
+     1.0
+    ],
+    "stand_ddown": [
+     29,
+     29,
+     1.0
+    ],
+    "run_dup": [
+     30,
+     32,
+     1.0
+    ],
+    "run_ddown": [
+     33,
+     35,
+     1.0
+    ],
+    "prone": [
+     36,
+     36,
+     1.0
+    ],
+    "ball": [
+     37,
+     38,
+     1.0
+    ],
+    "death": [
+     39,
+     39,
+     1.0
+    ]
+   },
+   "muzzle": {
+    "fwd": [
+     47,
+     -86
+    ],
+    "up": [
+     -9,
+     -151
+    ],
+    "dup": [
+     63,
+     -129
+    ],
+    "ddown": [
+     44,
+     -8
+    ],
+    "prone": [
+     54,
+     -24
+    ]
+   },
+   "spin": false,
+   "partial": false
+  },
+  "kite": {
+   "anims": {
+    "run_fwd": [
+     40,
+     45,
+     1.0
+    ],
+    "stand_fwd": [
+     46,
+     46,
+     1.0
+    ],
+    "stand_up": [
+     47,
+     47,
+     1.0
+    ],
+    "stand_dup": [
+     48,
+     48,
+     1.0
+    ],
+    "stand_ddown": [
+     49,
+     49,
+     1.0
+    ],
+    "run_dup": [
+     50,
+     52,
+     0.6324
+    ],
+    "run_ddown": [
+     53,
+     55,
+     0.6324
+    ],
+    "prone": [
+     56,
+     56,
+     0.6324
+    ],
+    "ball": [
+     57,
+     58,
+     0.6324
+    ],
+    "death": [
+     59,
+     59,
+     0.6324
+    ]
+   },
+   "muzzle": {
+    "fwd": [
+     47,
+     -73
+    ],
+    "up": [
+     -5,
+     -130
+    ],
+    "dup": [
+     58,
+     -129
+    ],
+    "ddown": [
+     30,
+     -8
+    ],
+    "prone": [
+     66,
+     -27
+    ]
+   },
+   "spin": false,
+   "partial": false
+  },
+  "brick": {
+   "anims": {
+    "run_fwd": [
+     60,
+     65,
+     1.0
+    ],
+    "stand_fwd": [
+     66,
+     66,
+     1.0
+    ],
+    "stand_up": [
+     67,
+     67,
+     1.0
+    ],
+    "stand_dup": [
+     68,
+     68,
+     1.0
+    ],
+    "stand_ddown": [
+     69,
+     69,
+     1.0
+    ],
+    "run_dup": [
+     70,
+     72,
+     1.0
+    ],
+    "run_ddown": [
+     73,
+     75,
+     1.0
+    ],
+    "prone": [
+     76,
+     76,
+     1.0
+    ],
+    "ball": [
+     77,
+     78,
+     1.0
+    ],
+    "death": [
+     79,
+     79,
+     1.0
+    ]
+   },
+   "muzzle": {
+    "fwd": [
+     43,
+     -69
+    ],
+    "up": [
+     -19,
+     -123
+    ],
+    "dup": [
+     61,
+     -118
+    ],
+    "ddown": [
+     52,
+     -7
+    ],
+    "prone": [
+     60,
+     -26
+    ]
+   },
+   "spin": false,
+   "partial": false
+  },
+  "volt": {
+   "anims": {
+    "run_fwd": [
+     80,
+     85,
+     0.6324
+    ],
+    "stand_fwd": [
+     86,
+     86,
+     0.6324
+    ],
+    "stand_up": [
+     87,
+     87,
+     0.6324
+    ],
+    "stand_dup": [
+     88,
+     88,
+     0.6324
+    ],
+    "stand_ddown": [
+     89,
+     89,
+     0.6324
+    ],
+    "run_dup": [
+     90,
+     92,
+     1.0
+    ],
+    "run_ddown": [
+     93,
+     95,
+     1.0
+    ],
+    "prone": [
+     96,
+     96,
+     1.0
+    ],
+    "ball": [
+     97,
+     98,
+     1.0
+    ],
+    "death": [
+     99,
+     99,
+     1.0
+    ]
+   },
+   "muzzle": {
+    "fwd": [
+     64,
+     -85
+    ],
+    "up": [
+     14,
+     -159
+    ],
+    "dup": [
+     63,
+     -109
+    ],
+    "ddown": [
+     56,
+     -5
+    ],
+    "prone": [
+     52,
+     -31
+    ]
+   },
+   "spin": false,
+   "partial": false
+  }
+ },
+ "agentScale": 1.0687,
+ "agentOriginY": 0.8333333333333334,
+ "pixel": [
+  "agents",
+  "portrait_razor",
+  "portrait_nova",
+  "portrait_kite",
+  "portrait_brick",
+  "portrait_volt",
+  "portrait_razor_off",
+  "portrait_nova_off",
+  "portrait_kite_off",
+  "portrait_brick_off",
+  "portrait_volt_off",
+  "ab_razor",
+  "ab_nova",
+  "ab_kite",
+  "ab_brick",
+  "ab_volt",
+  "ab_razor_off",
+  "ab_nova_off",
+  "ab_kite_off",
+  "ab_brick_off",
+  "ab_volt_off",
+  "pk_heal",
+  "pk_heal_big",
+  "pk_teamlife",
+  "pk_life",
+  "pk_rapid",
+  "pk_spread",
+  "pk_barrier",
+  "e_flyer",
+  "pk_ammo",
+  "flare",
+  "hud_heart",
+  "hud_heart_empty",
+  "life",
+  "hud_skull",
+  "hud_crown",
+  "dot_0",
+  "dot_1",
+  "dot_2",
+  "dot_3",
+  "dot_4",
+  "ic_friends",
+  "ic_party",
+  "ic_queue",
+  "ic_invite",
+  "ic_settings",
+  "ic_admin",
+  "ic_bot",
+  "ic_key",
+  "ic_trophy",
+  "ic_exit",
+  "fx_storm",
+  "fx_tracer",
+  "fx_shells",
+  "fx_mend",
+  "fx_plus",
+  "fx_dash",
+  "fx_blink",
+  "fx_slash",
+  "fx_dome",
+  "fx_dome_break",
+  "fx_arc",
+  "fx_spark",
+  "fx_charge",
+  "bgp_sky_jungle",
+  "bgp_sky_base",
+  "bgp_far_base",
+  "bgp_near_base",
+  "bgp_sky_snow",
+  "bgp_near_snow"
+ ],
+ "backgrounds": {
+  "jungle": {
+   "sky": "bgp_sky_jungle"
+  },
+  "base": {
+   "sky": "bgp_sky_base",
+   "far": "bgp_far_base",
+   "near": "bgp_near_base"
+  },
+  "snow": {
+   "sky": "bgp_sky_snow",
+   "near": "bgp_near_snow"
+  }
  }
 };

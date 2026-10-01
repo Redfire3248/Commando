@@ -3,48 +3,85 @@
   const PW = 44, PH = 100, PRONE_H = 36;
 
   // ------------------------------------------------------------------ player
+  // opts: { agent: id from CG.AGENTS, name: shown on the nametag, bot: true for a computer player }
   CG.Player = class {
-    constructor(scene, idx, x, feetY, lives) {
+    constructor(scene, idx, x, feetY, opts) {
+      opts = opts || {};
       this.scene = scene; this.idx = idx; this.C = CG.CONFIG.PLAYER;
+      this.agent = CG.AGENT[opts.agent] || CG.AGENTS[idx % CG.AGENTS.length];
+      this.name = opts.name || 'P' + (idx + 1);
+      this.bot = !!opts.bot;
+      this.remote = !!(opts.device && opts.device.type === 'remote');    // moved by another player's game (online)
+      this.netId = opts.id || 'p' + idx;
+      this.owner = opts.owner || null;
+      this.shots = 0;
+      this.color = CG.PLAYER_COLORS[idx % CG.PLAYER_COLORS.length];
       this.phys = scene.add.zone(x, feetY - PH / 2, PW, PH);
       scene.physics.add.existing(this.phys);
       this.phys.owner = this;
       this.body = this.phys.body;
-      this.body.maxVelocity.set(1200, 1500);
+      this.body.maxVelocity.set(2600, 1500);
 
-      // Every pose has the rifle drawn in. With CONFIG.SHEET_ART the painted commandos are used: P1 blue, P2 red,
-      // P3-P5 recoloured copies of the blue one. Otherwise (or if the sheet is missing) the built-in pixel art.
-      const sheet = CG.CONFIG.SHEET_ART && CG.DATA.art && CG.DATA.art.players && scene.textures.exists('commandos') ? CG.DATA.art : null;
-      const tex = idx < 2 ? 'commandos' : 'commandos_' + idx, who = sheet ? sheet.players[idx < 2 ? idx : 0] : null;
-      this.art = sheet && scene.textures.exists(tex)
-        ? { tex, anims: who.anims, muzzle: who.muzzle, scale: sheet.playerScale, originY: sheet.originY }
-        : { tex: 'pl' + idx, anims: CG.Art.PIX.anims, muzzle: CG.Art.PIX.muzzle, scale: 1, originY: 1 };
-      this.visual = scene.add.image(x, feetY, this.art.tex, this.art.anims.stand_fwd[0])
+      this.art = this.pickArt(scene);
+      const A = this.art.anims;
+      this.visual = scene.add.image(x, feetY, this.art.tex, A.stand_fwd[0])
         .setOrigin(0.5, this.art.originY).setScale(this.art.scale).setDepth(10);
       this.shield = scene.add.image(x, feetY, 'glow').setDepth(11).setVisible(false);
+      // nametag + health bar above the head
+      this.tag = scene.add.text(x, feetY - 160, this.name, {
+        fontFamily: 'Rajdhani, sans-serif', fontSize: '22px', fontStyle: '700', color: this.color,
+      }).setOrigin(0.5, 1).setDepth(30).setShadow(0, 2, '#000', 4);
+      this.bar = scene.add.graphics().setDepth(30);
 
+      const hp = this.agent.hp;
       Object.assign(this, {
-        facing: 1, aimX: 1, aimY: 0, lives, dead: false, out: false, prone: false, onGround: false,
+        facing: 1, aimX: 1, aimY: 0, hp, maxHp: hp, dead: false, out: false, prone: false, onGround: false,
         invT: 0, barrierT: 0, rapid: false, spread: false, fireCd: 0, dropT: 0, ledgeT: -1e9, runT: 0, spin: 0,
+        abilityCd: 0, stormT: 0, domeT: 0, dashT: 0, god: false, freeAbility: false, dashHit: null,
       });
     }
 
+    // the agent's own frames, else the old commandos recoloured, else the built-in pixel soldier
+    pickArt(scene) {
+      const art = CG.DATA.art, ag = this.agent;
+      if (art && art.agents && art.agents[ag.id] && scene.textures.exists('agents')) {
+        const a = art.agents[ag.id];
+        return { tex: 'agents', anims: a.anims, muzzle: a.muzzle, scale: art.agentScale, originY: art.agentOriginY, spin: a.spin };
+      }
+      if (CG.CONFIG.SHEET_ART && art && art.players && scene.textures.exists(ag.fallback)) {
+        const who = art.players[ag.fallbackWho];
+        return { tex: ag.fallback, anims: who.anims, muzzle: who.muzzle, scale: art.playerScale, originY: art.originY };
+      }
+      return { tex: 'pl' + (this.idx % 5), anims: CG.Art.PIX.anims, muzzle: CG.Art.PIX.muzzle, scale: 1, originY: 1 };
+    }
+
+    get alive() { return !this.dead && !this.out; }
+
     update(dt, inp) {
-      if (this.out) return;
+      if (this.out) { this.tag.setVisible(false); this.bar.clear(); return; }
       const ms = dt * 1000, C = this.C, b = this.body, sc = this.scene;
-      for (const k of ['invT', 'barrierT', 'fireCd', 'dropT']) this[k] = Math.max(0, this[k] - ms);
-      if (this.dead) return;
+      for (const k of ['invT', 'barrierT', 'fireCd', 'dropT', 'abilityCd', 'stormT', 'domeT', 'dashT']) this[k] = Math.max(0, this[k] - ms);
+      if (this.freeAbility) this.abilityCd = 0;
+      if (this.dead) { this.tag.setVisible(false); this.bar.clear(); return; }
 
       const onGround = this.onGround = b.blocked.down || b.touching.down;
       const dir = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
-      if (dir) this.facing = dir;
-      this.setProne(onGround && inp.down && !dir);
-      b.velocity.x = this.prone ? 0 : dir * C.run;
 
-      if (inp.jumpPressed && onGround) {
-        if (inp.down && sc.time.now - this.ledgeT < 80) this.dropT = 260;      // drop through a ledge
-        else { b.velocity.y = -C.jump; this.setProne(false); CG.Sfx.play('jump'); }
+      if (this.dashT > 0) {                                   // Phase Dash: straight line, no gravity, untouchable
+        b.allowGravity = false;
+        b.velocity.set(this.facing * this.agent.ability.dist / 0.18, 0);
+        sc.dashHits(this);
+      } else {
+        b.allowGravity = true;
+        if (dir) this.facing = dir;
+        this.setProne(onGround && inp.down && !dir);
+        b.velocity.x = this.prone ? 0 : dir * C.run * this.agent.speed;
+        if (inp.jumpPressed && onGround) {
+          if (inp.down && sc.time.now - this.ledgeT < 80) this.dropT = 260;      // drop through a ledge
+          else { b.velocity.y = -C.jump; this.setProne(false); CG.Sfx.play('jump'); }
+        }
       }
+      if (inp.abilityPressed) this.useAbility();
 
       // 8-way aim: up alone = straight up, up/down + a direction = diagonals, down in the air = straight down
       let ax = dir, ay = 0;
@@ -60,13 +97,47 @@
       if (this.phys.x > maxX) this.phys.x = maxX;
       if (b.top > CG.CONFIG.H + 60) { sc.splash(b.center.x); this.die(); return; }   // fell in the water
 
-      if (inp.shoot && this.fireCd <= 0 && sc.countBullets(this) < C.maxBullets * (this.spread ? 3 : 1)) {
+      const storm = this.stormT > 0, spread = this.spread || storm;
+      if (inp.shoot && this.dashT <= 0 && this.fireCd <= 0 && sc.countBullets(this) < C.maxBullets * (spread ? 3 : 1) * (storm ? 2 : 1)) {
         const m = this.muzzle(), a = Math.atan2(this.aimY, this.aimX);
-        for (const off of this.spread ? [-0.2, 0, 0.2] : [0]) sc.fire(this, m.x, m.y, a + off);      // spread = three-way fan
+        for (const off of spread ? [-0.2, 0, 0.2] : [0]) sc.fire(this, m.x, m.y, a + off);      // spread = three-way fan
+        this.shots++;
         CG.Sfx.play('shoot');
-        this.fireCd = this.rapid ? C.rapidMs : C.fireMs;
+        this.fireCd = (this.rapid ? C.rapidMs : C.fireMs) * (storm ? 0.5 : 1);
       }
       this.sync(dt);
+    }
+
+    useAbility() {
+      if (this.abilityCd > 0 || !this.alive) return false;
+      const ab = this.agent.ability, sc = this.scene;
+      this.abilityCd = ab.cd;
+      CG.Sfx.play('pickup');
+      switch (this.agent.id) {
+        case 'razor': this.stormT = ab.dur; break;
+        case 'brick': this.domeT = ab.dur; sc.domeFx(this); break;
+        case 'kite':
+          this.dashT = 180; this.invT = Math.max(this.invT, 420); this.dashHit = new Set();
+          this.setProne(false);
+          sc.dashFx(this);
+          break;
+        case 'nova':
+          for (const p of sc.players) {
+            if (p.alive && !p.remote && Math.abs(p.body.center.x - this.body.center.x) < ab.range) p.heal(ab.heal);
+          }
+          if (sc.net) sc.net.shout('heal', { x: Math.round(this.body.center.x), y: Math.round(this.body.bottom), range: ab.range, n: ab.heal });
+          sc.mendFx(this);
+          break;
+        case 'volt': sc.chainArc(this, ab.targets, ab.damage); break;
+      }
+      sc.events.emit('ability', this);
+      return true;
+    }
+
+    heal(n) {
+      if (!this.alive) return;
+      this.hp = Math.min(this.maxHp, this.hp + n);
+      this.scene.plusFx(this.body.center.x, this.body.top);
     }
 
     setProne(p) {
@@ -88,39 +159,67 @@
     sync(dt) {
       const b = this.body, v = this.visual, A = this.art.anims, moving = Math.abs(b.velocity.x) > 10;
       const loop = (set, t) => set[0] + Math.floor(t) % (set[1] - set[0] + 1);
-      let f;
-      if (!this.onGround) { this.spin += dt * 12; f = loop(A.ball, this.spin); }
-      else if (this.prone) f = A.prone[0];
-      else if (moving) { this.runT += dt * 13; f = loop(this.aimY < 0 ? A.run_dup : this.aimY > 0 ? A.run_ddown : A.run_fwd, this.runT); }
-      else f = this.aimY < 0 ? A.stand_up[0] : A.stand_fwd[0];
-      v.setFrame(f).setPosition(b.center.x, b.bottom).setFlipX(this.facing < 0);
-      const blink = this.invT > 0 && Math.floor(this.invT / 80) % 2 === 0;
+      let set, f, angle = 0;
+      if (!this.onGround && this.dashT <= 0) {
+        this.spin += dt * 12;
+        set = A.ball; f = loop(set, this.spin);
+        if (this.art.spin) angle = (this.spin * 40) % 360 * this.facing;   // no curled-up frames: spin the crouch
+      } else if (this.prone) { set = A.prone; f = set[0]; }
+      else if (moving) { this.runT += dt * 13; set = this.aimY < 0 ? A.run_dup : this.aimY > 0 ? A.run_ddown : A.run_fwd; f = loop(set, this.runT); }
+      else { set = this.aimY < 0 ? (this.aimX ? A.stand_dup : A.stand_up) : this.aimY > 0 ? A.stand_ddown : A.stand_fwd; f = set[0]; }
+      v.setFrame(f).setPosition(b.center.x, b.bottom).setFlipX(this.facing < 0).setAngle(angle);
+      v.setScale(this.art.scale * (set[2] || 1));
+      const blink = this.invT > 0 && this.dashT <= 0 && Math.floor(this.invT / 80) % 2 === 0;
       v.setAlpha(blink ? 0.3 : 1);
       this.shield.setVisible(this.barrierT > 0).setPosition(b.center.x, b.center.y)
         .setAlpha(this.barrierT > 2000 ? 1 : 0.4 + 0.6 * Math.abs(Math.sin(this.barrierT / 90)));
+
+      // nametag and hearts bar
+      const top = b.bottom - 150;
+      this.tag.setVisible(true).setPosition(b.center.x, top - 10);
+      const g = this.bar, w = 64, x0 = b.center.x - w / 2;
+      g.clear();
+      g.fillStyle(0x000000, 0.6).fillRect(x0 - 2, top - 6, w + 4, 9);
+      g.fillStyle(0x3a0d0d, 1).fillRect(x0, top - 4, w, 5);
+      g.fillStyle(this.hp / this.maxHp > 0.34 ? 0x5ce65c : 0xff4d4d, 1).fillRect(x0, top - 4, w * this.hp / this.maxHp, 5);
     }
 
-    hit() {
-      if (this.dead || this.out || this.invT > 0 || this.barrierT > 0) return;
-      this.die();
+    // dmg = hearts lost (bullets 1, bombs 2). Returns true if it hurt.
+    hit(dmg = 1) {
+      if (this.remote) return false;                   // their own game decides when they are hit
+      if (!this.alive || this.invT > 0 || this.barrierT > 0 || this.domeT > 0 || this.dashT > 0 || this.god) return false;
+      this.hp -= dmg;
+      if (this.hp <= 0) { this.hp = 0; this.die(); return true; }
+      this.invT = 900;
+      CG.Sfx.play('hit');
+      this.scene.hurtFx(this);
+      return true;
     }
 
+    // A death uses one of the team's shared lives. With none left this player is out until the stage ends.
     die() {
-      if (this.dead || this.out) return;
+      if (!this.alive) return;
       const sc = this.scene, b = this.body, v = this.visual;
-      this.dead = true; this.lives--; this.rapid = false; this.spread = false; this.barrierT = 0;
+      if (this.god) { this.hp = this.maxHp; return; }
+      this.dead = true; this.hp = 0; this.rapid = false; this.spread = false; this.barrierT = 0; this.stormT = 0; this.domeT = 0; this.dashT = 0;
       CG.Sfx.play('die');
       b.stop(); b.enable = false;
       this.shield.setVisible(false);
-      v.setFrame(this.art.anims.death[0]);
+      this.tag.setVisible(false); this.bar.clear();
+      v.setFrame(this.art.anims.death[0]).setScale(this.art.scale * (this.art.anims.death[2] || 1));
       const fromX = Phaser.Math.Clamp(v.x, sc.cameras.main.scrollX + 30, sc.cameras.main.scrollX + CG.CONFIG.W - 30);
       v.setPosition(fromX, Math.min(v.y, CG.CONFIG.H - 120)).setAlpha(1);
       sc.boom(fromX, v.y - 50, 14);
       sc.tweens.add({ targets: v, x: fromX - this.facing * 150, y: v.y - 90, angle: -this.facing * 60, duration: 420, ease: 'Quad.out' });
       sc.tweens.add({ targets: v, alpha: 0, delay: 650, duration: 350 });
+      const respawn = sc.teamLives > 0;
+      if (respawn) {
+        sc.teamLives--;
+        if (sc.net && !sc.net.host) sc.net.send('die', {});      // the host keeps the team's real count
+      }
       sc.time.delayedCall(1300, () => {
         if (sc.over) return;
-        if (this.lives > 0) this.respawn();
+        if (respawn) this.respawn();
         else { this.out = true; v.setVisible(false); sc.checkOver(); }
       });
     }
@@ -128,12 +227,29 @@
     respawn() {
       const sc = this.scene, T = CG.CONFIG.TILE;
       const col = CG.Level.safeCol((sc.cameras.main.scrollX + 260 + this.idx * 90) / T);
-      this.dead = false; this.invT = this.C.respawnInvMs; this.fireCd = 0;
+      this.dead = false; this.out = false; this.invT = this.C.respawnInvMs; this.fireCd = 0; this.hp = this.maxHp;
       this.setProne(false);
       this.body.enable = true;
       this.body.reset(col * T + T / 2, -40);
       this.visual.setAngle(0).setAlpha(1).setVisible(true);
     }
+
+    // an online teammate died / came back in their own game: show it here
+    netDie() {
+      const v = this.visual, sc = this.scene;
+      this.dead = true;
+      this.tag.setVisible(false); this.bar.clear();
+      v.setFrame(this.art.anims.death[0]).setScale(this.art.scale * (this.art.anims.death[2] || 1));
+      sc.boom(v.x, v.y - 50, 14);
+      sc.tweens.add({ targets: v, x: v.x - this.facing * 150, y: v.y - 90, angle: -this.facing * 60, duration: 420, ease: 'Quad.out' });
+      sc.tweens.add({ targets: v, alpha: 0, delay: 650, duration: 350 });
+    }
+    netRespawn() {
+      this.dead = false;
+      this.visual.setAngle(0).setAlpha(1).setVisible(true);
+    }
+
+    destroy() { this.tag.destroy(); this.bar.destroy(); }
   };
 
   // ------------------------------------------------------------------ enemies
@@ -273,6 +389,13 @@
 
     damage(n) {
       if (!this.active) return;
+      if (this.puppet) {                                 // online, not the host: the host's game takes the health
+        this.scene.net.send('hit', { id: this.netId, n });
+        this.setTintFill(0xffffff);
+        this.hurtT = 60;
+        CG.Sfx.play('hit');
+        return;
+      }
       this.hp -= n;
       if (this.hp > 0) CG.Sfx.play('hit');
       // the fortress core cracks at half health
