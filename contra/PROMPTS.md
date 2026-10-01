@@ -236,46 +236,34 @@ ROW 4 — BRICK AEGIS: cells 1 to 3 a translucent steel-blue energy dome forming
 ROW 5 — VOLT CHAIN ARC: cells 1 to 4 a long horizontal purple-white lightning bolt, four different jagged shapes, each filling the cell from the left edge to the right edge; cells 5 to 7 a purple electric spark burst on impact; cells 8 to 10 a purple charge-up glow gathering into a point.
 ```
 
-## 8 — Painted backgrounds (one image per layer and theme, 9 prompts)
+## 8 — All painted backgrounds in one sheet → `backgrounds.png` (9 strips)
 
-Each layer scrolls at a different speed. **The left edge must continue seamlessly into the right edge.**
-Sky layers are solid; mountain and tree layers have a transparent top so the sky shows through.
+**Attach:** nothing. One square image with nine full-width strips: sky, far layer and near layer for each of
+the three stages. Each strip scrolls at its own speed in game, so every strip must tile left to right.
 
-### 8a — Jungle sky → `bg_sky_jungle.png`
 ```
-Hand-painted 2D game background, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. A wide panoramic SKY ONLY for a side-scrolling jungle war game: a hot hazy late-afternoon sky, warm orange and gold near the horizon fading to deep teal-blue at the top, long soft streaks of cloud, a low hazy sun on the left. No ground, no trees, no mountains, no birds, no aircraft, no text, no watermark, no borders. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT: the colours and clouds at the left edge continue exactly into the right edge.
-```
-### 8b — Jungle mountains → `bg_far_jungle.png`
-```
-Hand-painted 2D game background layer, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. Distant misty jungle mountains and volcanic peaks seen from the side, blue-green and hazy with atmospheric perspective, a few waterfalls, occupying only the LOWER HALF of the image; the bottom edge is fully covered by the hills. REMOVE THE BACKGROUND COMPLETELY above the mountains: fully transparent PNG with a real alpha channel, no sky, no clouds, NO CHECKERBOARD PATTERN, no colour fill. No text, no watermark, no borders. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT: the ridge line at the left edge continues exactly into the right edge.
-```
-### 8c — Jungle trees → `bg_trees_jungle.png`
-```
-Hand-painted 2D game background layer, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. A dense line of jungle trees seen from the side: tall palm trees, broad-leaf trees, hanging vines and ferns, dark green with warm rim light from the left, occupying the LOWER 60 PERCENT of the image; the bottom edge is fully covered by thick dark foliage. REMOVE THE BACKGROUND COMPLETELY above and between the treetops: fully transparent PNG with a real alpha channel, no sky, NO CHECKERBOARD PATTERN, no colour fill. No text, no watermark, no borders, no animals, no people. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT.
-```
-### 8d — Steel Yard sky → `bg_sky_base.png`
-```
-Hand-painted 2D game background, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. A wide panoramic NIGHT SKY ONLY over a military base: deep navy to near-black at the top, a dull orange glow of floodlights near the horizon, thin drifting smoke, a few stars, two pale searchlight beams crossing. No ground, no buildings, no text, no watermark, no borders. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT.
-```
-### 8e — Steel Yard skyline → `bg_far_base.png`
-```
-Hand-painted 2D game background layer, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. A distant silhouette skyline of a huge night-time military base seen from the side: radar dishes, smokestacks with red warning lights, hangars, cranes, water towers, dark blue-grey with small warm windows, occupying only the LOWER HALF of the image; the bottom edge is fully covered. REMOVE THE BACKGROUND COMPLETELY above the skyline: fully transparent PNG with a real alpha channel, no sky, NO CHECKERBOARD PATTERN, no colour fill. No text, no watermark, no borders. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT.
-```
-### 8f — Steel Yard fences and structures → `bg_trees_base.png`
-```
-Hand-painted 2D game background layer, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. A closer row of military base structures seen from the side: chain-link fences with barbed wire, guard towers, stacked shipping containers, fuel tanks, pipes and floodlight poles, dark steel grey with orange floodlight rim light, occupying the LOWER 55 PERCENT of the image; the bottom edge is fully covered. REMOVE THE BACKGROUND COMPLETELY above and between the structures: fully transparent PNG with a real alpha channel, no sky, NO CHECKERBOARD PATTERN, no colour fill. No text, no watermark, no borders, no people. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT.
-```
-### 8g — Frozen Pass sky → `bg_sky_snow.png`
-```
-Hand-painted 2D game background, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. A wide panoramic cold winter SKY ONLY over high mountains: pale grey-blue with heavy snow clouds, a cold white sun glow behind the clouds, light falling snow. No ground, no mountains, no text, no watermark, no borders. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT.
-```
-### 8h — Frozen Pass mountains → `bg_far_snow.png`
-```
-Hand-painted 2D game background layer, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. Distant jagged snow-covered mountain peaks seen from the side, icy blue shadows and white snowfields, hazy with distance, occupying only the LOWER HALF of the image; the bottom edge is fully covered. REMOVE THE BACKGROUND COMPLETELY above the peaks: fully transparent PNG with a real alpha channel, no sky, NO CHECKERBOARD PATTERN, no colour fill. No text, no watermark, no borders. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT.
-```
-### 8i — Frozen Pass pines → `bg_trees_snow.png`
-```
-Hand-painted 2D game background layer, gritty 1980s action-movie look, painterly, no photorealism, no pixel art. A dense line of tall snow-covered pine trees seen from the side, dark green-blue under heavy white snow, a few broken trunks and rocks, occupying the LOWER 60 PERCENT of the image; the bottom edge is fully covered by snowy trees. REMOVE THE BACKGROUND COMPLETELY above and between the treetops: fully transparent PNG with a real alpha channel, no sky, NO CHECKERBOARD PATTERN, no colour fill. No text, no watermark, no borders, no animals, no people. Exactly 2560×1280 pixels. The image TILES SEAMLESSLY LEFT TO RIGHT.
+Hand-painted 2D game background art for a side-scrolling run-and-gun action game. Gritty 1980s action-movie look, painterly brush texture, strong atmospheric perspective, warm rim light, no photorealism, no pixel art. Everything is seen straight from the side, like a stage set: no perspective, no camera tilt, no ground plane, no people, no animals, no vehicles moving, no text.
+
+LAYOUT: one square image, exactly 2560×2560 pixels, divided into NINE horizontal STRIPS stacked from top to bottom. Every strip is the FULL WIDTH of the image (2560 pixels) and exactly one ninth of its height (about 284 pixels tall). The strips never overlap and never bleed into each other: each strip's content stays strictly inside its own band. No borders, no frames, no dividing lines, no grid lines, no labels, no letters, no numbers, no watermark.
+
+EVERY STRIP TILES SEAMLESSLY LEFT TO RIGHT: whatever touches the left edge of a strip continues exactly into its right edge (same colours, same horizon height, same ridge line), so the strip can repeat forever sideways without a visible seam. No single object is cut in half at the left or right edge.
+
+TRANSPARENCY: strips 1, 4 and 7 (the skies) are fully painted from edge to edge with no transparency. In all the other strips (2, 3, 5, 6, 8, 9) REMOVE THE BACKGROUND COMPLETELY above and between the shapes: fully transparent PNG with a real alpha channel — no sky colour, no fog fill, no white, no grey, NO CHECKERBOARD PATTERN. In those strips the shapes rise from the BOTTOM edge of the strip, and the bottom edge of the strip is completely covered by solid painted ground or foliage from the far left to the far right.
+
+STAGE 1 — JUNGLE (strips 1 to 3)
+STRIP 1 — JUNGLE SKY: a hot, hazy late-afternoon sky. Warm orange and gold near the bottom of the strip, fading up to deep teal-blue at the top. Long soft streaks of thin cloud lit orange from below, a low hazy sun glow on the left third, faint heat haze. Sky only: no ground, no mountains, no birds, no aircraft.
+STRIP 2 — JUNGLE MOUNTAINS (far layer): distant misty jungle mountains and volcanic peaks, blue-green, soft and hazy with distance, two thin white waterfalls, the ridge line rising and falling gently and reaching about two thirds of the way up the strip at its highest peaks. Transparent above the ridge.
+STRIP 3 — JUNGLE TREES (near layer): a dense, dark wall of jungle — tall palm trees with drooping fronds, broad-leaf trees, hanging vines and big ferns — dark green with warm orange rim light from the left, treetops reaching almost to the top of the strip in places and dipping to half height in others. Transparent above and between the treetops; the bottom of the strip is solid dark undergrowth.
+
+STAGE 2 — STEEL YARD, a military base at night (strips 4 to 6)
+STRIP 4 — NIGHT SKY: deep navy fading to near-black at the top, a dull orange floodlight glow along the bottom of the strip, thin drifting smoke, a few faint stars, two pale searchlight beams crossing diagonally. Sky only.
+STRIP 5 — BASE SKYLINE (far layer): a distant dark blue-grey silhouette of a huge military base — radar dishes, tall smokestacks with small red warning lights, hangars, cranes, water towers — with tiny warm lit windows, reaching about two thirds of the way up the strip. Transparent above the skyline.
+STRIP 6 — BASE STRUCTURES (near layer): a closer row of chain-link fences topped with barbed wire, guard towers, stacked shipping containers, fuel tanks, pipes and floodlight poles, dark steel grey with orange floodlight rim light, reaching almost to the top of the strip in places. Transparent above and between the structures; the bottom of the strip is solid dark concrete wall and fence base.
+
+STAGE 3 — FROZEN PASS, high snowy mountains (strips 7 to 9)
+STRIP 7 — WINTER SKY: a cold pale grey-blue sky with heavy snow clouds, a soft white sun glow behind the clouds, light falling snowflakes. Sky only.
+STRIP 8 — SNOW PEAKS (far layer): distant jagged snow-covered mountain peaks, icy blue shadows and bright white snowfields, hazy with distance, reaching about two thirds of the way up the strip at the highest peak. Transparent above the peaks.
+STRIP 9 — SNOWY PINES (near layer): a dense line of tall pine trees heavy with snow, dark green-blue under white snow, a few broken trunks and snowy rocks, treetops reaching almost to the top of the strip in places. Transparent above and between the treetops; the bottom of the strip is solid snowy forest floor.
 ```
 
 ## 9 — Trees and scenery → `scenery.png` (10 × 5)
