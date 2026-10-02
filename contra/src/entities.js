@@ -528,7 +528,7 @@
           this.cd2 -= ms;
           if (this.cd2 <= 0) { this.cd2 = 3800 + Math.random() * 1500; b.velocity.y = -1250; b.velocity.x = this.dir * 260; this.wasAir = true; }
         }
-        this.setFlipX(this.dir > 0);
+        this.setFlipX(this.dir < 0);                     // drawn facing right
         this.setFrame(Math.floor(this.t * 4) % 2);
         if (P && onScreen && this.cd <= 0) {
           this.cd = fireMs;

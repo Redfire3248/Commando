@@ -209,7 +209,35 @@ CG.DATA.art = {
   "pk_longer": "assets/atlas/pk_longer.png",
   "pk_armor": "assets/atlas/pk_armor.png",
   "pk_dcoins": "assets/atlas/pk_dcoins.png",
-  "pk_danger": "assets/atlas/pk_danger.png"
+  "pk_danger": "assets/atlas/pk_danger.png",
+  "rank_bronze_1": "assets/atlas/rank_bronze_1.png",
+  "rank_bronze_2": "assets/atlas/rank_bronze_2.png",
+  "rank_bronze_3": "assets/atlas/rank_bronze_3.png",
+  "rank_silver_1": "assets/atlas/rank_silver_1.png",
+  "rank_silver_2": "assets/atlas/rank_silver_2.png",
+  "rank_silver_3": "assets/atlas/rank_silver_3.png",
+  "rank_gold_1": "assets/atlas/rank_gold_1.png",
+  "rank_gold_2": "assets/atlas/rank_gold_2.png",
+  "rank_gold_3": "assets/atlas/rank_gold_3.png",
+  "rank_platinum_1": "assets/atlas/rank_platinum_1.png",
+  "rank_platinum_2": "assets/atlas/rank_platinum_2.png",
+  "rank_platinum_3": "assets/atlas/rank_platinum_3.png",
+  "rank_diamond_1": "assets/atlas/rank_diamond_1.png",
+  "rank_diamond_2": "assets/atlas/rank_diamond_2.png",
+  "rank_diamond_3": "assets/atlas/rank_diamond_3.png",
+  "rank_master_1": "assets/atlas/rank_master_1.png",
+  "rank_master_2": "assets/atlas/rank_master_2.png",
+  "rank_master_3": "assets/atlas/rank_master_3.png",
+  "rank_legend": "assets/atlas/rank_legend.png",
+  "e_gate": "assets/atlas/e_gate.png",
+  "e_mouth": "assets/atlas/e_mouth.png",
+  "rock": "assets/atlas/rock.png",
+  "boss_statue": "assets/atlas/boss_statue.png",
+  "e_orb": "assets/atlas/e_orb.png",
+  "fireball": "assets/atlas/fireball.png",
+  "e_disc": "assets/atlas/e_disc.png",
+  "hz_nozzle": "assets/atlas/hz_nozzle.png",
+  "hz_crusher": "assets/atlas/hz_crusher.png"
  },
  "sheets": {
   "commandos": {
@@ -306,6 +334,26 @@ CG.DATA.art = {
    "path": "assets/atlas/fx_charge.png",
    "fw": 93,
    "fh": 99
+  },
+  "e_bug": {
+   "path": "assets/atlas/e_bug.png",
+   "fw": 246,
+   "fh": 180
+  },
+  "boss_giant": {
+   "path": "assets/atlas/boss_giant.png",
+   "fw": 228,
+   "fh": 287
+  },
+  "boss_heart": {
+   "path": "assets/atlas/boss_heart.png",
+   "fw": 193,
+   "fh": 274
+  },
+  "hz_flame": {
+   "path": "assets/atlas/hz_flame.png",
+   "fw": 96,
+   "fh": 175
   }
  },
  "scale": {
@@ -467,7 +515,20 @@ CG.DATA.art = {
   "pk_longer": 0.5185,
   "pk_armor": 0.5122,
   "pk_dcoins": 0.5185,
-  "pk_danger": 0.3889
+  "pk_danger": 0.3889,
+  "e_gate": 1.7266,
+  "e_mouth": 0.5981,
+  "e_bug": 0.2927,
+  "rock": 0.3107,
+  "boss_statue": 1.2632,
+  "e_orb": 0.4158,
+  "fireball": 0.2698,
+  "e_disc": 0.3265,
+  "hz_nozzle": 0.4384,
+  "boss_giant": 1.1847,
+  "boss_heart": 1.2953,
+  "hz_crusher": 0.5251,
+  "hz_flame": 0.5
  },
  "players": [
   {

@@ -81,12 +81,15 @@ CG.Admin = (() => {
     spawn(s) {
       if (!s) return needGame();
       const T = CG.Enemy.TYPES;
-      const list = ['runner', 'rifle', 'grenadier', 'turret', 'drone', 'flyer'];
-      return '<p class="admin-tip">They appear at the right edge of the screen.</p><div class="admin-grid">' + list.map((t) => {
+      const tile = (t, many) => {
         const d = T[t], key = d.sheet && s.textures.exists(d.sheet) ? d.sheet : d.tex;
         return `<div class="tile btn">${img(thumb(key, d.frames || d.sheet ? 0 : undefined))}<span>${t}</span>
-          <div class="row center-row"><button class="btn small" data-adm="spawn" data-t="${t}" data-n="1">×1</button><button class="btn small" data-adm="spawn" data-t="${t}" data-n="5">×5</button></div></div>`;
-      }).join('') + '</div>';
+          <div class="row center-row"><button class="btn small" data-adm="spawn" data-t="${t}" data-n="1">×1</button>${many ? `<button class="btn small" data-adm="spawn" data-t="${t}" data-n="5">×5</button>` : ''}</div></div>`;
+      };
+      return '<p class="admin-tip">They appear at the right edge of the screen.</p><div class="admin-sec">Soldiers</div><div class="admin-grid">'
+        + ['runner', 'rifle', 'grenadier', 'turret', 'drone', 'flyer', 'bug'].map((t) => tile(t, true)).join('') + '</div>'
+        + '<div class="admin-sec">Campaign</div><div class="admin-grid">' + ['mouth', 'gate'].map((t) => tile(t)).join('') + '</div>'
+        + '<div class="admin-sec">Bosses</div><div class="admin-grid">' + ['giant', 'statue', 'heart', 'tank'].map((t) => tile(t)).join('') + '</div>';
     },
     items(s) {
       if (!s) return needGame();
@@ -109,9 +112,14 @@ CG.Admin = (() => {
         <button class="btn" data-adm="boss">SKIP TO THE BOSS</button>
         <button class="btn" data-adm="clear">CLEAR THE STAGE</button>
         <button class="btn ${s.time.timeScale < 1 ? 'on' : ''}" data-adm="slow">SLOW MOTION</button>
-      </div><div class="admin-sec">Go to stage</div><div class="admin-grid wide">
-        ${[1, 2, 3, 4, 5, 6].map((n) => `<button class="btn" data-adm="goto" data-n="${n}">STAGE ${n} · ${CG.DATA.levels[(n - 1) % CG.DATA.levels.length].name}</button>`).join('')}
-      </div>`;
+        <button class="btn ${s.hzOff ? 'on' : ''}" data-adm="hazards">HAZARDS OFF</button>
+      </div>${s.horde ? `<div class="admin-sec">Horde · wave ${s.wave}</div><div class="admin-grid wide">
+        <button class="btn" data-adm="wave" data-n="1">NEXT WAVE</button><button class="btn" data-adm="wave" data-n="5">+5 WAVES</button></div>` : ''}
+      ${s.pvp ? `<div class="admin-sec">${s.ffa ? 'Free-for-all' : 'Duel'}</div><div class="admin-grid wide">
+        <button class="btn" data-adm="point">+1 POINT FOR ME</button><button class="btn" data-adm="winnow">WIN NOW</button></div>` : ''}
+      ${!s.pvp && !s.horde ? `<div class="admin-sec">Go to stage</div><div class="admin-grid wide">
+        ${CG.DATA.levels.map((L, i) => `<button class="btn" data-adm="goto" data-n="${i + 1}">STAGE ${i + 1} · ${L.name}</button>`).join('')}
+      </div>` : ''}`;
     },
     hacks(s) {
       if (!s) return needGame();
@@ -173,6 +181,13 @@ CG.Admin = (() => {
         <div class="admin-row give-msg"><input id="give-msg" maxlength="280" placeholder="Shows once on every player's screen"><button class="btn primary" data-adm="announce">SEND</button>
           <button class="btn" data-adm="announce-clear">CLEAR</button></div>
         <div class="give-target">Giving to <b>${esc(name(u))}</b> · 🪙 ${u.coins || 0} · ${Object.keys(own).length} items</div>
+        <div class="admin-sec">Rank · ${CG.Ranks.chip(u.rr || 0, { rr: true })}</div>
+        <div class="admin-row give-rank">${[-100, -25, 25, 100].map((n) => `<button class="btn" data-adm="give-rr" data-n="${n}">${n > 0 ? '+' : ''}${n} RR</button>`).join('')}
+          <button class="btn" data-adm="give-stats-reset">RESET STATS</button></div>
+        <div class="admin-grid ranks-grid">${CG.Ranks.TIERS.map((t, ti) => (t.id === 'legend' ? [0] : [1, 2, 3]).map((dv) => {
+          const rr = t.id === 'legend' ? CG.Ranks.LEGEND_AT : (ti * 3 + dv - 1) * CG.Ranks.DIV;
+          return `<button class="tile btn ${CG.Ranks.of(u.rr || 0).name === CG.Ranks.of(rr).name ? 'on' : ''}" data-adm="give-rank" data-n="${rr}">${CG.Ranks.icon(rr, 34)}<span>${CG.Ranks.of(rr).name}</span></button>`;
+        }).join('')).join('')}</div>
         <div class="admin-sec">Coins</div>
         <div class="admin-row give-coins">${[100, 500, 1000, 5000, 10000].map((n) => `<button class="btn" data-adm="give-coins" data-n="${n}">+${n}</button>`).join('')}
           <input id="give-n" type="number" placeholder="Amount"><button class="btn primary" data-adm="give-coins-n">GIVE</button>
@@ -217,14 +232,32 @@ CG.Admin = (() => {
     ability: (s, d) => { const p = s.players[d.i]; if (!p.remote) { p.abilityCd = 0; p.useAbility(); } },
     revive: (s, d) => { const p = s.players[d.i]; if (p.out && !p.remote) p.respawn(); },
     spawn: (s, d) => {
-      const T = CG.CONFIG.TILE, L = CG.DATA.level;
-      for (let k = 0; k < +d.n; k++) {
-        const x = s.camX + CG.CONFIG.W - 80 - k * 70;
-        const y = d.t === 'drone' ? 4.5 * T : d.t === 'flyer' ? 4 * T : L.groundRow * T;
-        const e = new CG.Enemy(s, d.t, x, y, d.t === 'flyer' ? ['rapid', 'spread', 'barrier', 'life'][k % 4] : undefined);
-        e.netId = ++s.netSeq;
-        s.enemies.add(e);
+      const T = CG.CONFIG.TILE, L = CG.DATA.level, W = CG.CONFIG.W;
+      if (d.t === 'statue') {                           // the statue comes with its two orbiting arms
+        const cx = s.camX + W - 330, cy = 5.2 * T;
+        s.spawnEnemy('statue', cx, cy);
+        s.spawnEnemy('orb', cx - 230, cy, { cx, cy, ph: 0 }); s.spawnEnemy('orb', cx + 230, cy, { cx, cy, ph: Math.PI });
+        return;
       }
+      for (let k = 0; k < +d.n; k++) {
+        const x = s.camX + W - (d.t === 'giant' || d.t === 'tank' ? 360 : d.t === 'heart' ? 260 : 80) - k * 70;
+        const y = d.t === 'drone' ? 4.5 * T : d.t === 'flyer' ? 4 * T : d.t === 'mouth' ? 1.4 * T : d.t === 'heart' ? 7.6 * T : L.groundRow * T;
+        s.spawnEnemy(d.t, x, y, d.t === 'flyer' ? ['rapid', 'spread', 'barrier', 'life'][k % 4] : undefined);
+      }
+    },
+    hazards: (s) => { s.hzOff = !s.hzOff; },
+    wave: (s, d) => {
+      s.enemies.getChildren().slice().forEach((e) => { if (e.active) s.killEnemy(e); });
+      s.waveQueue = []; s.wave += +d.n - 1; s.waveT = 0;
+    },
+    point: (s) => {
+      const me = s.players.find((q) => !q.bot && !q.remote) || s.players[0];
+      if (s.ffa) { s.kills[me.team]++; if (s.kills[me.team] >= s.pvpSet.rounds) { s.duelWinner = me.team; s.duelOver(me.team); } }
+      else { s.roundEnd = false; s.roundWon(me.team); }
+    },
+    winnow: (s) => {
+      const me = s.players.find((q) => !q.bot && !q.remote) || s.players[0];
+      s.kills[me.team] = s.pvpSet.rounds; s.duelWinner = me.team; s.duelOver(me.team);
     },
     item: (s, d) => {
       const p = s.players.find((q) => q.alive) || s.players[0];
@@ -280,6 +313,9 @@ CG.Admin = (() => {
     },
     'give-none': () => { const ids = {}; Object.keys((users[giveTo] || {}).owned || {}).forEach((id) => { ids[id] = null; }); return grant(ids); },
     'give-coins': (d) => giveCoins(+d.n),
+    'give-rank': (d) => CG.Net.adminSetRR(giveTo, +d.n).then(() => { users[giveTo].rr = +d.n; }),
+    'give-rr': (d) => { const rr = Math.max(0, (users[giveTo].rr || 0) + +d.n); return CG.Net.adminSetRR(giveTo, rr).then(() => { users[giveTo].rr = rr; }); },
+    'give-stats-reset': () => CG.Net.adminResetStats(giveTo).then(() => { users[giveTo].stats = null; }),
     'give-coins-n': () => { const n = Math.round(+$('give-n').value || 0); return n ? giveCoins(n) : Promise.reject(new Error('Type an amount')); },
     'users-reload': () => { users = null; return Promise.resolve(); },
   };

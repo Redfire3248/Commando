@@ -224,6 +224,11 @@ CG.Net = {
   adminAnnounce(text) {
     return text ? this.db.ref('announce').set({ text: String(text).slice(0, 280), at: Date.now(), by: this.profile.username || '' }) : this.db.ref('announce').remove();
   },
+  adminSetRR(uid, rr) {
+    if (uid === this.uid) this.profile.rr = rr;
+    return this.db.ref('users/' + uid + '/rr').set(Math.max(0, Math.round(rr)));
+  },
+  adminResetStats(uid) { return this.db.ref('users/' + uid + '/stats').remove(); },
   adminSetOwned(uid, ids) {
     const up = {};
     for (const id in ids) up['users/' + uid + '/owned/' + id] = ids[id] ? true : null;

@@ -954,3 +954,8 @@ img { -webkit-user-drag: none; user-drag: none; }
   .mt-sizes .btn, .mt-sizes.two .btn { font-size: 14px; padding: 5px 0; }
   .mode-tile .btn.primary { padding: 6px 8px; font-size: 13px; }
 }
+
+#admin .ranks-grid .tile { padding: 6px 4px; gap: 4px; }
+#admin .ranks-grid .tile span { font-size: 11px; }
+#admin .ranks-grid .tile.on { border-color: #ffd23c; background: rgba(255, 210, 60, .18); }
+#admin .give-rank .btn { font-size: 13px; }

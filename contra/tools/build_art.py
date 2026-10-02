@@ -762,29 +762,71 @@ def build_ranks():
     a = load('ranks.png')
     if a is None:
         return
-    global COLS, ROWS
-    keep = (COLS, ROWS)
-    COLS, ROWS = 4, 5
-    try:
-        cells = cut_cells(a, grow=4)
-    finally:
-        COLS, ROWS = keep
+    # cut emblem by emblem, read in order (the image tool laid them out as rows of three with LEGEND at the end).
+    # Rows here nearly touch, so emblems are grouped into rows by their centres, not by empty lines.
+    m = a[..., 3] > 30
+    lab, n = ndimage.label(ndimage.binary_dilation(m, iterations=2))
+    parts = []
+    for i, sl in enumerate(ndimage.find_objects(lab)):
+        part = (lab[sl] == i + 1) & m[sl]
+        if part.sum() < 300:
+            continue
+        crop = a[sl].copy(); crop[~part] = 0
+        parts.append(((sl[0].start + sl[0].stop) / 2, (sl[1].start + sl[1].stop) / 2, crop, sl[0].stop - sl[0].start, sl[0].start))
+    # emblems stacked so close that they touch come out as one tall piece: split it at its emptiest rows
+    med = float(np.median([p[3] for p in parts]))
+    split = []
+    for cy, cx, crop, h, y0 in parts:
+        k = int(round(h / med))
+        if k < 2:
+            split.append((cy, cx, crop, h)); continue
+        proj = (crop[..., 3] > 30).sum(1)
+        cuts_ = [0]
+        for j in range(1, k):
+            c, r = int(j * h / k), int(h / k * 0.2)
+            cuts_.append(c - r + int(np.argmin(proj[c - r:c + r])))
+        cuts_.append(h)
+        for j in range(k):
+            piece = crop[cuts_[j]:cuts_[j + 1]]
+            ys = np.nonzero((piece[..., 3] > 30).any(1))[0]
+            if len(ys):
+                piece = piece[ys[0]:ys[-1] + 1]
+            split.append((y0 + (cuts_[j] + cuts_[j + 1]) / 2, cx, piece, piece.shape[0]))
+    parts = split
+    parts.sort(key=lambda p: p[0])
+    rows, cur = [], []
+    for p in parts:
+        if cur and p[0] - cur[-1][0] > 0.5 * np.median([q[3] for q in parts]):
+            rows.append(cur); cur = []
+        cur.append(p)
+    if cur:
+        rows.append(cur)
+    sprites = [(p[2],) for r in rows for p in sorted(r, key=lambda q: q[1])]
+    print('  ranks: emblems per row', [len(r) for r in rows])
     n = 0
     for i, key in enumerate(RANK_KEYS):
-        if i in cells:
-            manifest['images'][key] = save(blocky(Image.fromarray(cells[i][0]), 96), key)
+        if i < len(sprites):
+            manifest['images'][key] = save(Image.fromarray(sprites[i][0]), key)
             n += 1
     print('  ranks:', n, 'icons')
 
 
 # campaign.png: 5 columns x 4 rows (prompt 18). Each cell -> its key; two-frame things become strips. The scale makes
 # each one the same size in game as the built-in pixel art it replaces (hazards.js).
-CAMPAIGN = [  # (cell, key, frame, width in game)
-    (0, 'e_gate', 0, 96), (1, 'e_mouth', 0, 128), (2, 'e_bug', 0, 64), (3, 'e_bug', 1, 64), (4, 'rock', 0, 64),
-    (5, 'boss_statue', 0, 288), (6, 'e_orb', 0, 80), (7, 'fireball', 0, 30), (8, 'e_disc', 0, 64), (9, 'hz_nozzle', 0, 64),
-    (10, 'boss_giant', 0, 192), (11, 'boss_giant', 1, 192), (12, 'boss_heart', 0, 256), (13, 'boss_heart', 1, 256), (14, 'hz_crusher', 0, 136),
-    (15, 'hz_flame', 0, 48), (16, 'hz_flame', 1, 48),
+CAMPAIGN = [  # (cell, key, frame, size in game: ('w', px) or ('h', px))
+    (0, 'e_gate', 0, ('h', 480)), (1, 'e_mouth', 0, ('w', 128)), (2, 'e_bug', 0, ('w', 72)), (3, 'e_bug', 1, ('w', 72)), (4, 'rock', 0, ('w', 64)),
+    (5, 'boss_statue', 0, ('h', 336)), (6, 'e_orb', 0, ('w', 84)), (7, 'fireball', 0, ('w', 34)), (8, 'e_disc', 0, ('w', 64)), (9, 'hz_nozzle', 0, ('w', 64)),
+    (10, 'boss_giant', 0, ('h', 340)), (11, 'boss_giant', 1, ('h', 340)), (12, 'boss_heart', 0, ('w', 250)), (13, 'boss_heart', 1, ('w', 250)), (14, 'hz_crusher', 0, ('w', 136)),
+    (15, 'hz_flame', 0, ('w', 48)), (16, 'hz_flame', 1, ('w', 48)),
 ]
+
+
+def fiery_rows(crop):
+    """rows of a crop that are mostly fire (orange / yellow)"""
+    r, g, b, al = [crop[..., i].astype(int) for i in range(4)]
+    fire = (al > 30) & (r > 190) & (g > 70) & (b < 120)
+    solid = (al > 30).sum(1)
+    return (fire.sum(1) > solid * 0.5) & (solid > 0)
 
 
 def build_campaign():
@@ -799,23 +841,33 @@ def build_campaign():
     finally:
         COLS, ROWS = keep
     groups = {}
-    for cell, key, frame, width in CAMPAIGN:
-        if cell in cells:
-            groups.setdefault(key, []).append((frame, cells[cell][0], width))
+    for cell, key, frame, size in CAMPAIGN:
+        if cell not in cells:
+            continue
+        crop = cells[cell][0]
+        if key == 'hz_flame':                      # only the fire (no pipe caps), so pieces stack into one column
+            rows = np.nonzero(fiery_rows(crop))[0]
+            if len(rows):
+                crop = crop[rows[0]:rows[-1] + 1]
+        if key == 'hz_nozzle':                     # only the metal nozzle (it is drawn with a flame coming out)
+            rows = np.nonzero(fiery_rows(crop))[0]
+            if len(rows) and rows[0] > 4:
+                crop = crop[:rows[0]]
+        groups.setdefault(key, []).append((frame, crop, size))
     for key, frs in groups.items():
-        frs.sort()
-        width = frs[0][2]
+        frs.sort(key=lambda f: f[0])
+        axis, px = frs[0][2]
         if len(frs) == 1:
             img = Image.fromarray(frs[0][1])
             manifest['images'][key] = save(img, key)
-            manifest['scale'][key] = round(width / img.width, 4)
+            manifest['scale'][key] = round(px / (img.width if axis == 'w' else img.height), 4)
         else:                                          # frames side by side in equal cells, feet on the same line
             fw = max(f[1].shape[1] for f in frs); fh = max(f[1].shape[0] for f in frs)
             sheet = Image.new('RGBA', (fw * len(frs), fh), (0, 0, 0, 0))
             for i, (_, crop, _) in enumerate(frs):
                 sheet.alpha_composite(Image.fromarray(crop), (i * fw + (fw - crop.shape[1]) // 2, fh - crop.shape[0]))
             manifest['sheets'][key] = {'path': save(sheet, key), 'fw': fw, 'fh': fh}
-            manifest['scale'][key] = round(width / fw, 4)
+            manifest['scale'][key] = round(px / (fw if axis == 'w' else fh), 4)
     print('  campaign:', len(groups), 'pieces')
 
 

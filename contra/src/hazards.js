@@ -139,6 +139,7 @@ CG.Hazards = (() => {
 
   function update(sc, dt) {
     if (!sc.hz) return;
+    const off = !!sc.hzOff;                              // admin: hazards off
     const cam = sc.cameras.main, W = CG.CONFIG.W, T = CG.CONFIG.TILE, gy = CG.DATA.level.groundRow * T, near = (x) => x > cam.scrollX - 200 && x < cam.scrollX + W + 200;
     for (const h of sc.hz) {
       h.t += dt;
@@ -148,7 +149,7 @@ CG.Hazards = (() => {
         h.fire.setVisible(on).setFrame(Math.floor(h.t * 12) % 2);
         if (on) { h.fire.tilePositionY -= dt * 900; h.fire.setAlpha(0.85 + Math.random() * 0.15); }
         if (warn && near(h.x) && Math.random() < 0.5) sc.sparks.explode(1, h.x + Phaser.Math.Between(-12, 12), 34);
-        if (on && near(h.x)) for (const p of mine(sc)) if (Math.abs(p.body.center.x - h.x) < 40) p.hit(1);
+        if (on && near(h.x) && !off) for (const p of mine(sc)) if (Math.abs(p.body.center.x - h.x) < 40) p.hit(1);
         if (on && !h.wasOn && near(h.x)) CG.Sfx.play('boom');
         h.wasOn = on;
       } else if (h.type === 'crusher') {
@@ -165,12 +166,12 @@ CG.Hazards = (() => {
         h.img.setY(y);
         h.chain.clear().fillStyle(0x1a1d22, 1).fillRect(h.x - 6, 0, 12, y - 100).fillStyle(0x59636f, 1);
         for (let cy = 0; cy < y - 104; cy += 18) h.chain.fillRect(h.x - 4, cy, 8, 10);
-        if (ph >= 1.6 && ph < 2.3) for (const p of mine(sc)) if (Math.abs(p.body.center.x - h.x) < 66 && p.body.top < y) p.hit(2);
+        if (ph >= 1.6 && ph < 2.3 && !off) for (const p of mine(sc)) if (Math.abs(p.body.center.x - h.x) < 66 && p.body.top < y) p.hit(2);
       } else if (h.type === 'rocks') {
         // boulders tumble down while the falls are on screen
         if (!near(h.x) && !near(h.x2)) continue;
         h.cd -= dt;
-        if (h.cd <= 0 && !sc.isClient) {
+        if (h.cd <= 0 && !sc.isClient && !off) {
           h.cd = Math.max(0.7, 1.8 / (1 + 0.15 * (sc.crowd || 0)));
           const r = sc.rocks.get(Phaser.Math.Between(h.x, h.x2), -40, 'rock');
           if (r) {
@@ -214,7 +215,7 @@ CG.Hazards = (() => {
         for (let y = top; y < e.y; y += 24) sc.gateFx.lineTo(fx + k * 8 + Phaser.Math.Between(-10, 10), y);
         sc.gateFx.strokePath();
       }
-      for (const p of mine(sc)) if (Math.abs(p.body.center.x - fx) < 26) p.hit(1);
+      if (!off) for (const p of mine(sc)) if (Math.abs(p.body.center.x - fx) < 26) p.hit(1);
     }
   }
 
