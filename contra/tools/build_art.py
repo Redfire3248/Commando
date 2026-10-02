@@ -591,12 +591,20 @@ IDLE_SKIP = set()
 
 def build_idle():
     a = load('idle.png')
-    if a is None:
-        return
-    rows = sprite_rows(a)
-    print('  idle: sprites per row', [len(r) for r in rows], '(expected 11 rows of up to 10)')
+    rows = sprite_rows(a) if a is not None else []
+    if rows:
+        print('  idle: sprites per row', [len(r) for r in rows], '(expected 11 rows of up to 10)')
     out = {}
-    for aid, fr in zip(IDLE_ORDER, rows):
+    by_agent = dict(zip(IDLE_ORDER, rows))
+    # a sheet of one agent's own (assets/idle/<agent>.png, prompt 16: 10 frames, read left to right, top row first)
+    # wins over its row in idle.png — one agent per image comes back at a much higher resolution
+    for aid in IDLE_ORDER:
+        one = load(os.path.join('idle', aid + '.png'))
+        if one is not None:
+            frames = [sp for r in sprite_rows(one) for sp in r]
+            print('  idle/' + aid + '.png:', len(frames), 'frames')
+            by_agent[aid] = frames
+    for aid, fr in by_agent.items():
         if len(fr) < 2 or aid in IDLE_SKIP:
             continue
         # one strip per agent: every frame in an equal cell, feet on the same line (pixels copied untouched)

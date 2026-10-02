@@ -12,30 +12,30 @@
 // Each stage is a run of hand-picked SECTIONS (see CG.Level.SECTIONS) followed by its boss:
 //   bg: which painted scene from backgrounds15.png (first lap, later laps)   brief: the line under the stage name
 CG.STORY = [
-  { name: 'JUNGLE', theme: 'jungle', bg: [1, 4], brief: 'Break through the jungle and blow up the defense wall',
-    sections: ['fight', 'bridge', 'climb0', 'tower', 'bridge', 'fight', 'nest'],
+  { name: 'JUNGLE', theme: 'jungle', bg: [1, 4], brief: 'Cross the jungle — the bridges blow up behind you — and break the defense wall',
+    sections: ['fight', 'bridge', 'climb0', 'tower', 'bridge', 'fight', 'bridge', 'nest'],
     boss: { type: 'fortress', cannonRows: [5.5, 9.5], say: 'DESTROY THE DEFENSE WALL' } },
-  { name: 'BASE 1', theme: 'base', bg: [5, 8], brief: 'Fight down the corridors of the enemy base',
-    sections: ['alley', 'fight', 'alley', 'tower', 'alley', 'gauntlet'],
+  { name: 'BASE 1', theme: 'base', bg: [5, 8], brief: 'Break every wall core to open the way through the base',
+    sections: ['gatehall', 'alley', 'gatehall', 'tower', 'gatehall'],
     boss: { type: 'fortress', cannonRows: [4.5, 7.5, 10.5], say: 'DESTROY THE BASE CORE' } },
-  { name: 'WATERFALL', theme: 'jungle', bg: [2, 3], brief: 'Climb the falls — watch the sky',
+  { name: 'WATERFALL', theme: 'jungle', bg: [2, 3], brief: 'Climb the falls — watch for falling rocks',
     sections: ['fight', 'falls', 'climb1', 'falls', 'drones', 'falls'],
-    boss: { type: 'gunship', say: 'BRING DOWN THE GUARDIAN' } },
-  { name: 'BASE 2', theme: 'base', bg: [6, 12], brief: 'Deeper in: more guns, higher walls',
-    sections: ['gauntlet', 'tower', 'alley', 'climb2', 'nest', 'alley', 'gauntlet'],
-    boss: { type: 'fortress', cannonRows: [3.5, 6.5, 9.5], say: 'DESTROY THE EYE CORE' } },
+    boss: { type: 'statue', say: 'DESTROY THE ALIEN STATUE' } },
+  { name: 'BASE 2', theme: 'base', bg: [6, 12], brief: 'Deeper in: more walls, more guns',
+    sections: ['gauntlet', 'gatehall', 'tower', 'gatehall', 'nest', 'gatehall'],
+    boss: { type: 'fortress', cannonRows: [3.5, 6.5, 9.5], say: 'DESTROY THE TWIN CORE' } },
   { name: 'SNOW FIELD', theme: 'snow', bg: [9, 10], brief: 'Cross the frozen field before the armour arrives',
     sections: ['fight', 'gauntlet', 'bridge', 'nest', 'fight', 'drones', 'gauntlet'],
-    boss: { type: 'tank', say: 'STOP THE ARMORED TANK' } },
-  { name: 'ENERGY ZONE', theme: 'base', bg: [11, 7], brief: 'The reactor halls are burning — keep moving',
-    sections: ['alley', 'climb0', 'nest', 'climb1', 'alley', 'drones', 'nest'],
-    boss: { type: 'gunship', say: 'SHOOT DOWN THE REACTOR GUARD' } },
-  { name: 'HANGAR', theme: 'base', bg: [13, 12], brief: 'Through the hangar and the loading cranes',
-    sections: ['gauntlet', 'tower', 'drones', 'climb2', 'alley', 'tower', 'gauntlet'],
-    boss: { type: 'tank', say: 'STOP THE HANGAR WALKER' } },
+    boss: { type: 'tank', say: 'STOP THE ARMORED CARRIER' } },
+  { name: 'ENERGY ZONE', theme: 'base', bg: [11, 7], brief: 'Time your run past the fire jets',
+    sections: ['alley', 'flames', 'nest', 'climb1', 'flames', 'drones', 'flames'],
+    boss: { type: 'giant', say: 'TAKE DOWN THE GIANT' } },
+  { name: 'HANGAR', theme: 'base', bg: [13, 12], brief: 'Mind the crushers — they come down hard',
+    sections: ['gauntlet', 'crushers', 'tower', 'climb2', 'crushers', 'alley', 'crushers'],
+    boss: { type: 'fortress', cannonRows: [3.5, 6.5, 9.5], say: 'BREAK THE FINAL GATE' } },
   { name: "ALIEN'S LAIR", theme: 'base', bg: [15, 14], brief: 'The source of it all. End it here',
-    sections: ['drones', 'falls', 'nest', 'gauntlet', 'drones', 'climb1', 'nest', 'gauntlet'],
-    boss: { type: 'fortress', cannonRows: [3.5, 6.5, 9.5], say: 'DESTROY THE ALIEN HEART' } },
+    sections: ['hive', 'climb1', 'drones', 'hive', 'gauntlet', 'hive', 'climb2', 'hive'],
+    boss: { type: 'heart', say: 'DESTROY THE ALIEN HEART' } },
 ];
 
 
@@ -45,7 +45,7 @@ CG.Level = {
   SECTIONS: {
     fight: (s) => ({ w: 16, covers: [s + 4, s + 11], enemies: [['runner', s + 7], ['rifle', s + 9], ['runner', s + 14]] }),
     gauntlet: (s) => ({ w: 18, covers: [s + 3, s + 10], enemies: [['turret', s + 7], ['rifle', s + 13], ['runner', s + 15], ['grenadier', s + 16], ['runner', s + 17]] }),
-    bridge: (s) => ({ w: 24, ledges: [[s + 2, 11, 4], [s + 7, 11, 4], [s + 12, 11, 4], [s + 17, 11, 5]],
+    bridge: (s) => ({ w: 24, ledges: [[s + 2, 11, 4, 'bridge'], [s + 7, 11, 4, 'bridge'], [s + 12, 11, 4, 'bridge'], [s + 17, 11, 5, 'bridge']],
       enemies: [['runner', s + 8, 11], ['rifle', s + 13, 11], ['runner', s + 19, 11], ['runner', s + 10], ['runner', s + 20]], coins: [[s + 9, 9], [s + 14, 9], [s + 19, 9]] }),
     tower: (s) => ({ w: 15, ledges: [[s + 2, 11, 4], [s + 7, 8, 4], [s + 2, 5, 4]], covers: [s + 12],
       enemies: [['rifle', s + 3, 5], ['rifle', s + 8, 8], ['turret', s + 10]], coins: [[s + 3, 3], [s + 4, 3]] }),
@@ -54,7 +54,12 @@ CG.Level = {
       enemies: [['grenadier', s + 5, 8], ['grenadier', s + 8, 8], ['rifle', s + 6], ['runner', s + 10]], coins: [[s + 6, 6], [s + 7, 6]] }),
     drones: (s) => ({ w: 14, covers: [s + 6], enemies: [['drone', s + 3], ['drone', s + 8], ['drone', s + 12], ['runner', s + 9], ['runner', s + 12]] }),
     // the waterfall: up a staircase of rocks to the top of the falls, and down the other side
-    falls: (s) => ({ w: 27, ledges: [[s + 1, 11, 3], [s + 5, 8, 3], [s + 9, 5, 3], [s + 13, 3, 4], [s + 19, 6, 3], [s + 23, 9, 3]],
+    // a base corridor ending at a wall with a core: the screen stops until it is destroyed
+    gatehall: (s) => ({ w: 20, covers: [s + 3], enemies: [['runner', s + 8], ['rifle', s + 11], ['runner', s + 13], ['gate', s + 18]] }),
+    flames: (s) => ({ w: 20, hazards: [['flame', s + 5], ['flame', s + 10], ['flame', s + 15]], enemies: [['runner', s + 12], ['rifle', s + 18]] }),
+    crushers: (s) => ({ w: 20, hazards: [['crusher', s + 4], ['crusher', s + 9], ['crusher', s + 14]], enemies: [['runner', s + 7], ['runner', s + 16], ['rifle', s + 19]] }),
+    hive: (s) => ({ w: 18, covers: [s + 2], enemies: [['mouth', s + 6], ['mouth', s + 13], ['runner', s + 10], ['grenadier', s + 16]] }),
+    falls: (s) => ({ w: 27, hazards: [['rocks', s + 4, s + 23]], ledges: [[s + 1, 11, 3], [s + 5, 8, 3], [s + 9, 5, 3], [s + 13, 3, 4], [s + 19, 6, 3], [s + 23, 9, 3]],
       enemies: [['rifle', s + 10, 5], ['grenadier', s + 14, 3], ['rifle', s + 20, 6], ['drone', s + 8], ['drone', s + 17], ['runner', s + 12], ['runner', s + 22]],
       coins: [[s + 14, 1], [s + 15, 1], [s + 16, 1]] }),
     climb0: (s) => CG.Level.climb(0, s), climb1: (s) => CG.Level.climb(1, s), climb2: (s) => CG.Level.climb(2, s),
@@ -67,7 +72,7 @@ CG.Level = {
   // a story stage from its sections, in the format the Game scene reads
   build(def, li) {
     const L = { name: def.name, theme: def.theme, bg: def.bg, brief: def.brief, story: li + 1, h: 17, groundRow: 14, handmade: true,
-      ledges: [], enemies: [], capsules: [], coins: [], coverCols: [] };
+      ledges: [], enemies: [], capsules: [], coins: [], coverCols: [], hazards: [] };
     let c = 10;
     def.sections.forEach((name) => {
       const sec = this.SECTIONS[name](c);
@@ -75,6 +80,7 @@ CG.Level = {
       L.enemies.push(...(sec.enemies || []));
       L.coins.push(...(sec.coins || []));
       L.coverCols.push(...(sec.covers || []));
+      L.hazards.push(...(sec.hazards || []));
       c += sec.w + 2;
     });
     // a power-up pod every 30 columns or so
@@ -161,7 +167,7 @@ CG.Level = {
   check() {
     CG.DATA.levels.forEach((L) => {
       L.enemies.forEach(([t, c, r]) => {
-        if (t === 'drone') return;
+        if (t === 'drone' || t === 'mouth') return;              // these hang in the air
         const ok = r ? L.ledges.some(([lc, lr, lw]) => lr === r && c >= lc && c < lc + lw) : L.ground.some(([a, b]) => c >= a && c < b);
         if (!ok) console.warn('[level ' + L.name + '] ' + t + ' at column ' + c + (r ? ' row ' + r : '') + ' has nothing to stand on');
       });

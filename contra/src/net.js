@@ -130,6 +130,7 @@ CG.Net = {
 
     this.watch(this.db.ref('requests/' + uid), 'value', (s) => { this.requests = s.val() || {}; CG.UI.netChanged(); });
     this.watch(this.db.ref('shop/items'), 'value', (s) => { CG.Shop.db = s.val(); CG.UI.netChanged(); });
+    this.watch(this.db.ref('announce'), 'value', (s) => CG.UI.announce(s.val()));          // the admin's message to everyone
     this.watch(this.db.ref('invites/' + uid), 'value', (s) => {
       const before = Object.keys(this.invites);
       this.invites = s.val() || {};
@@ -220,6 +221,9 @@ CG.Net = {
   async adminGiveCoins(uid, n) { await this.db.ref('users/' + uid + '/coins').transaction((c) => Math.max(0, (c || 0) + n)); },
   async adminUsers() { return (await this.db.ref('users').get()).val() || {}; },
   // give or take shop items (agents included) from any account; ids: { itemId: true | null }
+  adminAnnounce(text) {
+    return text ? this.db.ref('announce').set({ text: String(text).slice(0, 280), at: Date.now(), by: this.profile.username || '' }) : this.db.ref('announce').remove();
+  },
   adminSetOwned(uid, ids) {
     const up = {};
     for (const id in ids) up['users/' + uid + '/owned/' + id] = ids[id] ? true : null;

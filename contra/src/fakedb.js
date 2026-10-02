@@ -127,7 +127,11 @@
   }
   window.addEventListener('pagehide', () => { disconnect.forEach(([p, v]) => setAt(p, v)); try { localStorage.setItem(KEY, JSON.stringify(tree)); } catch (e) { /* */ } chan.postMessage(1); });
 
-  const tab = Math.random().toString(36).slice(2, 8);
+  // one test player per browser tab, the same one after a reload (a fresh id every reload filled the list with
+  // throwaway accounts). All of this lives in this browser's localStorage only — nothing reaches the real database.
+  let tab = null;
+  try { tab = sessionStorage.getItem('fakedb.tab'); } catch (e) { /* no storage */ }
+  if (!tab) { tab = Math.random().toString(36).slice(2, 8); try { sessionStorage.setItem('fakedb.tab', tab); } catch (e) { /* */ } }
   const user = { uid: 'tester-' + tab, isAnonymous: true, displayName: 'Tester ' + tab.slice(0, 3).toUpperCase(), photoURL: null };
   const db = { ref: (p) => new Ref(p || '') };
   const auth = {

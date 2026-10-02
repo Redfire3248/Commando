@@ -355,6 +355,14 @@
     // the other two stage bosses (final: destroying it clears the stage)
     tank:   { tex: 'boss_tank', hp: 70, body: [240, 110], ai: 'tank', boss: true, final: true, pivotY: 96, barrelScale: 1.6, fireMs: 2300 },
     gunship: { tex: 'boss_heli', frames: true, hp: 55, body: [220, 80], ai: 'gunship', fly: true, boss: true, final: true, fireMs: 1500 },
+    // ---- the classic campaign (story stages): art in hazards.js
+    gate:   { tex: 'e_gate', hp: 24, body: [80, 470], ai: 'gate', fixed: true, solid: true, fireMs: 1500 },    // base wall + core
+    mouth:  { tex: 'e_mouth', hp: 10, body: [110, 90], ai: 'mouth', fixed: true, center: true, fireMs: 2600 },  // spits bugs
+    bug:    { tex: 'e_bug', frames: true, hp: 1, body: [44, 32], ai: 'bug', speed: 260 },
+    statue: { tex: 'boss_statue', hp: 80, body: [250, 300], ai: 'statue', fixed: true, center: true, boss: true, final: true, fireMs: 2100 },
+    orb:    { tex: 'e_orb', hp: 12, body: [70, 70], ai: 'orb', fly: true, boss: true, fireMs: 1700 },
+    giant:  { tex: 'boss_giant', frames: true, hp: 110, body: [130, 320], ai: 'giant', boss: true, final: true, fireMs: 2200 },
+    heart:  { tex: 'boss_heart', frames: true, hp: 120, body: [210, 210], ai: 'heart', fixed: true, center: true, boss: true, final: true, fireMs: 1900 },
   };
 
   CG.Enemy = class extends Phaser.Physics.Arcade.Sprite {
@@ -480,6 +488,56 @@
       } else if (T.ai === 'flyer') {
         b.velocity.x = -240;
         this.y = this.baseY + Math.sin(this.t * 3) * 70;
+      } else if (T.ai === 'gate') {                      // base wall: the core fires a three-way spread
+        if (P && onScreen && this.cd <= 0) {
+          this.cd = fireMs;
+          const cy = this.y - this.displayHeight * 0.5, a = Math.atan2(P.body.center.y - cy, P.body.center.x - this.x);
+          for (const d of [-0.22, 0, 0.22]) sc.efire(this.x - 30, cy, a + d);
+        }
+      } else if (T.ai === 'mouth') {                     // alien mouth: drops a bug now and then
+        this.setScale(this.scaleX, this.scaleX * (1 + Math.sin(this.t * 6) * 0.04));
+        if (onScreen && this.cd <= 0) { this.cd = fireMs; sc.spawnEnemy('bug', this.x, this.y + 50); }
+      } else if (T.ai === 'bug') {                       // hops toward the nearest soldier
+        if (P) this.dir = P.body.center.x > this.x ? 1 : -1;
+        this.setFlipX(this.dir < 0);
+        this.setFrame(Math.floor(this.t * 10) % 2);
+        if (b.blocked.down) { b.velocity.x = this.dir * T.speed; if (this.cd <= 0) { this.cd = 700 + Math.random() * 500; b.velocity.y = -620; } }
+      } else if (T.ai === 'statue') {                    // stone statue: five fireballs in a fan from its mouth
+        if (P && onScreen && this.cd <= 0) {
+          this.cd = fireMs;
+          const my = this.y + this.displayHeight * 0.18, a = Math.atan2(P.body.center.y - my, P.body.center.x - this.x);
+          for (let k = -2; k <= 2; k++) sc.efireKey(this.x - 20, my, a + k * 0.2, 'fireball', 380, 22);
+        }
+      } else if (T.ai === 'orb') {                       // the statue's arms: orbit it and shoot
+        const ex = this.extra || {};
+        this.x = ex.cx + Math.cos(this.t * 1.3 + (ex.ph || 0)) * 230;
+        this.y = ex.cy + Math.sin(this.t * 1.3 + (ex.ph || 0)) * 170;
+        if (P && onScreen && this.cd <= 0) { this.cd = fireMs; sc.efireKey(this.x, this.y, Math.atan2(P.body.center.y - this.y, P.body.center.x - this.x), 'fireball', 420, 22); }
+      } else if (T.ai === 'giant') {                     // the giant: stomps back and forth, leaps, throws discs, shockwave on landing
+        const left = sc.bossCamX + 500, right = CG.DATA.level.boss.wallCol * CG.CONFIG.TILE - 200;
+        if (!this.dir) this.dir = -1;
+        if (this.x < left) this.dir = 1; else if (this.x > right) this.dir = -1;
+        if (b.blocked.down) {
+          if (this.wasAir) { this.wasAir = false; sc.shockwave(this.x, this.y); }
+          b.velocity.x = this.dir * 110;
+          this.cd2 -= ms;
+          if (this.cd2 <= 0) { this.cd2 = 3800 + Math.random() * 1500; b.velocity.y = -1250; b.velocity.x = this.dir * 260; this.wasAir = true; }
+        }
+        this.setFlipX(this.dir > 0);
+        this.setFrame(Math.floor(this.t * 4) % 2);
+        if (P && onScreen && this.cd <= 0) {
+          this.cd = fireMs;
+          const hy = this.y - this.displayHeight * 0.6, a = Math.atan2(P.body.center.y - hy, P.body.center.x - this.x);
+          for (const d of [-0.25, 0, 0.25]) sc.efireKey(this.x, hy, a + d, 'e_disc', 520, 30);
+        }
+      } else if (T.ai === 'heart') {                     // the alien heart: beats, lobs spores, calls bugs
+        this.setFrame(Math.floor(this.t * 3) % 2);
+        if (P && onScreen && this.cd <= 0) {
+          this.cd = fireMs;
+          for (let k = 0; k < 3; k++) sc.ebomb(this.x - 60, this.y - 40, -260 - k * 170, -560 - k * 60);
+        }
+        this.cd2 -= ms;
+        if (onScreen && this.cd2 <= 0) { this.cd2 = Math.max(1600, 3200 - 200 * sc.diff); sc.spawnEnemy('bug', this.x - 140, this.y + 60); }
       }
     }
 

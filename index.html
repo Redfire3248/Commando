@@ -51,10 +51,8 @@
     <nav class="topnav">
       <button class="on" data-act="menu"><span>PLAY</span></button>
       <button data-act="locker"><span>LOCKER</span></button>
-      <button data-act="lobby"><span>LOCAL CO-OP</span></button>
       <button data-act="shop" class="online-only"><span>SHOP</span></button>
       <button data-act="friends" class="online-only"><span>FRIENDS</span></button>
-      <button data-act="settings"><span>SETTINGS</span></button>
     </nav>
     <div class="chips">
       <button class="chip install-btn hidden" data-act="install" title="Install COMMANDO as an app">⬇<span class="lbl"> APP</span></button>
@@ -104,6 +102,10 @@
     <button data-act="vs-leave" class="btn">LEAVE</button>
   </div>
 </div>
+
+<!-- ============ messages: the admin's announcements, a new version of the game -->
+<div id="notice" class="notice hidden"><div class="notice-body"><small id="notice-kind">MESSAGE</small><p id="notice-text"></p></div>
+  <button data-act="notice-ok" id="notice-ok" class="btn small primary">OK</button></div>
 
 <!-- ============ mode picker: STORY · DUELS · CUSTOM ============ -->
 <div id="mode-pop" class="pop modes-pop hidden">
@@ -262,6 +264,7 @@
 <script src="src/input.js"></script>
 <script src="src/bots.js"></script>
 <script src="src/entities.js"></script>
+<script src="src/hazards.js"></script>
 <script src="src/scenes.js"></script>
 <script src="src/modes.js"></script>
 <script src="src/net.js"></script>

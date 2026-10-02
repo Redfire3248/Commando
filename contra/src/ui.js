@@ -82,6 +82,7 @@ CG.UI = (() => {
     // a screen that just opened plays its entrance (figures rise in one after another, panels slide in)
     if (fresh) {
       const el = $(id);
+      el.style.setProperty('--el', '0s');
       el.classList.remove('enter');
       void el.offsetWidth;
       el.classList.add('enter');
@@ -169,7 +170,7 @@ CG.UI = (() => {
     // tab icons (ui_icons.png) once it is in
     const U = CG.DATA.art && CG.DATA.art.ui;
     if (U) document.querySelectorAll('.topnav button').forEach((b) => {
-      const name = { locker: 'locker', shop: 'shop', friends: 'friends', menu: 'story', settings: 'custom' }[b.dataset.act];
+      const name = { locker: 'locker', shop: 'shop', friends: 'friends', menu: 'story' }[b.dataset.act];
       if (name && U[name] && !b.querySelector('.ico')) b.insertAdjacentHTML('afterbegin', ico(name));
     });
   }
@@ -222,19 +223,15 @@ CG.UI = (() => {
             ${x.me ? `<button class="btn small" data-act="locker">${ico('locker')}LOCKER</button>` : ''}
           </div>`;
         }).join('')}</div>`);
-    } else if (lobbyStyle === 'c') {
-      // COMMAND: your agent big in the middle; the roster sits in the dock
-      const a = CG.AGENT[me.agent] || CG.AGENTS[0];
-      setStage(`<div class="cmd-hero" style="--c:${a.color}" data-act="locker" title="Change agent">
-          <div class="body">${figure(a.id)}<div class="change-hint">CHANGE AGENT</div></div><div class="pad"></div></div>`);
     } else {
+      // LINEUP and COMMAND: everyone standing together (COMMAND adds the roster panel in the dock)
       setStage(cols.map((x, col) => {
         if (!x) return `<div class="fig empty ${botPick === col ? 'picking' : ''}"><div class="slot-in">${emptyInner(col)}</div><div class="pad"></div></div>`;
         const a = CG.AGENT[x.agent] || CG.AGENTS[0];
         return `<div class="fig ${x.me ? 'me' : ''} ${x.bot ? 'bot' : ''}" style="--c:${a.color}">
           <div class="tag">${crown(x)}<b>${esc(x.name)}</b><small>${x.bot ? ico('bot', '🤖 ') : ''}${a.name}</small>${removeBot(x)}</div>
           <div class="body ${col > mid ? 'flip' : ''}" ${clickFig(x)}>${figure(a.id)}</div>
-          ${x.me ? '<div class="pad ring" data-act="locker"><svg viewBox="0 0 100 30" preserveAspectRatio="none"><ellipse cx="50" cy="15" rx="48" ry="13"/></svg></div><div class="change-hint">CHANGE AGENT</div>' : '<div class="pad"></div>'}
+          ${x.me ? '<div class="pad ring" data-act="locker"><svg viewBox="0 0 100 30" preserveAspectRatio="none"><ellipse cx="50" cy="15" rx="48" ry="13"/></svg></div>' : '<div class="pad"></div>'}
         </div>`;
       }).join(''));
     }
@@ -253,7 +250,8 @@ CG.UI = (() => {
           <button class="btn small" data-act="party-invite" data-uid="${esc(uid)}">INVITE</button></div>`).join('')}` : ''}</div>`;
     }
     if (lastExtra !== extra) { lastExtra = extra; $('dock-extra').innerHTML = extra; }
-    if (changed && Date.now() - shownAt > 150) $('menu').classList.remove('enter');            // an update, not the screen opening: no entrance again
+    // a re-render during the entrance carries on from where it was (it used to start over each time)
+    if (changed) $('menu').style.setProperty('--el', ((Date.now() - shownAt) / 1000).toFixed(3) + 's');
     // the dock: mode, PLAY, FIND PLAYERS
     const humans = humansIn(), queued = !!(p && p.state === 'queue'), tooMany = humans > CG.Modes.capacity(mode);
     $('mode-name').innerHTML = ico(mode.kind === 'story' ? 'story' : mode.kind === 'duels' ? 'duels' : 'custom') + CG.Modes.label(mode);
@@ -270,6 +268,51 @@ CG.UI = (() => {
       : humans > 1 ? (lead ? 'Squad of ' + humans + ' — start when ready' : 'Waiting for the leader to start')
         : pvp() ? 'Bots fill the empty places in both teams' : '';
   }
+  // ---------------------------------------------------------------- messages: announcements, new version
+  const notices = (() => {
+    const SEEN = 'commando.seen';
+    let queue = [], showing = null;
+    function next() {
+      if (showing || !queue.length) return;
+      showing = queue.shift();
+      $('notice-kind').textContent = showing.kind;
+      $('notice-text').textContent = showing.text;
+      $('notice-ok').textContent = showing.reload ? 'RELOAD NOW' : 'OK';
+      $('notice').classList.remove('hidden');
+    }
+    return {
+      // an announcement from the admin (CG.Net calls this); each one shows once per device
+      announce(a) {
+        if (!a || !a.text || String(a.at) === store.get(SEEN, '')) return;
+        queue.push({ kind: 'MESSAGE FROM HQ', text: a.text, at: a.at });
+        next();
+      },
+      update() { if (!queue.some((q) => q.reload) && !(showing && showing.reload)) { queue.unshift({ kind: 'UPDATE', text: 'A new version of COMMANDO is ready.', reload: true }); next(); } },
+      ok() {
+        const s = showing;
+        showing = null;
+        $('notice').classList.add('hidden');
+        if (s && s.at) store.set(SEEN, String(s.at));
+        if (s && s.reload) { location.reload(); return; }
+        next();
+      },
+    };
+  })();
+  // a new version on the server: the game's own files changed since this page loaded (checked every 2 minutes)
+  (() => {
+    const files = ['../index.html', 'src/ui.js', 'src/scenes.js', 'src/entities.js', 'style.css'];
+    const stamp = () => Promise.all(files.map((f) => fetch(f, { method: 'HEAD', cache: 'no-store' })
+      .then((r) => r.headers.get('etag') || r.headers.get('last-modified') || r.headers.get('content-length') || '').catch(() => null)))
+      .then((v) => (v.includes(null) ? null : v.join('|')));
+    let first = null;
+    const check = () => stamp().then((v) => {
+      if (!v) return;
+      if (first === null) first = v;
+      else if (v !== first) notices.update();
+    });
+    if (location.protocol.startsWith('http')) { check(); setInterval(check, 120000); document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); }); }
+  })();
+
   // ---------------------------------------------------------------- the mode picker
   function renderModes() {
     const A = CG.DATA.arenas, M = CG.Modes, c = custom;
@@ -298,7 +341,8 @@ CG.UI = (() => {
             <span>MY SQUAD</span><div class="seg">${seg('together', [true, false], (v) => (v ? 'SAME TEAM' : 'SPLIT UP'))}</div>
           </div>
           <button class="btn primary" data-act="mode-pick" data-uid="custom">${sel('custom') ? '✔ UPDATE' : 'SELECT'}</button></div>
-      </div>`;
+      </div>
+      <button class="btn mode-local" data-act="mode-local">${ico('friends')}LOCAL CO-OP · 1–5 players on this device</button>`;
   }
   function pickMode(k) {
     mode = k === 'custom' ? Object.assign({}, custom) : k === 'squad' ? { kind: 'story' } : CG.Modes.fromKey(k);
@@ -762,6 +806,8 @@ CG.UI = (() => {
     'mode-open': () => { renderModes(); $('mode-pop').classList.remove('hidden'); },
     'mode-close': () => $('mode-pop').classList.add('hidden'),
     'mode-pick': pickMode,
+    'mode-local': () => { $('mode-pop').classList.add('hidden'); openLobby(); },
+    'notice-ok': () => notices.ok(),
     'lobby-style': (v) => { lobbyStyle = v; store.set(LOBBY, v); renderSettings(); },
     'vs-switch': vsSwitch,
     'vs-ready': () => { if (vs) play(vs.players, vs.settings); },
@@ -854,6 +900,7 @@ CG.UI = (() => {
     onGameStart(s) { scene = s; },
     localDevice() { return { type: 'any' }; },
     storyCleared(n) { if (n > storyCleared()) store.set(STORY, String(n)); },
+    announce: (a) => notices.announce(a),
     gameOver, matchEnded, refreshFriends, netChanged, loginMessage, localBest, localName, myAgent, myName, show, toast, play, playOnline, takeLocalBots,
   };
 })();

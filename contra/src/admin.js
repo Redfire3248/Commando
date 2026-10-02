@@ -169,6 +169,9 @@ CG.Admin = (() => {
       return `<div class="give-who"><input id="give-find" placeholder="Search callsign or code" value="${esc(giveFind)}" autocomplete="off">
           <div class="give-people">${ids.map((id) => `<button class="btn small ${id === giveTo ? 'on' : ''}" data-adm="give-who" data-uid="${id}">
             ${users[id].online ? '<i class="dot on"></i>' : ''}${esc(name(users[id]))}${id === CG.Net.uid ? ' (you)' : ''}</button>`).join('') || '<i>Nobody found</i>'}</div></div>
+        <div class="admin-sec">Message to every player</div>
+        <div class="admin-row give-msg"><input id="give-msg" maxlength="280" placeholder="Shows once on every player's screen"><button class="btn primary" data-adm="announce">SEND</button>
+          <button class="btn" data-adm="announce-clear">CLEAR</button></div>
         <div class="give-target">Giving to <b>${esc(name(u))}</b> · 🪙 ${u.coins || 0} · ${Object.keys(own).length} items</div>
         <div class="admin-sec">Coins</div>
         <div class="admin-row give-coins">${[100, 500, 1000, 5000, 10000].map((n) => `<button class="btn" data-adm="give-coins" data-n="${n}">+${n}</button>`).join('')}
@@ -267,6 +270,8 @@ CG.Admin = (() => {
     },
     coins: (d) => CG.Net.adminGiveCoins(d.uid, +d.n).then(() => { users = null; }),
     // the GIVE board (changes are copied into the cached account so the board updates at once)
+    announce: () => { const t = ($('give-msg').value || '').trim(); return t ? CG.Net.adminAnnounce(t).then(() => { $('give-msg').value = ''; }) : Promise.reject(new Error('Type a message')); },
+    'announce-clear': () => CG.Net.adminAnnounce(''),
     'give-item': (d) => grant({ [d.id]: d.on === '1' }),
     'give-all': (d) => {
       const ids = {};

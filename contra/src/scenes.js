@@ -64,6 +64,7 @@
     }
     create() {
       CG.Art.makeAll(this);
+      CG.Hazards.makeArt(this);
       const art = CG.DATA.art;
       for (const k of (art && art.pixel) || []) {
         if (this.textures.exists(k)) this.textures.get(k).setFilter(Phaser.Textures.FilterMode.NEAREST);
@@ -216,7 +217,7 @@
       if (this.input.mouse) this.input.mouse.disableContextMenu();       // right click = ability
 
       // everything that appears as the camera advances, sorted left to right
-      const spawns = L.enemies.map(([t, c, r]) => ({ t, x: (c + 0.5) * T, y: t === 'drone' ? 4.5 * T : (r || L.groundRow) * T }));
+      const spawns = L.enemies.map(([t, c, r]) => ({ t, x: (c + 0.5) * T, y: t === 'drone' ? 4.5 * T : t === 'mouth' ? 1.4 * T : (r || L.groundRow) * T }));
       L.capsules.forEach(([c, kind]) => spawns.push({ t: 'flyer', x: (c + 0.5) * T, y: 4 * T, extra: kind }));
       const bx = L.boss.wallCol * T;
       if (L.boss.type === 'none') {
@@ -226,12 +227,22 @@
         spawns.push({ t: 'core', x: bx - 40, y: gy });
       } else if (L.boss.type === 'tank') {
         spawns.push({ t: 'tank', x: bx - 260, y: gy });
+      } else if (L.boss.type === 'statue') {            // the waterfall's alien statue and its two orbiting arms
+        const cx = bx - 230, cy = 5.2 * T;
+        spawns.push({ t: 'statue', x: cx, y: cy });
+        spawns.push({ t: 'orb', x: cx - 230, y: cy, extra: { cx, cy, ph: 0 } }, { t: 'orb', x: cx + 230, y: cy, extra: { cx, cy, ph: Math.PI } });
+      } else if (L.boss.type === 'giant') {
+        spawns.push({ t: 'giant', x: bx - 300, y: gy });
+      } else if (L.boss.type === 'heart') {             // the lair: the heart and two mouths guarding it
+        spawns.push({ t: 'heart', x: bx - 190, y: 7.6 * T });
+        spawns.push({ t: 'mouth', x: bx - 760, y: 1.4 * T }, { t: 'mouth', x: bx - 1260, y: 1.4 * T });
       } else {
         spawns.push({ t: 'gunship', x: bx - 300, y: 250 });
       }
       this.spawns = spawns.sort((a, b) => a.x - b.x);
 
       this.setupColliders();
+      CG.Hazards.build(this);
       this.inp = new CG.Input(this, this.cfg.devices);
 
       this.buildHud();
@@ -547,15 +558,19 @@
       });
       // Ledges are solid on every side (you bump your head on them, you can't jump up through them); the hitbox is
       // as thick as the ledge art. Down + Jump still drops you off one.
-      L.ledges.forEach(([c, r, w]) => {
+      this.bridges = [];
+      L.ledges.forEach(([c, r, w, kind]) => {
         let top = r * T, bottom = r * T + 20;
+        const imgs = [];
         for (let i = 0; i < w; i++) {
           const img = this.add.image((c + i) * T - 4, r * T - 4, k('ledge')).setOrigin(0).setDepth(2);
+          imgs.push(img);
           if (img.width !== 16 * 4) img.setDisplaySize(T + 8, (T + 8) * img.height / img.width).setY(r * T - 10);   // painted ledge piece
           top = img.y + 4;
           bottom = Math.max(bottom, img.y + img.displayHeight * 0.8);
         }
-        zone(this.ledges, c * T, top, w * T, Math.max(20, bottom - top));
+        const z = zone(this.ledges, c * T, top, w * T, Math.max(20, bottom - top));
+        if (kind === 'bridge') { imgs.forEach((im) => im.setTint(0xd8c6a0)); this.bridges.push({ zone: z, imgs, x0: c * T, x1: (c + w) * T, top, state: 0 }); }
       });
       // the fortress wall (duel arenas have none)
       const wc = L.boss.wallCol;
@@ -679,9 +694,10 @@
         this.kill(bomb);
         z.owner.hit(2);
       });
+      ph.add.collider(bodies, this.enemies, null, (a, b) => { const e = a.T ? a : b; return !!(e.T && e.T.solid && e.active); });
       ph.add.overlap(bodies, this.enemies, (a, b) => {
         const [z, e] = pick(a, b, (o) => !!o.owner);
-        if (e.active && e.T.ai !== 'flyer') z.owner.hit();
+        if (e.active && e.T.ai !== 'flyer' && !e.T.solid) z.owner.hit();
       });
       ph.add.overlap(bodies, this.pickups, (a, b) => {
         const [z, k] = pick(a, b, (o) => !!o.owner);
@@ -725,6 +741,25 @@
       if (sc) f.setOrigin(0, 0.5).setScale(sc * 0.7).setBlendMode(ADD);
       this.tweens.add({ targets: f, alpha: 0, duration: 60, onComplete: () => f.destroy() });
       return b;
+    }
+    spawnEnemy(type, x, y, extra) {
+      if (this.isClient) return null;
+      const e = new CG.Enemy(this, type, x, y, extra);
+      e.netId = ++this.netSeq;
+      this.enemies.add(e);
+      return e;
+    }
+    efireKey(x, y, a, key, speed, hit) {
+      const b = this.shot(this.ebullets, this.textures.exists(key) ? key : 'ebullet', x, y, a, speed + 30 * this.diff, hit || 16);
+      CG.Sfx.play('eshoot');
+      return b;
+    }
+    // a landing giant: everyone standing on the ground near it is hit
+    shockwave(x, y) {
+      this.cameras.main.shake(260, 0.014);
+      CG.Sfx.play('bigboom');
+      for (let k = -3; k <= 3; k++) this.boom(x + k * 70, y - 10, 10);
+      for (const p of this.players) if (!p.remote && p.alive && p.onGround && Math.abs(p.body.center.x - x) < 360) p.hit(2);
     }
     efire(x, y, a) {
       this.shot(this.ebullets, 'ebullet', x, y, a, CG.CONFIG.ENEMY_BULLET_SPEED + 35 * this.diff, 16);
@@ -1217,7 +1252,8 @@
       } else if (this.isClient) {
         if (this.netCamX !== undefined) this.camX += (this.netCamX - this.camX) * (1 - Math.exp(-8 * dt));
       } else if (alive.length) {
-        const target = Math.min(Math.max(...alive.map((p) => p.body.center.x)) - W * 0.42, this.bossCamX);
+        let target = Math.min(Math.max(...alive.map((p) => p.body.center.x)) - W * 0.42, this.bossCamX);
+        for (const e of this.enemies.getChildren()) if (e.active && e.T.solid && e.x > this.camX) target = Math.min(target, e.x + 140 - W);
         if (target > this.camX) this.camX += (target - this.camX) * (1 - Math.exp(-7 * dt));
       }
       cam.scrollX = this.camX;
@@ -1266,6 +1302,7 @@
         }
       }
 
+      CG.Hazards.update(this, dt);
       this.updateHud();
       this.updateDomes();
       this.updateDrones(dt);

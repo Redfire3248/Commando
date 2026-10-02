@@ -776,12 +776,12 @@ body:not(.playing) #game canvas { visibility: hidden; }
 @keyframes padPulse { 50% { opacity: .45; transform: scaleX(.92); } }
 @keyframes glowPulse { 50% { box-shadow: 0 0 26px 2px rgba(255, 170, 60, .55), inset 0 -5px 0 rgba(0, 0, 0, .25); } }
 /* the squad (lineup and cards) rises in one after another, nametags drop on top */
-.enter .fig, .enter .cslot { animation: riseIn .55s cubic-bezier(.2, .8, .2, 1) both; }
-.enter .fig:nth-child(2), .enter .cslot:nth-child(2) { animation-delay: .08s; }
-.enter .fig:nth-child(3), .enter .cslot:nth-child(3) { animation-delay: .16s; }
-.enter .fig:nth-child(4), .enter .cslot:nth-child(4) { animation-delay: .24s; }
-.enter .fig:nth-child(5), .enter .cslot:nth-child(5) { animation-delay: .32s; }
-.enter .fig .tag { animation: dropIn .45s .45s ease-out both; }
+.enter .fig, .enter .cslot { animation: riseIn .55s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--d, 0s) - var(--el, 0s)); }
+.fig:nth-child(2), .cslot:nth-child(2) { --d: .08s; }
+.fig:nth-child(3), .cslot:nth-child(3) { --d: .16s; }
+.fig:nth-child(4), .cslot:nth-child(4) { --d: .24s; }
+.fig:nth-child(5), .cslot:nth-child(5) { --d: .32s; }
+.enter .fig .tag { animation: dropIn .45s ease-out both; animation-delay: calc(.45s - var(--el, 0s)); }
 .enter .topbar { animation: dropIn .4s ease-out both; }
 .enter .play-dock { animation: slideR .5s .15s cubic-bezier(.2, .8, .2, 1) both; }
 .enter .dossier { animation: slideL .5s .1s cubic-bezier(.2, .8, .2, 1) both; }
@@ -844,3 +844,20 @@ img { -webkit-user-drag: none; user-drag: none; }
 #admin .give-tile.owned small { color: #5cff8a; }
 #admin .give-icon { font-size: 28px; line-height: 1; }
 #admin .admin-sec .btn { margin-left: 8px; font-size: 11px; padding: 3px 8px; }
+
+/* COMMAND now shows the whole squad like the lineup; the hover glow only on your own figure, no label */
+.lobby-c .stage { display: flex; padding: 0 3vw 3vh; }
+.fig.me .change-hint { display: none !important; }
+/* the roster panel gets the same cut corners as the other cards */
+.roster, .dossier { clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); }
+/* the mode picker's local co-op line */
+.mode-local { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; }
+.modes { grid-template-rows: auto auto; }
+/* messages */
+.notice { position: fixed; left: 50%; top: 84px; transform: translateX(-50%); z-index: 60; width: min(560px, 92vw); display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; background: linear-gradient(90deg, rgba(40, 26, 8, .97), rgba(12, 16, 20, .97)); border: 2px solid var(--acc);
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); animation: dropIn .35s ease-out; box-shadow: 0 10px 30px rgba(0, 0, 0, .6); }
+.notice-body { flex: 1; }
+.notice small { font-size: 11px; letter-spacing: .26em; color: var(--acc2); font-weight: 700; }
+.notice p { margin: 4px 0 0; font-size: 17px; line-height: 1.35; }
+#admin .give-msg input { flex: 1; font: 600 15px Rajdhani, sans-serif; background: rgba(0, 0, 0, .45); color: #fff; border: 1px solid var(--line); padding: 7px 10px; }
