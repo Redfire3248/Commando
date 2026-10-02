@@ -88,7 +88,7 @@ CG.Cosmetics = (() => {
     breaker:  { name: 'WALL BREAKER', earn: 'Clear stage 1', check: (s) => (s.stages || 0) >= 1, color: '#7cff8a' },
     survivor: { name: 'SURVIVOR', earn: 'Reach wave 10 in Horde', check: (s) => (s.wave || 0) >= 10, color: '#ffd23c' },
     duelist:  { name: 'DUELIST', earn: 'Win 10 duels', check: (s) => (s.wins || 0) >= 10, color: '#ff5a4f' },
-    hunter:   { name: 'SHARPSHOOTER', earn: '100 focus hits', check: (s) => (s.heads || 0) >= 100, color: '#ff6ad5' },
+    hunter:   { name: 'SHARPSHOOTER', earn: '100 flanks', check: (s) => (s.heads || 0) >= 100, color: '#ff6ad5' },
     golden:   { name: 'GOLDEN GUN', earn: 'Reach GOLD', rr: 600, color: '#ffcc3a' },
     diamond:  { name: 'DIAMOND HANDS', earn: 'Reach DIAMOND', rr: 1200, color: '#8aa8ff' },
     legend:   { name: 'LIVING LEGEND', earn: 'Reach LEGEND', rr: 1800, color: '#ff4a4a' },

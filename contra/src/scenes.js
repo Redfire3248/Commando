@@ -742,11 +742,11 @@
         this.sparks.explode(4, bul.x, bul.y);
         if (bul.pierce > 0) { bul.pierce--; bul.hitSet = bul.hitSet || new Set(); if (bul.hitSet.has(e)) return; bul.hitSet.add(e); } else this.kill(bul);
         if (bul.ghost) return;
-        // FOCUS FIRE: keep hitting the same target and every third hit in a row does double damage
-        const focus = this.focusHit(bul.shooter, e);
+        // FLANK: a shot in the back (the bullet flies the way the soldier faces) does double damage
+        const flank = !e.T.boss && !e.T.fixed && this.fromBehind(bul, e.flipX ? -1 : 1);
         e.lastHitBy = bul.shooter;
-        e.damage((bul.dmg || 1) * (focus ? 2 : 1));
-        if (focus && bul.shooter && !bul.shooter.bot && !bul.shooter.remote) { this.heads++; this.popText(e.x, e.y - e.displayHeight, 'FOCUS ×2', '#ffd23c'); }
+        e.damage((bul.dmg || 1) * (flank ? 2 : 1));
+        if (flank && bul.shooter && !bul.shooter.bot && !bul.shooter.remote) { this.heads++; this.popText(e.x, e.y - e.displayHeight, 'FLANKED ×2', '#ffd23c'); }
         if (bul.ice && e.active && !e.T.boss) e.stunT = Math.max(e.stunT || 0, 450);
         if (bul.fire && e.active) {                      // fire rounds: it keeps burning for a moment
           for (const ms of [500, 1000]) this.time.delayedCall(ms, () => { if (e.active) { this.sparks.explode(3, e.body.center.x, e.body.top); e.damage(1); } });
@@ -776,10 +776,10 @@
           return;
         }
         victim.lastHitBy = bul.shooter;
-        // FOCUS FIRE works on players too: stay on them and every third hit in a row does double damage
-        const focus = this.focusHit(bul.shooter, victim);
-        if (victim.hit((bul.dmg || 1) * (focus ? 2 : 1)) && focus) {
-          this.popText(victim.body.center.x, victim.body.top - 20, 'FOCUS ×2', '#ffd23c');
+        // FLANK works on players too: get behind them and every shot in the back does double damage
+        const flank = this.fromBehind(bul, victim.facing);
+        if (victim.hit((bul.dmg || 1) * (flank ? 2 : 1)) && flank) {
+          this.popText(victim.body.center.x, victim.body.top - 20, 'FLANKED ×2', '#ffd23c');
           if (bul.shooter && !bul.shooter.bot && !bul.shooter.remote) this.heads++;
         }
       });
@@ -978,17 +978,13 @@
       if (n > 1) this.dropPickup(Phaser.Math.Between(8, L.w - 8) * T, 40, ['heal', 'rapid', 'spread', 'pierce', 'blast', 'barrier'][n % 6]);
       this.score += 500 * (n - 1);
     }
-    // FOCUS FIRE (instead of headshots, which were luck at this size): hits on the same target with no more than
-    // 1.5 s between them build a chain; every third hit of a chain does double damage. Switching target or a pause
-    // starts it again — it rewards tracking one target, not where a bullet happened to land.
-    focusHit(shooter, target) {
-      if (!shooter) return false;
-      const now = this.time.now, f = shooter.focus || (shooter.focus = { target: null, n: 0, t: 0 });
-      if (f.target !== target || now - f.t > 1500) { f.target = target; f.n = 0; }
-      f.n++; f.t = now;
-      return f.n % 3 === 0;
+    // FLANK (instead of headshots, which were luck at this size): a bullet flying the same way its target faces hit
+    // it in the back. Pure positioning — jump over a soldier, get round a player — nothing random.
+    fromBehind(bul, facing) {
+      const dx = Math.cos(bul.rotation);                 // the way it was fired (it may already be stopped by the hit)
+      return Math.abs(dx) > 0.3 && Math.sign(dx) === Math.sign(facing || 1);
     }
-    // a short word that floats up and fades (FOCUS ×2, +1 ...)
+    // a short word that floats up and fades (FLANKED ×2, +1 ...)
     popText(x, y, msg, col) {
       const t = this.add.text(x, y, msg, ts(22, col || '#ffffff')).setOrigin(0.5).setDepth(40).setShadow(0, 2, '#000', 5);
       this.tweens.add({ targets: t, y: y - 50, alpha: 0, duration: 800, onComplete: () => t.destroy() });

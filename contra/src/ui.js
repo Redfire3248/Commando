@@ -271,9 +271,6 @@ CG.UI = (() => {
     const play = $('play-main');
     play.disabled = !lead || queued || tooMany;
     play.textContent = !lead ? 'LEADER STARTS' : queued ? 'SEARCHING…' : tooMany ? 'TOO MANY PLAYERS' : humans > 1 ? 'START MATCH' : 'PLAY';
-    const find = $('find-btn');
-    find.classList.toggle('hidden', !net.online || !lead || mode.kind === 'custom' || (pvp() && humans > 1));
-    find.textContent = queued ? 'CANCEL SEARCH' : pvp() ? 'FIND A ' + CG.Modes.label(mode) : 'FIND PLAYERS';
     $('leave-btn').classList.toggle('hidden', !(p && humans > 1));
     $('party-status').textContent = queued ? 'Looking for other players… (starts on its own after 30 s)'
       : humans > 1 ? (lead ? 'Squad of ' + humans + ' — start when ready' : 'Waiting for the leader to start')
@@ -362,7 +359,7 @@ CG.UI = (() => {
           <div class="pf-rank">${CG.Ranks.icon(r.rr, 46)}<div><b style="color:${r.tier.color}">${r.name}</b>
             <div class="pf-bar"><i style="width:${r.div ? r.inDiv : 100}%;background:${r.tier.color}"></i></div><small>${r.div ? r.inDiv + ' / 100 RR' : (r.rr - CG.Ranks.LEGEND_AT) + ' RR'}</small></div></div></div>
       </div>
-      ${st ? `<div class="pf-stats">${stat('MATCHES', st.matches || 0)}${stat('WINS', st.wins || 0)}${stat('KILLS', st.kills || 0)}${stat('FOCUS HITS', st.heads || 0)}${stat('STAGES', st.stages || 0)}${stat('BEST WAVE', st.wave || 0)}</div>`
+      ${st ? `<div class="pf-stats">${stat('MATCHES', st.matches || 0)}${stat('WINS', st.wins || 0)}${stat('KILLS', st.kills || 0)}${stat('FLANKS', st.heads || 0)}${stat('STAGES', st.stages || 0)}${stat('BEST WAVE', st.wave || 0)}</div>`
         : `<p class="pf-note">${x.bot ? 'A computer player. Its rank sets how well it plays.' : 'No matches yet.'}</p>`}
       <div class="pf-btns">${x.me ? `<button class="btn" data-act="locker-look">CHANGE BANNER / TITLE</button><button class="btn" data-act="settings">SETTINGS</button>` : ''}
         <button class="btn primary" data-act="profile-close">CLOSE</button></div>`;
@@ -420,7 +417,7 @@ CG.UI = (() => {
       </div>
       <div class="mode-tile ffa ${/^ffa/.test(M.key(mode)) ? 'selected' : ''}" style="--bg:url(assets/atlas/bg15_12.png)">
         <div class="mt-art"></div>
-        <div class="mt-body"><b>${ico('ffa', ico('duels'))}FREE-FOR-ALL</b><p>Everyone against everyone. Back in after a death. First to ${CG.Modes.FFA_KILLS} kills. Stay on one target: every third hit in a row does double.</p>
+        <div class="mt-body"><b>${ico('ffa', ico('duels'))}FREE-FOR-ALL</b><p>Everyone against everyone. Back in after a death. First to ${CG.Modes.FFA_KILLS} kills. Get behind them: shots in the back do double.</p>
           <div class="mt-sizes two">${[4, 6].map((n) => `<button class="btn ${sel('ffa' + n) ? 'primary' : ''}" data-act="mode-pick" data-uid="ffa${n}">${n} PLAYERS</button>`).join('')}</div></div>
       </div>
       <div class="mode-tile horde ${sel('horde')}" style="--bg:url(assets/atlas/bg15_11.png)">
@@ -627,7 +624,7 @@ CG.UI = (() => {
     $('over-rank').innerHTML = ranked
       ? `${CG.Ranks.chip(after, { rr: true, px: 34 })}<b class="${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '+' : ''}${delta} RR</b>
          ${ra.idx > rb.idx ? '<div class="promo">RANK UP!</div>' : ra.idx < rb.idx ? '<div class="demo">RANK DOWN</div>' : ''}
-         ${kind === 'horde' ? `<small>Wave ${opts.wave || 0}</small>` : ''}${opts.heads ? `<small>${opts.heads} focus hits</small>` : ''}`
+         ${kind === 'horde' ? `<small>Wave ${opts.wave || 0}</small>` : ''}${opts.heads ? `<small>${opts.heads} flanks</small>` : ''}`
       : `<small>Unranked ${kind === 'custom' ? '(custom game)' : '(more than one player on this device)'}</small>`;
     $('over-retry').classList.toggle('hidden', !lastPlayers);
     CG.Touch.show(false);
@@ -1117,7 +1114,7 @@ CG.UI = (() => {
 
   // ---------------------------------------------------------------- the loading screen
   // art first (0-85 %), then waiting for the sign-in check so the login card never flashes up for signed-in players
-  const TIPS = ['Focus fire: stay on one target — every third hit in a row does double damage.', 'KITE dashes in any direction — hold W and dash to go straight up.',
+  const TIPS = ['Flank: shots in an enemy\'s back do double damage — jump over them and turn round.', 'KITE dashes in any direction — hold W and dash to go straight up.',
     'Your squad shares one pool of lives.', 'Cover stops every bullet — and breaks after five hits.',
     'Coins up high are worth 5 each.', 'Pick your agent once in the LOCKER: it is used in every match.',
     'Bots play at your rank.', 'Water is instant death. Mind the gaps.'];

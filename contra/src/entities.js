@@ -471,7 +471,10 @@
         if (b.blocked.down && (!sc.isSurface(this.x + this.dir * 44, b.bottom + 12) || b.blocked.left || b.blocked.right)) b.velocity.y = -880;   // leap gaps and cover
       } else if (T.ai === 'rifle') {
         if (P) {
-          this.setFlipX(P.body.center.x < this.x);
+          // turning round takes a moment (shorter each lap) — the window to shoot one in the back after jumping over it
+          const want = P.body.center.x < this.x;
+          if (want !== this.flipX) { this.turnT = (this.turnT || 0) + dt * 1000; if (this.turnT > Math.max(250, 650 - 80 * sc.diff)) { this.setFlipX(want); this.turnT = 0; } }
+          else this.turnT = 0;
           // point the rifle at the player: up, diagonal up, forward, diagonal down, down
           const tilt = Math.round(Math.atan2(P.body.center.y - (this.y - 66), Math.abs(P.body.center.x - this.x)) / (Math.PI / 4));
           const aim = [2, 1, 0, 3, 4][Phaser.Math.Clamp(tilt, -2, 2) + 2];
