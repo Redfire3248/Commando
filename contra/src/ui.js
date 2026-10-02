@@ -187,8 +187,7 @@ CG.UI = (() => {
         <div class="tag">${x.leader && humansIn() > 1 ? ico('crown', '👑 ') : ''}<b>${esc(x.name)}</b><small>${x.bot ? ico('bot', '🤖 ') : ''}${a.name}</small>
           ${x.bot && lead ? `<button class="x" data-act="squad-unbot" data-uid="${x.i}" title="Remove bot">✕</button>` : ''}</div>
         <div class="body ${col > mid ? 'flip' : ''}" ${x.me ? 'data-act="locker" title="Change agent"' : x.bot && lead ? `data-act="bot-swap" data-uid="${x.i}" title="Swap JAX / DUKE"` : ''}>${figure(a.id)}</div>
-        <div class="pad"></div>
-        ${x.me ? '<button class="btn small change" data-act="locker">CHANGE AGENT</button>' : ''}
+        ${x.me ? '<div class="pad ring" data-act="locker"><svg viewBox="0 0 100 30" preserveAspectRatio="none"><ellipse cx="50" cy="15" rx="48" ry="13"/></svg></div><div class="change-hint">CHANGE AGENT</div>' : '<div class="pad"></div>'}
       </div>`;
     }).join('');
     // the dock: mode, PLAY, FIND PLAYERS
@@ -205,7 +204,7 @@ CG.UI = (() => {
     $('leave-btn').classList.toggle('hidden', !(p && humans > 1));
     $('party-status').textContent = queued ? 'Looking for other players… (starts on its own after 30 s)'
       : humans > 1 ? (lead ? 'Squad of ' + humans + ' — start when ready' : 'Waiting for the leader to start')
-        : pvp() ? 'Bots fill the empty places in both teams' : 'Add bots, invite friends or find players';
+        : pvp() ? 'Bots fill the empty places in both teams' : '';
   }
   // ---------------------------------------------------------------- the mode picker
   function renderModes() {

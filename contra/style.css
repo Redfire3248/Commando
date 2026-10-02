@@ -652,3 +652,16 @@ input:focus { border-color: var(--acc); }
 .fig.empty .plus .ico { width: 60%; height: 60%; margin: 0; }
 .tb.ico { color: transparent !important; }
 .tb.ico::before { content: ""; position: absolute; inset: 20%; background: var(--ico) center / contain no-repeat; image-rendering: pixelated; }
+
+/* your own figure: click it to change agent — a ring circles under you, the label shows over you on hover */
+.fig.me .body { position: relative; }
+.fig .pad.ring { position: relative; cursor: pointer; overflow: visible; }
+.fig .pad.ring svg { position: absolute; inset: -8px -6%; width: 112%; height: calc(100% + 16px); overflow: visible; }
+.fig .pad.ring ellipse { fill: none; stroke: var(--c); stroke-width: 2.5; stroke-dasharray: 9 6; vector-effect: non-scaling-stroke; animation: ringRun 1.6s linear infinite; }
+@keyframes ringRun { to { stroke-dashoffset: -30; } }
+.fig.me .change-hint { position: absolute; left: 50%; top: 55%; transform: translate(-50%, -50%); z-index: 3; pointer-events: none;
+  font: 400 18px var(--head); letter-spacing: .08em; padding: 6px 12px; background: rgba(0, 0, 0, .7); border: 2px solid var(--c);
+  opacity: 0; transition: opacity .15s; white-space: nowrap; }
+.fig.me:hover .change-hint { opacity: 1; }
+.dock-status:empty { display: none; }
+@media (hover: none) { .fig.me .change-hint { opacity: .85; top: auto; bottom: 30px; font-size: 11px; padding: 3px 7px; } }
