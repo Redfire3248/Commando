@@ -132,7 +132,7 @@
   const UIICON = (CG.DATA.art && CG.DATA.art.ui) || {};
   [['shoot', 'fire'], ['jump', 'jump'], ['dash', 'dash']].forEach(([k, name]) => {
     const b = btns[k];
-    if (b && UIICON[name]) { b.classList.add('ico'); b.style.setProperty('--ico', 'url("' + UIICON[name] + '")'); }
+    if (b && UIICON[name]) { b.classList.add('ico'); b.style.setProperty('--ico', 'url("' + new URL(UIICON[name], document.baseURI).href + '")'); }
   });
   T.setAbility = (agent) => {
     const b = btns.ability, icon = (CG.ABICONS && CG.ABICONS[agent.id]) || UIICON.skill;

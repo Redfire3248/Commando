@@ -1568,5 +1568,23 @@ CG.DATA.art = {
    "cv50_36",
    "cv50_37"
   ]
+ },
+ "ui": {
+  "fire": "assets/atlas/ui_fire.png",
+  "jump": "assets/atlas/ui_jump.png",
+  "dash": "assets/atlas/ui_dash.png",
+  "skill": "assets/atlas/ui_skill.png",
+  "pause": "assets/atlas/ui_pause.png",
+  "story": "assets/atlas/ui_story.png",
+  "duels": "assets/atlas/ui_duels.png",
+  "custom": "assets/atlas/ui_custom.png",
+  "crown": "assets/atlas/ui_crown.png",
+  "bot": "assets/atlas/ui_bot.png",
+  "invite": "assets/atlas/ui_invite.png",
+  "coin": "assets/atlas/ui_coin.png",
+  "trophy": "assets/atlas/ui_trophy.png",
+  "locker": "assets/atlas/ui_locker.png",
+  "shop": "assets/atlas/ui_shop.png",
+  "friends": "assets/atlas/ui_friends.png"
  }
 };

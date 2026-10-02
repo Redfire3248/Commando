@@ -665,3 +665,9 @@ input:focus { border-color: var(--acc); }
 .fig.me:hover .change-hint { opacity: 1; }
 .dock-status:empty { display: none; }
 @media (hover: none) { .fig.me .change-hint { opacity: .85; top: auto; bottom: 30px; font-size: 11px; padding: 3px 7px; } }
+
+/* ui_icons.png in */
+.ui-icons .coin { background: var(--coin-img) center / contain no-repeat; box-shadow: none; border-radius: 0; image-rendering: pixelated; }
+#b-pause.ico-btn::before { content: ""; position: absolute; inset: 24%; background: var(--ico) center / contain no-repeat; image-rendering: pixelated; }
+.mode-card b .ico { width: .9em; height: .9em; }
+.best-line .ico { width: 1.2em; height: 1.2em; }

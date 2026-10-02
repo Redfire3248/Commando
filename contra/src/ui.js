@@ -56,6 +56,15 @@ CG.UI = (() => {
       img.style.transform = 'translateX(' + (-100 * f / n) + '%)';
     });
   }, 170);
+  // ui_icons.png everywhere a fixed icon shows: every coin, the pause button, best score, the mode card
+  (() => {
+    const U = CG.DATA.art && CG.DATA.art.ui;
+    if (!U) return;
+    document.documentElement.classList.add('ui-icons');
+    if (U.coin) document.documentElement.style.setProperty('--coin-img', 'url("' + new URL(U.coin, document.baseURI).href + '")');
+    if (U.pause) { const b = $('b-pause'); b.textContent = ''; b.style.setProperty('--ico', 'url("' + new URL(U.pause, document.baseURI).href + '")'); b.classList.add('ico-btn'); }
+    if (U.trophy) $('menu-best').parentElement.insertAdjacentHTML('afterbegin', `<img class="ico" src="${U.trophy}" alt="">`);
+  })();
   // an icon from ui_icons.png, or the fallback text
   const ico = (name, alt) => {
     const U = CG.DATA.art && CG.DATA.art.ui;
@@ -192,7 +201,7 @@ CG.UI = (() => {
     }).join('');
     // the dock: mode, PLAY, FIND PLAYERS
     const humans = humansIn(), queued = !!(p && p.state === 'queue'), tooMany = humans > CG.Modes.capacity(mode);
-    $('mode-name').textContent = CG.Modes.label(mode);
+    $('mode-name').innerHTML = ico(mode.kind === 'story' ? 'story' : mode.kind === 'duels' ? 'duels' : 'custom') + CG.Modes.label(mode);
     $('mode-sub').textContent = CG.Modes.sub(mode);
     $('mode-card').disabled = !lead;
     const play = $('play-main');
