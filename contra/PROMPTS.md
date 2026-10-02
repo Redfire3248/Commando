@@ -520,3 +520,110 @@ EMOTE: 4 unclips a grenade; 5 tosses it up in the air; 6 watches it fly; 7 spins
 ROW 2 — DUKE — the brawler, the other original commando. A muscular man with spiky blond hair, a cocky grin. A RED headband, bare chest crossed by one brass ammunition belt, red camouflage trousers, black combat boots, wrist wraps. Rifle resting on his shoulder. Draw him in the same pixel style as the others.
 EMOTE: 4 lowers the rifle; 5 cracks his knuckles; 6 a double-biceps flex; 7 turns the flex toward the viewer; 8 laughs with his head thrown back; 9 swings the rifle back onto his shoulder; 10 back to the idle pose.
 ```
+
+## 17 — Breathing idle (final), THREE AGENTS PER IMAGE → `assets/idle/breath1.png` … `breath4.png` (4 columns, one row per agent)
+A calm 4-frame breathing loop, nothing else; even spacing. These win over idle1-4. Save with the names shown in
+`contra/assets/idle/` and run `python tools/build_art.py`.
+
+### Prompt 1 → `assets/idle/breath1.png` · attach **agents.png**
+```
+Create this image from scratch as a NEW sprite sheet. The attached sheets only show what the characters look like and the art style — do not copy any of their frames and do not ask for anything else.
+
+STYLE: detailed 16-bit pixel art like a modern premium pixel game: crisp square pixels with hard edges, 3 to 4 shades per colour, a dark 1-pixel outline, a warm rim light from the upper right, clear readable faces. No anti-aliasing, no blur, no gradients, no glow, no sparkles, no effects of any kind.
+
+VIEW: FRONT VIEW — every character faces the viewer straight on, chest and face toward the camera, both eyes visible, standing still like a hero waiting in a game lobby. Feet apart at shoulder width, planted.
+
+THE RIFLE (everyone has the same one): a chunky assault rifle with a black steel body, a short thick barrel, a brown wooden stock and a small orange energy cell, held DIAGONALLY ACROSS THE CHEST with both hands, kept INSIDE the character's own width — nothing sticks out to the sides.
+
+TRANSPARENT BACKGROUND — VERY IMPORTANT: a PNG with a real alpha channel. NO checkerboard pattern anywhere, no background colour, no floor, no shadow, no grid lines, no borders, no text, no numbers, no names, no watermark.
+
+PERFECT SPACING — VERY IMPORTANT: an invisible grid of exactly 4 equal columns and 3 equal rows. Each pose sits EXACTLY in the CENTRE of its own cell. Every character is the same size and fills about two thirds of its cell's height. Leave a WIDE, EVEN empty gap between all poses — at least a third of a cell — so no two poses ever touch or come close. All poses in a row stand on exactly the same floor line.
+
+THE ANIMATION — A CALM BREATHING LOOP ONLY, 4 frames per row, read left to right. Nothing else moves: the same pose, the same rifle position, the same feet, the same face in all four frames.
+Frame 1: standing relaxed.
+Frame 2: breathing in — chest rises, shoulders and head lift ONE pixel.
+Frame 3: full breath — chest and shoulders up TWO pixels.
+Frame 4: breathing out — back down one pixel (between frames 2 and 1), so frame 1 follows smoothly.
+
+THE CHARACTERS, ONE PER ROW:
+ROW 1 — RAZOR — the heavy gunner. A huge, broad-shouldered man, the biggest of the squad. Shaved head, thick black beard, heavy eyebrows, a confident grin. A bright ORANGE headband tied at the back with two tails. Olive-green tank top, a brass ammunition belt across the chest, fingerless black gloves, tan desert-camouflage trousers with knee pads, black combat boots.
+ROW 2 — NOVA — the medic. A tall, athletic woman with dark brown skin and short curly black hair, calm warm eyes, a small smile. A WHITE headband with a red cross. A TEAL tactical vest over a black long-sleeve shirt, a white medkit pouch with a red cross on her belt, grey cargo trousers, black boots.
+ROW 3 — KITE — the scout. A slim, quick young woman with freckles and a bright RED high ponytail, sharp green eyes, a cheeky expression. A GREEN bandana around her head, a short black bomber jacket with rolled sleeves, a green camouflage crop top, green camouflage trousers, light brown lace-up boots.
+```
+
+### Prompt 2 → `assets/idle/breath2.png` · attach **agents.png and agents2.png**
+```
+Create this image from scratch as a NEW sprite sheet. The attached sheets only show what the characters look like and the art style — do not copy any of their frames and do not ask for anything else.
+
+STYLE: detailed 16-bit pixel art like a modern premium pixel game: crisp square pixels with hard edges, 3 to 4 shades per colour, a dark 1-pixel outline, a warm rim light from the upper right, clear readable faces. No anti-aliasing, no blur, no gradients, no glow, no sparkles, no effects of any kind.
+
+VIEW: FRONT VIEW — every character faces the viewer straight on, chest and face toward the camera, both eyes visible, standing still like a hero waiting in a game lobby. Feet apart at shoulder width, planted.
+
+THE RIFLE (everyone has the same one): a chunky assault rifle with a black steel body, a short thick barrel, a brown wooden stock and a small orange energy cell, held DIAGONALLY ACROSS THE CHEST with both hands, kept INSIDE the character's own width — nothing sticks out to the sides.
+
+TRANSPARENT BACKGROUND — VERY IMPORTANT: a PNG with a real alpha channel. NO checkerboard pattern anywhere, no background colour, no floor, no shadow, no grid lines, no borders, no text, no numbers, no names, no watermark.
+
+PERFECT SPACING — VERY IMPORTANT: an invisible grid of exactly 4 equal columns and 3 equal rows. Each pose sits EXACTLY in the CENTRE of its own cell. Every character is the same size and fills about two thirds of its cell's height. Leave a WIDE, EVEN empty gap between all poses — at least a third of a cell — so no two poses ever touch or come close. All poses in a row stand on exactly the same floor line.
+
+THE ANIMATION — A CALM BREATHING LOOP ONLY, 4 frames per row, read left to right. Nothing else moves: the same pose, the same rifle position, the same feet, the same face in all four frames.
+Frame 1: standing relaxed.
+Frame 2: breathing in — chest rises, shoulders and head lift ONE pixel.
+Frame 3: full breath — chest and shoulders up TWO pixels.
+Frame 4: breathing out — back down one pixel (between frames 2 and 1), so frame 1 follows smoothly.
+
+THE CHARACTERS, ONE PER ROW:
+ROW 1 — BRICK — the tank. A huge, bulky man in armour, square jaw, short stubble, serious face. A STEEL helmet with the visor pushed up, STEEL-BLUE armour plates on his chest and shoulders, dark grey trousers with knee pads, heavy black boots, a small round steel shield strapped to his left forearm.
+ROW 2 — VOLT — the electric specialist. A wiry man with wild spiky WHITE-BLOND hair, brass goggles pushed up on his forehead, a mischievous grin. A long PURPLE coat with the tails hanging behind, a black leather harness across the chest, black trousers, black boots with brass buckles.
+ROW 3 — GHOST — the stealth sniper. A slim, quiet woman, mostly hidden: a BLACK hooded cloak, a white half-mask over her mouth and nose, glowing RED goggles. Grey-and-black urban camouflage underneath, black gloves, black boots.
+```
+
+### Prompt 3 → `assets/idle/breath3.png` · attach **agents2.png**
+```
+Create this image from scratch as a NEW sprite sheet. The attached sheets only show what the characters look like and the art style — do not copy any of their frames and do not ask for anything else.
+
+STYLE: detailed 16-bit pixel art like a modern premium pixel game: crisp square pixels with hard edges, 3 to 4 shades per colour, a dark 1-pixel outline, a warm rim light from the upper right, clear readable faces. No anti-aliasing, no blur, no gradients, no glow, no sparkles, no effects of any kind.
+
+VIEW: FRONT VIEW — every character faces the viewer straight on, chest and face toward the camera, both eyes visible, standing still like a hero waiting in a game lobby. Feet apart at shoulder width, planted.
+
+THE RIFLE (everyone has the same one): a chunky assault rifle with a black steel body, a short thick barrel, a brown wooden stock and a small orange energy cell, held DIAGONALLY ACROSS THE CHEST with both hands, kept INSIDE the character's own width — nothing sticks out to the sides.
+
+TRANSPARENT BACKGROUND — VERY IMPORTANT: a PNG with a real alpha channel. NO checkerboard pattern anywhere, no background colour, no floor, no shadow, no grid lines, no borders, no text, no numbers, no names, no watermark.
+
+PERFECT SPACING — VERY IMPORTANT: an invisible grid of exactly 4 equal columns and 3 equal rows. Each pose sits EXACTLY in the CENTRE of its own cell. Every character is the same size and fills about two thirds of its cell's height. Leave a WIDE, EVEN empty gap between all poses — at least a third of a cell — so no two poses ever touch or come close. All poses in a row stand on exactly the same floor line.
+
+THE ANIMATION — A CALM BREATHING LOOP ONLY, 4 frames per row, read left to right. Nothing else moves: the same pose, the same rifle position, the same feet, the same face in all four frames.
+Frame 1: standing relaxed.
+Frame 2: breathing in — chest rises, shoulders and head lift ONE pixel.
+Frame 3: full breath — chest and shoulders up TWO pixels.
+Frame 4: breathing out — back down one pixel (between frames 2 and 1), so frame 1 follows smoothly.
+
+THE CHARACTERS, ONE PER ROW:
+ROW 1 — HAMMER — the demolition expert. The biggest of the squad, bald with a thick brown moustache and a big friendly face. A YELLOW hard hat, an ORANGE hazard vest with reflective silver stripes over a grey work shirt, a tool belt, brown work trousers, heavy brown steel-toe boots.
+ROW 2 — VIPER — the toxic specialist. A pale woman with a sharp black bob haircut and one LIME-GREEN streak, smoky eyes, a sly smirk. A gas mask hanging at her neck, an OLIVE jacket with lime-green trim, green toxic canisters clipped to her belt, black trousers, black boots.
+ROW 3 — ATLAS — the cyborg. A strong man, half machine: his LEFT arm is a grey metal robotic arm with visible joints and pistons, a steel plate over the left half of his face with a small glowing BLUE eye. A white-and-blue armoured suit, dark grey trousers, steel boots.
+```
+
+### Prompt 4 → `assets/idle/breath4.png` · attach **commandos.png**
+```
+Create this image from scratch as a NEW sprite sheet. The attached sheets only show what the characters look like and the art style — do not copy any of their frames and do not ask for anything else.
+
+STYLE: detailed 16-bit pixel art like a modern premium pixel game: crisp square pixels with hard edges, 3 to 4 shades per colour, a dark 1-pixel outline, a warm rim light from the upper right, clear readable faces. No anti-aliasing, no blur, no gradients, no glow, no sparkles, no effects of any kind.
+
+VIEW: FRONT VIEW — every character faces the viewer straight on, chest and face toward the camera, both eyes visible, standing still like a hero waiting in a game lobby. Feet apart at shoulder width, planted.
+
+THE RIFLE (everyone has the same one): a chunky assault rifle with a black steel body, a short thick barrel, a brown wooden stock and a small orange energy cell, held DIAGONALLY ACROSS THE CHEST with both hands, kept INSIDE the character's own width — nothing sticks out to the sides.
+
+TRANSPARENT BACKGROUND — VERY IMPORTANT: a PNG with a real alpha channel. NO checkerboard pattern anywhere, no background colour, no floor, no shadow, no grid lines, no borders, no text, no numbers, no names, no watermark.
+
+PERFECT SPACING — VERY IMPORTANT: an invisible grid of exactly 4 equal columns and 2 equal rows. Each pose sits EXACTLY in the CENTRE of its own cell. Every character is the same size and fills about two thirds of its cell's height. Leave a WIDE, EVEN empty gap between all poses — at least a third of a cell — so no two poses ever touch or come close. All poses in a row stand on exactly the same floor line.
+
+THE ANIMATION — A CALM BREATHING LOOP ONLY, 4 frames per row, read left to right. Nothing else moves: the same pose, the same rifle position, the same feet, the same face in all four frames.
+Frame 1: standing relaxed.
+Frame 2: breathing in — chest rises, shoulders and head lift ONE pixel.
+Frame 3: full breath — chest and shoulders up TWO pixels.
+Frame 4: breathing out — back down one pixel (between frames 2 and 1), so frame 1 follows smoothly.
+
+THE CHARACTERS, ONE PER ROW:
+ROW 1 — JAX — the grenadier, one of the two original commandos. A muscular man, short dark brown hair, determined face, a little stubble. A BLUE headband with two short tails, a white sleeveless shirt, blue camouflage trousers, black combat boots, fingerless black gloves, grenades clipped to his belt.
+ROW 2 — DUKE — the brawler, the other original commando. A muscular man with spiky blond hair, a cocky grin. A RED headband, bare chest crossed by one brass ammunition belt, red camouflage trousers, black combat boots, wrist wraps.
+```

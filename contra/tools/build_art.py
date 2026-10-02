@@ -616,6 +616,9 @@ IDLE_ORDER = ['razor', 'nova', 'kite', 'brick', 'volt', 'ghost', 'hammer', 'vipe
 IDLE_LOOP = 3
 IDLE_GROUPS = [('idle1.png', ['razor', 'nova', 'kite']), ('idle2.png', ['brick', 'volt', 'ghost']),
                ('idle3.png', ['hammer', 'viper', 'atlas']), ('idle4.png', ['jax', 'duke'])]
+# prompt 17: breathing only, 4 frames a row, the same three agents per image; these win over idle1-4
+BREATH_GROUPS = [('breath1.png', ['razor', 'nova', 'kite']), ('breath2.png', ['brick', 'volt', 'ghost']),
+                 ('breath3.png', ['hammer', 'viper', 'atlas']), ('breath4.png', ['jax', 'duke'])]
 # rows to leave out (an agent then keeps its standing frame in the menus)
 IDLE_SKIP = set()
 
@@ -660,10 +663,11 @@ def build_idle():
                 p[lab == i] = 0
         return p
     cells_of = {}
-    for name, ids in IDLE_GROUPS:
-        g = load(os.path.join('idle', name))
-        if g is None:
+    sheets = [(n, ids, 10) for n, ids in IDLE_GROUPS] + [(n, ids, 4) for n, ids in BREATH_GROUPS]
+    for name, ids, ncols in sheets:
+        if not os.path.exists(os.path.join(ROOT, 'assets', 'idle', name)):
             continue
+        g = load(os.path.join('idle', name))
         m = g[..., 3] > 30
         ch = g.shape[0] / len(ids)
         ys = cuts(m.sum(1), len(ids), ch)
@@ -673,10 +677,10 @@ def build_idle():
             rows_on = np.nonzero((band[..., 3] > 30).sum(1) > 2)[0]
             if len(rows_on):
                 band = band[max(0, rows_on[0] - 2):rows_on[-1] + 3]
-            cw = band.shape[1] / 10
-            xs = cuts((band[..., 3] > 30).sum(0), 10, cw)
+            cw = band.shape[1] / ncols
+            xs = cuts((band[..., 3] > 30).sum(0), ncols, cw)
             fr = []
-            for c in range(10):
+            for c in range(ncols):
                 piece = own_pixels(band[:, xs[c]:xs[c + 1]])
                 if (piece[..., 3] > 30).sum() < 200:
                     continue
@@ -703,7 +707,8 @@ def build_idle():
         al = np.array(sheet)[..., 3] > 30
         tops = [np.nonzero(al[:, i * cw:(i + 1) * cw].any(1))[0] for i in range(min(IDLE_LOOP, len(fr)))]
         bh = int(ch - min(t[0] for t in tops if len(t))) if any(len(t) for t in tops) else ch
-        out[aid] = {'path': save(blocky(sheet, ch * k), 'idle_' + aid), 'fw': cw * k, 'fh': ch * k, 'bh': bh * k, 'n': len(fr), 'loop': min(IDLE_LOOP, len(fr))}
+        out[aid] = {'path': save(blocky(sheet, ch * k), 'idle_' + aid), 'fw': cw * k, 'fh': ch * k, 'bh': bh * k, 'n': len(fr),
+                    'loop': len(fr) if len(fr) <= 4 else min(IDLE_LOOP, len(fr))}            # breathing only: every frame loops
         by_agent.pop(aid, None)
     for aid, fr in by_agent.items():
         if len(fr) < 2 or aid in IDLE_SKIP:

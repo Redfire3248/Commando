@@ -52,7 +52,12 @@ CG.UI = (() => {
       if (!next) { next = now + 4000 + Math.random() * 7000; el.dataset.next = next; }
       if (f >= loop) f = f + 1 < n ? f + 1 : 0;                                         // in the special move
       else if (now > next && n > loop) { f = loop; el.dataset.next = now + 7000 + Math.random() * 6000; }
-      else f = (f + 1) % loop;
+      else {                                                                           // breathing: a calm pace
+        const k = +(el.dataset.k || 0) + 1;
+        el.dataset.k = k;
+        if (k % 2) return;
+        f = (f + 1) % loop;
+      }
       el.dataset.f = f;
       img.style.transform = 'translateX(' + (-100 * f / n) + '%)';
     });
