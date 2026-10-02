@@ -1572,7 +1572,7 @@ CG.DATA.art = {
  "idle": {
   "razor": {
    "path": "assets/atlas/idle_razor.png",
-   "fw": 185,
+   "fw": 197,
    "fh": 280,
    "bh": 278,
    "n": 10,
@@ -1580,7 +1580,7 @@ CG.DATA.art = {
   },
   "nova": {
    "path": "assets/atlas/idle_nova.png",
-   "fw": 210,
+   "fw": 222,
    "fh": 289,
    "bh": 287,
    "n": 10,
@@ -1588,7 +1588,7 @@ CG.DATA.art = {
   },
   "kite": {
    "path": "assets/atlas/idle_kite.png",
-   "fw": 197,
+   "fw": 209,
    "fh": 290,
    "bh": 277,
    "n": 10,
@@ -1596,7 +1596,7 @@ CG.DATA.art = {
   },
   "brick": {
    "path": "assets/atlas/idle_brick.png",
-   "fw": 192,
+   "fw": 204,
    "fh": 264,
    "bh": 247,
    "n": 10,
@@ -1604,7 +1604,7 @@ CG.DATA.art = {
   },
   "volt": {
    "path": "assets/atlas/idle_volt.png",
-   "fw": 184,
+   "fw": 196,
    "fh": 295,
    "bh": 275,
    "n": 10,
@@ -1612,7 +1612,7 @@ CG.DATA.art = {
   },
   "ghost": {
    "path": "assets/atlas/idle_ghost.png",
-   "fw": 177,
+   "fw": 189,
    "fh": 269,
    "bh": 267,
    "n": 10,
@@ -1620,7 +1620,7 @@ CG.DATA.art = {
   },
   "hammer": {
    "path": "assets/atlas/idle_hammer.png",
-   "fw": 168,
+   "fw": 180,
    "fh": 255,
    "bh": 253,
    "n": 10,
@@ -1628,7 +1628,7 @@ CG.DATA.art = {
   },
   "viper": {
    "path": "assets/atlas/idle_viper.png",
-   "fw": 171,
+   "fw": 183,
    "fh": 283,
    "bh": 281,
    "n": 10,
@@ -1636,7 +1636,7 @@ CG.DATA.art = {
   },
   "atlas": {
    "path": "assets/atlas/idle_atlas.png",
-   "fw": 163,
+   "fw": 175,
    "fh": 277,
    "bh": 271,
    "n": 10,
@@ -1644,7 +1644,7 @@ CG.DATA.art = {
   },
   "jax": {
    "path": "assets/atlas/idle_jax.png",
-   "fw": 206,
+   "fw": 218,
    "fh": 444,
    "bh": 348,
    "n": 10,
@@ -1652,7 +1652,7 @@ CG.DATA.art = {
   },
   "duke": {
    "path": "assets/atlas/idle_duke.png",
-   "fw": 200,
+   "fw": 212,
    "fh": 352,
    "bh": 350,
    "n": 10,

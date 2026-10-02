@@ -641,6 +641,24 @@ def build_idle():
             out.append(lo + int(np.argmin(proj[lo:hi])))
         out.append(len(proj))
         return out
+    def own_pixels(piece):
+        # a cut can carry a sliver of the neighbouring pose (a few pixels of its rifle, or its faint glow) along the
+        # left / right edge; keep the pose itself (and anything floating inside the frame, like a thrown grenade) and
+        # drop the small bits that touch a side
+        p = piece.copy()
+        lab, n = ndimage.label(ndimage.binary_dilation(p[..., 3] > 0, iterations=1))
+        if n < 2:
+            return p
+        sizes = ndimage.sum(p[..., 3] > 0, lab, range(1, n + 1))
+        big = sizes.max()
+        w = p.shape[1]
+        for i in range(1, n + 1):
+            xs = np.nonzero((lab == i).any(0))[0]
+            touches = xs[0] == 0 or xs[-1] == w - 1
+            near_side = xs.mean() < w * 0.15 or xs.mean() > w * 0.85
+            if touches and (sizes[i - 1] < big * 0.25 or near_side) and sizes[i - 1] < big:
+                p[lab == i] = 0
+        return p
     cells_of = {}
     for name, ids in IDLE_GROUPS:
         g = load(os.path.join('idle', name))
@@ -659,7 +677,7 @@ def build_idle():
             xs = cuts((band[..., 3] > 30).sum(0), 10, cw)
             fr = []
             for c in range(10):
-                piece = band[:, xs[c]:xs[c + 1]]
+                piece = own_pixels(band[:, xs[c]:xs[c + 1]])
                 if (piece[..., 3] > 30).sum() < 200:
                     continue
                 fr.append((piece, xs[c] - int(c * cw), 0))
@@ -669,8 +687,11 @@ def build_idle():
     for aid, (fr, cw, ch) in cells_of.items():
         # a frame is never smaller than what is drawn in it: a pose that pokes past its grid cell makes every frame of
         # that agent a little bigger instead of being clipped (nothing may be cut off)
-        left = max([0] + [-dx for _, dx, _ in fr])                     # room for pieces that start before their cell
-        cw = max(cw, max(dx + left + c.shape[1] for c, dx, _ in fr))
+        # room for pieces that start before their cell, plus an empty gutter on both sides of every frame so the
+        # menu's scaled animation never shows a sliver of the frame next to it
+        GUT = 6
+        left = max([0] + [-dx for _, dx, _ in fr]) + GUT
+        cw = max(cw, max(dx + left + c.shape[1] for c, dx, _ in fr)) + GUT
         top = max([0] + [-dy for _, _, dy in fr])
         ch = max(dy + top + c.shape[0] for c, _, dy in fr)                # as tall as the poses, no empty headroom
         sheet = Image.new('RGBA', (cw * len(fr), ch), (0, 0, 0, 0))
