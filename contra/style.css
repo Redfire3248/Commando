@@ -762,7 +762,8 @@ input:focus { border-color: var(--acc); }
 }
 
 /* behind the menus the jungle scene fills the whole window (the game canvas is letterboxed to 16:9) and pans slowly */
-body:not(.playing) #game { background: #07090b url(assets/atlas/bg15_1.png) 0 50% / auto 100% repeat-x; image-rendering: pixelated; animation: bgPan 160s linear infinite; }
+body:not(.playing) #game { background: #07090b url(assets/atlas/bg15_1.png) 0 50% / auto 100% repeat-x; image-rendering: auto; animation: bgPan 160s linear infinite; }
+/* the menu backdrop is scaled smoothly (sharp pixels turned its soft, out-of-focus areas into big squares) */
 body:not(.playing) #game canvas { visibility: hidden; }
 @keyframes bgPan { to { background-position: -300vh 50%; } }
 
@@ -959,3 +960,5 @@ img { -webkit-user-drag: none; user-drag: none; }
 #admin .ranks-grid .tile span { font-size: 11px; }
 #admin .ranks-grid .tile.on { border-color: #ffd23c; background: rgba(255, 210, 60, .18); }
 #admin .give-rank .btn { font-size: 13px; }
+/* menus: the scene behind the squad is softly out of focus (like a lobby) — slightly enlarged so the blur has no edges */
+body:not(.playing) #game { filter: blur(3px) brightness(.92); transform: scale(1.04); }
