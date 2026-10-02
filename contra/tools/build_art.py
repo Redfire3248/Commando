@@ -585,6 +585,8 @@ def blocky(img, target):
 # (up to 7) a short special move the menus play now and then. Rows after these are ignored (room for later art).
 IDLE_ORDER = ['razor', 'nova', 'kite', 'brick', 'volt', 'ghost', 'hammer', 'viper', 'atlas', 'jax', 'duke']
 IDLE_LOOP = 3
+IDLE_GROUPS = [('idle1.png', ['razor', 'nova', 'kite']), ('idle2.png', ['brick', 'volt', 'ghost']),
+               ('idle3.png', ['hammer', 'viper', 'atlas']), ('idle4.png', ['jax', 'duke'])]
 # rows to leave out (an agent then keeps its standing frame in the menus)
 IDLE_SKIP = set()
 
@@ -596,14 +598,16 @@ def build_idle():
         print('  idle: sprites per row', [len(r) for r in rows], '(expected 11 rows of up to 10)')
     out = {}
     by_agent = dict(zip(IDLE_ORDER, rows))
-    # a sheet of one agent's own (assets/idle/<agent>.png, prompt 16: 10 frames, read left to right, top row first)
-    # wins over its row in idle.png — one agent per image comes back at a much higher resolution
-    for aid in IDLE_ORDER:
-        one = load(os.path.join('idle', aid + '.png'))
-        if one is not None:
-            frames = [sp for r in sprite_rows(one) for sp in r]
-            print('  idle/' + aid + '.png:', len(frames), 'frames')
-            by_agent[aid] = frames
+    # prompt 16: three agents per image, one row each (assets/idle/idle1.png ... idle4.png); a row there wins over the
+    # agent's row in idle.png — fewer agents per image come back at a much higher resolution
+    for name, ids in IDLE_GROUPS:
+        g = load(os.path.join('idle', name))
+        if g is None:
+            continue
+        grows = sprite_rows(g)
+        print('  idle/' + name + ': sprites per row', [len(r) for r in grows], '(expected', len(ids), 'rows of 10)')
+        for aid, fr in zip(ids, grows):
+            by_agent[aid] = fr
     for aid, fr in by_agent.items():
         if len(fr) < 2 or aid in IDLE_SKIP:
             continue

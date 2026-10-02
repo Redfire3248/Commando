@@ -861,3 +861,10 @@ img { -webkit-user-drag: none; user-drag: none; }
 .notice small { font-size: 11px; letter-spacing: .26em; color: var(--acc2); font-weight: 700; }
 .notice p { margin: 4px 0 0; font-size: 17px; line-height: 1.35; }
 #admin .give-msg input { flex: 1; font: 600 15px Rajdhani, sans-serif; background: rgba(0, 0, 0, .45); color: #fff; border: 1px solid var(--line); padding: 7px 10px; }
+
+/* friends: room between the code, the add box and the lists */
+#fr-body { display: flex; flex-direction: column; gap: 14px; }
+#fr-body .row { gap: 14px; }
+#fr-body .row .code { margin: 0 4px; }
+#fr-body input { flex: 1; min-width: 180px; }
+#fr-body h3 { margin-top: 10px; }
