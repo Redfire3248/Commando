@@ -287,12 +287,17 @@
       });
       // cover: solid, stops every bullet, can be stood on. Painted cover (cover50.png) replaces the pixel boxes by key.
       this.covers = this.physics.add.staticGroup();
-      for (const cv of CG.Level.covers(L)) {
-        const key = 'cv_' + cv.kind, img = this.add.image(cv.col * T, gy + 2, key).setOrigin(0, 1).setDepth(6);
+      const set = CG.DATA.art && CG.DATA.art.cover50 && CG.DATA.art.cover50[L.theme];
+      CG.Level.covers(L).forEach((cv, n) => {
+        // painted cover from cover50.png when sliced (cycling through the theme's set, the same on every screen),
+        // else the built-in boxes
+        let key = 'cv_' + cv.kind;
+        if (set && set.length) { const k2 = set[(n * 7 + L.w) % set.length]; if (this.textures.exists(k2)) key = k2; }
+        const img = this.add.image(cv.col * T, gy + 2, key).setOrigin(0, 1).setDepth(6);
         const sc = this.artScale[key];
         if (sc) img.setScale(sc);
         zone(this.covers, img.x + 4, img.y - img.displayHeight + 6, img.displayWidth - 8, img.displayHeight - 8);
-      }
+      });
       // Ledges are solid on every side (you bump your head on them, you can't jump up through them); the hitbox is
       // as thick as the ledge art. Down + Jump still drops you off one.
       L.ledges.forEach(([c, r, w]) => {
