@@ -525,8 +525,9 @@ CG.UI = (() => {
         <div class="sel-ab">${abIcon(looking.id) ? `<img src="${abIcon(looking.id)}" alt="">` : ''}<div><small>ABILITY</small><b>${ab.name}</b><p>${ab.desc}</p></div></div>
         ${action}
       </div>`;
-    $('agent-cards').innerHTML = CG.AGENTS.map((a) => {
-      const has = CG.Shop.hasAgent(a.id);
+    // only the agents this account owns (the rest are in the SHOP)
+    $('agent-cards').innerHTML = CG.AGENTS.filter((a) => CG.Shop.hasAgent(a.id)).map((a) => {
+      const has = true;
       return `<button class="tile ${looking === a ? 'look' : ''} ${has ? '' : 'locked'}" data-act="pick" data-uid="${a.id}" style="--c:${a.color}">
         ${portrait(a.id) ? `<img src="${portrait(a.id)}" alt="">` : ''}
         <b>${a.name}</b>
@@ -536,7 +537,13 @@ CG.UI = (() => {
     }).join('');
     $('select-slots').innerHTML = '';
   }
-  function look(d) { lookAt = (lookAt + d + CG.AGENTS.length) % CG.AGENTS.length; renderLocker(); }
+  // left / right through the agents you own
+  function look(d) {
+    const own = CG.AGENTS.map((a, i) => i).filter((i) => CG.Shop.hasAgent(CG.AGENTS[i].id));
+    const k = own.indexOf(lookAt);
+    lookAt = own[((k < 0 ? 0 : k) + d + own.length) % own.length];
+    renderLocker();
+  }
   function equip(id) {
     id = id || CG.AGENTS[lookAt].id;
     if (!CG.Shop.hasAgent(id)) { toast(CG.AGENT[id].name + ' is locked — unlock it first'); return; }

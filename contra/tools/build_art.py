@@ -611,17 +611,19 @@ def build_ui_icons():
     a = load('ui_icons.png')
     if a is None:
         return
-    # cut by the 4 x 4 grid (some icons are several pieces, e.g. the dash arrow and its speed lines), then trimmed
-    # to what is painted in the cell; pixels copied untouched
-    h, w = a.shape[:2]
+    # each painted shape goes to the grid cell its middle is in (cut_cells), so a piece that pokes over a grid
+    # line (the fire icon's bullet) stays with its own icon; pixels copied untouched
+    global COLS, ROWS
+    keep = (COLS, ROWS)
+    COLS, ROWS = 4, 4
+    try:
+        cells = cut_cells(a, grow=6)
+    finally:
+        COLS, ROWS = keep
     out = {}
     for i, name in enumerate(UI_ICONS):
-        r, c = divmod(i, 4)
-        cell = a[r * h // 4:(r + 1) * h // 4, c * w // 4:(c + 1) * w // 4]
-        ys, xs = np.nonzero(cell[..., 3] > 30)
-        if not len(xs):
-            continue
-        out[name] = save(Image.fromarray(cell[ys.min():ys.max() + 1, xs.min():xs.max() + 1]), 'ui_' + name)
+        if i in cells:
+            out[name] = save(Image.fromarray(cells[i][0]), 'ui_' + name)
     print('  ui_icons:', len(out), 'icons')
     manifest['ui'] = out
 

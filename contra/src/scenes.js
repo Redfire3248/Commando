@@ -539,8 +539,7 @@
         const sc = this.artScale[key];
         if (sc) img.setScale(sc);
         const z = zone(this.covers, img.x + 4, img.y - img.displayHeight + 6, img.displayWidth - 8, img.displayHeight - 8);
-        // breakable: bigger pieces take more hits (a low sandbag about 18 shots, a tall crate stack about 40)
-        const hp = Math.round(12 + img.displayHeight * 0.25);
+        const hp = 5;                                    // five hits: one bullet = one damage
         z.cover = { id: n, img, zone: z, hp, max: hp, broken: false };
         this.coverList.push(z.cover);
       });

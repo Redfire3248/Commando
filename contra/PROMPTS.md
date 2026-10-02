@@ -363,32 +363,34 @@ ROW 1 — steel-winged badges, each with a coloured centre and a simple picture:
 ROW 2 — 1 to 9: the same ten-style badges for: a ghost silhouette (cloak), a hammer (ground pound), a gas mask (toxic cloud), a small flying drone (sentry drone), a crosshair (auto aim), a clock with a plus (longer power-ups), a shield with a plus (armour), a coin stack (double coins), a skull (danger mode). 10: a special ADMIN badge, bigger than the others: a gold badge with a crown on top and red wings, a bright gold centre with a red star.
 ```
 
-## 14 — Idle animations, one row per agent → `idle.png` (10 columns × 11 rows)
-**Attach:** `agents.png` and `agents2.png` (the player sheets) so the characters and their style match.
-Cells 1–3 = breathing loop, cells 4–10 = a calm special move the menus play every 7–13 s. Later rows are free for
-other art later (the slicer only reads the first 11 rows, by the empty space between sprites).
+## 14 — Lobby idle animations, FRONT VIEW, one row per agent → `idle.png` (10 columns × 11 rows)
+**Attach:** `agents.png`, `agents2.png` and `commandos.png` (the player sheets) so the characters match.
+Front view (facing the camera, like a lobby). Cells 1–3 = breathing loop, cells 4–10 = a playful emote the menus
+play every 7–13 s. The slicer reads the first 11 rows by the empty space between sprites; later rows are free.
 ```
-Create a NEW sprite sheet of idle animations. The attached sheets show the characters and the art style: match them exactly — the same 16-bit pixel art with chunky square pixels and hard edges, the same limited palette, the same dark outlines, the same character size and pixel scale, the same faces, hair, clothes and colours, and the same rifle (black steel body, short thick barrel, brown wooden stock, small orange energy cell). Do not invent new designs. No anti-aliasing, no blur, no gradients, no glow, no painterly brush strokes.
+Create a NEW sprite sheet. The attached sheets show the characters and the art style: keep exactly the same 16-bit pixel art (chunky square pixels, hard edges, limited palette, dark outlines, same pixel scale) and the same faces, hair, clothes, colours and rifle (black steel body, short thick barrel, brown wooden stock, small orange energy cell). Do not invent new designs. No anti-aliasing, no blur, no gradients, no glow.
 
-REMOVE THE BACKGROUND: a PNG with real transparency. No background colour, no white, no grey, NO checkerboard pattern, no floor line, no shadows, no grid lines, no borders, no text, no names, no numbers.
+TRANSPARENT BACKGROUND — VERY IMPORTANT: the PNG must have a real alpha channel. Do NOT draw a checkerboard pattern (no grey-and-white or black-and-grey squares anywhere), do NOT fill the background with any colour, no floor line, no shadows, no grid lines, no borders, no text, no names, no numbers. Only the characters are visible.
 
-LAYOUT: 10 columns and 11 rows. EVERY CHARACTER GETS EXACTLY ONE ROW. Every sprite stands alone in its own cell with clear empty space around it, never touching a neighbour. Everyone faces RIGHT and stands on the same floor line in their row, at the same size as in the attached sheets.
+FRONT VIEW: every character faces the viewer STRAIGHT ON — chest and face toward the camera, both eyes visible, standing like a character waiting in a game lobby. NOT a side view. The rifle is held across the body (barrel pointing up and to the side) or resting on a shoulder.
 
-EVERY ROW, THE SAME PLAN — calm, simple movements only, nothing wild, no jumping, no shooting, no muzzle flash, no effects:
-Cells 1–3: BREATHING IDLE — standing relaxed, rifle held low and forward; cell 2 the chest rises and the shoulders lift one pixel; cell 3 back down. The feet never move.
-Cells 4–10: A SHORT SPECIAL IDLE MOVE for that character (listed below), smooth from cell to cell, starting from the idle pose in cell 4 and ending back in exactly the idle pose in cell 10.
+LAYOUT: 10 columns and 11 rows. EVERY CHARACTER GETS EXACTLY ONE ROW. One sprite per cell with clear empty space around it, never touching a neighbour. Everyone stands on the same floor line in their row, all at the same size.
 
-ROW 1 — RAZOR: rests the rifle on his shoulder, rolls his neck, brings the rifle back down.
-ROW 2 — NOVA: glances down, pats the medkit pouch on her belt, looks forward again.
-ROW 3 — KITE: bounces lightly on her toes twice, tightens her green bandana.
-ROW 4 — BRICK: taps the round shield on his forearm with the rifle, nods once.
-ROW 5 — VOLT: pushes his goggles up on his forehead, a tiny spark between two fingers, hand back on the rifle.
-ROW 6 — GHOST: pulls her hood a little lower, looks left then right.
-ROW 7 — HAMMER: lifts his hard hat, wipes his brow, puts the hat back on.
-ROW 8 — VIPER: lifts the gas mask at her neck halfway up, lets it drop back.
-ROW 9 — ATLAS: opens and closes his metal robot hand, the blue eye light blinks once.
-ROW 10 — JAX (muscular man, short dark hair, BLUE headband with two short tails, white sleeveless shirt, blue camouflage trousers, black boots, fingerless gloves — drawn in the same pixel style as the others): checks the rifle's side, pulls the charging handle, back to idle.
-ROW 11 — DUKE (muscular man, blond hair, RED headband, bare chest crossed by one ammunition belt, red camouflage trousers, black boots — drawn in the same pixel style as the others): tightens his red headband, cracks his knuckles, back to idle.
+EVERY ROW:
+Cells 1–3: BREATHING IDLE — relaxed stance; cell 2 chest rises and shoulders lift one pixel; cell 3 back down. Feet planted.
+Cells 4–10: A FUN EMOTE that shows the character's personality (like the quirky lobby emotes in mobile shooters), playing smoothly from cell to cell, starting from and ending in the idle pose. Big readable poses, but no effects that fill the cell, no muzzle flash, no extra objects bigger than the character.
+
+ROW 1 — RAZOR: flexes one arm, kisses his bicep, grins, back to idle.
+ROW 2 — NOVA: twirls a syringe between her fingers like a pen, winks, tucks it away.
+ROW 3 — KITE: a big yawn and a stretch, then a quick double hop and a thumbs-up.
+ROW 4 — BRICK: knocks twice on his own helmet, it rings, he shakes his head dizzily.
+ROW 5 — VOLT: static makes his spiky hair stand straight up, he pats it back down.
+ROW 6 — GHOST: tilts her head, raises a finger to her mask in a "shh", fades a little and comes back.
+ROW 7 — HAMMER: pulls a sandwich from his vest, takes a big bite, chews happily.
+ROW 8 — VIPER: puts her gas mask on, takes a deep breath, a small green puff, pulls it down and coughs.
+ROW 9 — ATLAS: his robot arm glitches and waves on its own, he slaps it with the other hand to stop it.
+ROW 10 — JAX (muscular man, short dark hair, BLUE headband with two short tails, white sleeveless shirt, blue camouflage trousers, black boots, fingerless gloves): tosses a grenade up, catches it behind his back, pockets it.
+ROW 11 — DUKE (muscular man, blond hair, RED headband, bare chest crossed by one ammunition belt, red camouflage trousers, black boots): cracks his knuckles, does a double bicep flex, laughs.
 ```
 
 ## 15 — Interface icons → `ui_icons.png` (4 × 4)
