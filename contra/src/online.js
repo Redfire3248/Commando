@@ -55,13 +55,17 @@ CG.Online = {
     // the ready check: frozen until GO
     const people = [...new Set(this.info.players.filter((q) => !q.bot).map((q) => q.owner))];
     const rref = this.base.child('ready/s' + (scene.cfg.stage || 1));
-    scene.netWait = { people, ready: 0, since: Date.now() };
+    // a duel: everyone sees the VS screen and presses READY; co-op: ready as soon as the game has loaded
+    const manual = !!scene.pvp;
+    scene.netWait = { people, ready: 0, since: Date.now(), manual };
     scene.physics.pause();
-    rref.child(N.uid).set(true).catch(() => {});
+    if (manual) CG.UI.netVersus(scene, () => rref.child(N.uid).set(true).catch(() => {}));
+    else rref.child(N.uid).set(true).catch(() => {});
     on(rref, 'value', (s) => {
       const v = s.val() || {};
       if (!scene.netWait) return;
       scene.netWait.ready = people.filter((u) => v[u]).length;
+      if (manual) CG.UI.netVersusReady(v);
       if (v.go) { this.go(scene); return; }
       if (this.host && scene.netWait.ready >= people.length) rref.child('go').set(Date.now()).catch(() => {});
     });
@@ -73,16 +77,19 @@ CG.Online = {
   // everyone is in (or the host stopped waiting): start the stage on every screen at once
   go(scene) {
     if (!scene.netWait) return;
+    const manual = scene.netWait.manual;
     scene.netWait = null;
     scene.physics.resume();
+    if (manual) CG.UI.netVersusGo();
     this.snapAt = Date.now();
     scene.netGo();
   },
   // the host gives up on someone who never loads after 15 s
   waitTick(scene) {
     const w = scene.netWait;
-    if (this.host && w && Date.now() - w.since > 15000 && this.readyRef) this.readyRef.child('go').set(Date.now()).catch(() => {});
-    if (!this.host && w && Date.now() - w.since > 25000) this.ended('host-left');      // the host never started it
+    const limit = w && w.manual ? 30000 : 15000;                                   // a duel gives READY 30 s
+    if (this.host && w && Date.now() - w.since > limit && this.readyRef) this.readyRef.child('go').set(Date.now()).catch(() => {});
+    if (!this.host && w && Date.now() - w.since > limit + 10000) this.ended('host-left');      // the host never started it
   },
 
   detach() {

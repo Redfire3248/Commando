@@ -214,7 +214,9 @@
       this.teamLives = this.cfg.teamLives !== null && this.cfg.teamLives !== undefined ? this.cfg.teamLives : C.lives + 2 * (this.players.length - 1);
       this.adminUsed = !!this.cfg.adminUsed;
       // shop perks for this device's account holder (player 1 here, or my own soldier online)
-      const fx = CG.Net.online ? CG.Shop.effects() : {};
+      // (guests too: their perks are saved on the device). Duels and free-for-all are fair: only the looks apply there.
+      const owned = CG.Shop.effects();
+      const fx = this.cfg.mode === 'pvp' ? { gold: owned.gold, star: owned.star } : owned;
       const mine = this.cfg.online ? this.players.find((p) => p.owner === CG.Net.uid && !p.bot) : this.players.find((p) => !p.bot && !p.remote);
       if (mine) {
         CG.Shop.apply(mine, fx);
@@ -1015,6 +1017,7 @@
     // online: "WAITING FOR PLAYERS 1/2" until every game has loaded the stage
     showNetWait() {
       const w = this.netWait, { W, H } = CG.CONFIG;
+      if (w.manual) return;                              // a duel: the VS screen shows who is ready
       if (!this.waitText) {
         this.waitText = this.add.text(W / 2, H * 0.42, '', { fontFamily: 'Black Ops One, Impact, sans-serif', fontSize: '46px', color: '#ffd23c', align: 'center' })
           .setOrigin(0.5).setScrollFactor(0).setDepth(60).setShadow(0, 3, '#000', 0);

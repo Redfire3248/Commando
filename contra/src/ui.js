@@ -488,16 +488,34 @@ CG.UI = (() => {
   }
   function renderVersus() {
     const A = CG.DATA.arenas[vs.settings.arena] || CG.DATA.arenas[0];
-    $('vs-top').innerHTML = ico(mode.kind === 'custom' ? 'custom' : 'duels') + CG.Modes.label(mode) + ' · ' + A.name.replace('ARENA · ', '') + ' · FIRST TO ' + vs.settings.rounds;
+    const label = vs.online ? (vs.settings.ffa ? 'FREE-FOR-ALL' : 'DUEL') + ' · ONLINE' : CG.Modes.label(mode);
+    $('vs-top').innerHTML = ico(!vs.online && mode.kind === 'custom' ? 'custom' : 'duels') + label + ' · ' + A.name.replace('ARENA · ', '') + ' · FIRST TO ' + vs.settings.rounds;
+    // online: each person shows READY once they pressed it
+    const status = (q) => (q.bot ? 'BOT' : !vs.online ? 'READY' : vs.ready[q.owner] ? '✔ READY' : 'NOT READY');
     const line = (t) => vs.players.filter((q) => q.team === t).map((q) => {
       const a = CG.AGENT[q.agent] || CG.AGENTS[0];
-      return `<div class="vs-fig ${t ? 'flip' : ''}" style="--c:${a.color}"><div class="body">${figure(a.id)}</div><b>${esc(q.name)}</b>${CG.Cosmetics.titleHtml(q.title)}<small>${a.name} · ${q.bot ? 'BOT' : 'READY'}</small>${CG.Ranks.chip(q.rr || 0, { px: 18 })}</div>`;
+      const ok = q.bot || !vs.online || vs.ready[q.owner];
+      return `<div class="vs-fig ${t ? 'flip' : ''} ${ok ? '' : 'not-ready'}" style="--c:${a.color}"><div class="body">${figure(a.id)}</div><b>${esc(q.name)}</b>${CG.Cosmetics.titleHtml(q.title)}<small>${a.name} · ${status(q)}</small>${CG.Ranks.chip(q.rr || 0, { px: 18 })}</div>`;
     }).join('');
     $('vs-a').innerHTML = line(0);
-    $('vs-b').innerHTML = line(1);
+    $('vs-b').innerHTML = line(vs.settings.ffa ? 99 : 1) + (vs.settings.ffa ? vs.players.filter((q) => q.team > 0).map((q) => line(q.team)).filter((v, i, arr) => arr.indexOf(v) === i).join('') : '');
     const me = vs.players.find((q) => !q.bot);
-    $('vs-switch').disabled = !(me && vs.players.some((q) => q.bot && q.team !== me.team));
+    $('vs-switch').classList.toggle('hidden', !!vs.online);
+    $('vs-switch').disabled = vs.online || !(me && vs.players.some((q) => q.bot && q.team !== me.team));
+    const rb = document.querySelector('#versus .vs-ready');
+    const mine = vs.online && vs.ready[N().uid];
+    rb.disabled = !!mine;
+    rb.textContent = mine ? '✔ READY — WAITING FOR THE OTHERS' : 'READY';
   }
+  // an online duel: the VS screen over the loaded arena until everyone pressed READY (online.js starts it)
+  function netVersus(scene, onReady) {
+    vs = { online: true, players: scene.cfg.players, settings: Object.assign({ arena: 0, rounds: CG.DUEL_KILLS }, scene.cfg.pvp || {}), ready: {}, onReady };
+    renderVersus();
+    show('versus');
+    CG.Sfx.play('start');
+  }
+  function netVersusReady(v) { if (vs && vs.online) { vs.ready = v || {}; renderVersus(); } }
+  function netVersusGo() { if (vs && vs.online) { vs = null; show(null); } }
   // you change sides with a bot from the other team
   function vsSwitch() {
     const me = vs.players.find((q) => !q.bot), other = me && vs.players.find((q) => q.bot && q.team !== me.team);
@@ -1024,8 +1042,12 @@ CG.UI = (() => {
     'notice-ok': () => notices.ok(),
     'lobby-style': (v) => { lobbyStyle = v; store.set(LOBBY, v); renderSettings(); },
     'vs-switch': vsSwitch,
-    'vs-ready': () => { if (vs) play(vs.players, vs.settings); },
-    'vs-leave': () => { if (vs && vs.back) vs.back(); else home(); },
+    'vs-ready': () => {
+      if (!vs) return;
+      if (vs.online) { vs.ready[N().uid] = true; vs.onReady(); renderVersus(); CG.Sfx.play('pickup'); return; }
+      play(vs.players, vs.settings);
+    },
+    'vs-leave': () => { if (vs && vs.online) { vs = null; toMenu(); return; } if (vs && vs.back) vs.back(); else home(); },
     cust: setCustom,
     'invite-open': () => { say('invite-msg', ''); renderInvites(); $('invite-pop').classList.remove('hidden'); },
     'invite-close': () => $('invite-pop').classList.add('hidden'),
@@ -1163,7 +1185,7 @@ CG.UI = (() => {
     localDevice() { return { type: 'any' }; },
     storyCleared(n) { if (n > storyCleared()) store.set(STORY, String(n)); },
     announce: (a) => notices.announce(a),
-    shakeOn,
+    shakeOn, netVersus, netVersusReady, netVersusGo,
     gameOver, matchEnded, refreshFriends, netChanged, loginMessage, localBest, localName, myAgent, myName, show, toast, play, playOnline, takeLocalBots,
   };
 })();

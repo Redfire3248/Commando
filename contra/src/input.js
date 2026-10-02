@@ -69,6 +69,7 @@
   document.querySelectorAll('#btns [data-btn]').forEach((b) => { btns[b.dataset.btn] = b; });
   let movePid = null;
   const fingers = new Map();                          // pointerId -> button name it is on (right side)
+  const arrowFingers = new Map();                     // D-pad: pointerId -> the arrow it is on (null = between arrows)
 
   function setDir(dx, dy, radius) {
     const s = T.s;
@@ -80,10 +81,25 @@
     }
     for (const k in arrows) arrows[k].classList.toggle('on', s[k]);
   }
-  // The movement control stays where it is (Settings → MOVE BUTTONS places it):
+  // The movement control stays where it is (Settings → MOVE CONTROLS places it):
   //   'stick' — a circle joystick: put a thumb on it and push the knob the way to go
-  //   'dpad'  — four arrow buttons: press the arrow (between two arrows = the diagonal), slide onto another to turn
+  //   'dpad'  — four separate arrow BUTTONS: only the arrow under a finger counts (nothing between them); a second
+  //             finger on another arrow adds it (▲ + ▶ = up-right); sliding onto another arrow switches to it
   const mover = () => (T.opts.style === 'stick' ? stick : pad);
+  function arrowAt(x, y) {
+    for (const k in arrows) {
+      const r = arrows[k].getBoundingClientRect(), m = r.width * 0.12;
+      if (x >= r.left - m && x <= r.right + m && y >= r.top - m && y <= r.bottom + m) return k;
+    }
+    return null;
+  }
+  function syncArrows() {
+    const held = new Set(arrowFingers.values()), s = T.s;
+    for (const k in arrows) { s[k] = held.has(k); arrows[k].classList.toggle('on', held.has(k)); }
+    if (s.left && s.right) s.left = s.right = false;           // opposite arrows cancel out
+    if (s.up && s.down) s.up = s.down = false;
+    pad.classList.toggle('on', arrowFingers.size > 0);
+  }
   function centre() { const r = mover().getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, R: r.width / 2 }; }
   function onMover(x, y) { const c = centre(); return Math.hypot(x - c.x, y - c.y) < c.R * 1.3; }
   function moveStart(e) {
@@ -120,7 +136,7 @@
     const held = new Set(fingers.values());
     for (const k in btns) { T.s[k] = held.has(k) || (k === 'shoot' && T.opts.autofire); btns[k].classList.toggle('on', held.has(k)); }
   }
-  function releaseAll() { fingers.clear(); moveEnd(); syncButtons(); }
+  function releaseAll() { fingers.clear(); arrowFingers.clear(); moveEnd(); syncButtons(); syncArrows(); }
 
   // dragging a button while the layout is being edited
   let drag = null;
@@ -147,15 +163,21 @@
     if (T.editing) return;
     if (e.target.closest('#b-pause')) return;
     e.preventDefault();
-    const b = buttonAt(e.clientX, e.clientY);
+    const b = buttonAt(e.clientX, e.clientY), dpad = T.opts.style !== 'stick', a = dpad && arrowAt(e.clientX, e.clientY);
     if (b) fingers.set(e.pointerId, b);
-    else if (movePid === null && onMover(e.clientX, e.clientY)) moveStart(e);
+    else if (a) { arrowFingers.set(e.pointerId, a); syncArrows(); }
+    else if (!dpad && movePid === null && onMover(e.clientX, e.clientY)) moveStart(e);
     else return;
     try { root.setPointerCapture(e.pointerId); } catch (err) { /* fine without */ }
     syncButtons();
   });
   root.addEventListener('pointermove', (e) => {
     if (e.pointerId === movePid) { moveTo(e); return; }
+    if (arrowFingers.has(e.pointerId)) {
+      const a = arrowAt(e.clientX, e.clientY);
+      if (a !== arrowFingers.get(e.pointerId)) { arrowFingers.set(e.pointerId, a); syncArrows(); }
+      return;
+    }
     if (fingers.has(e.pointerId)) {
       const b = buttonAt(e.clientX, e.clientY);
       if (b && b !== fingers.get(e.pointerId)) { fingers.set(e.pointerId, b); syncButtons(); }
@@ -163,6 +185,7 @@
   });
   const up = (e) => {
     if (e.pointerId === movePid) moveEnd();
+    if (arrowFingers.delete(e.pointerId)) syncArrows();
     if (fingers.delete(e.pointerId)) syncButtons();
   };
   root.addEventListener('pointerup', up);

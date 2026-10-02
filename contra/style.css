@@ -1139,3 +1139,18 @@ body:not(.playing) #game { filter: blur(3px) brightness(.92); transform: scale(1
 .passive small { font-size: 10px; letter-spacing: .25em; color: var(--dim); font-weight: 700; }
 .passive b { font: 700 16px Rajdhani, sans-serif; color: var(--c, #fff); }
 .passive span { font-size: 13px; color: #cfd9cc; }
+
+/* online duel: who has not pressed READY yet */
+.vs-fig.not-ready .body { opacity: .45; filter: grayscale(.6); }
+.vs-fig.not-ready small { color: #ff8a7a; }
+
+/* settings: a gear button in the top-left corner of the home screen */
+.set-corner { flex: none; width: 46px; height: 46px; padding: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+  background: rgba(0, 0, 0, .45); border: 1px solid var(--line); clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+.set-corner img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.set-corner:hover { border-color: var(--acc); background: rgba(255, 154, 60, .15); }
+@media (max-height: 520px) { .set-corner { width: 36px; height: 36px; padding: 4px; } }
+
+/* the D-pad is four separate buttons: no round joystick base behind them */
+#dpad { background: none; border: 0; border-radius: 0; opacity: .9; }
+#dpad .dp { border-radius: 12px; }
