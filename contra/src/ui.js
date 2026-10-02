@@ -73,8 +73,9 @@ CG.UI = (() => {
   const abIcon = (id) => (CG.ABICONS && CG.ABICONS[id]) || '';
   const N = () => CG.Net;
 
-  let enterT = null;
+  let enterT = null, shownAt = 0;
   function show(id) {
+    shownAt = Date.now();
     const fresh = id && id !== current;
     current = id;
     PANELS.forEach((p) => $(p).classList.toggle('hidden', p !== id));
@@ -147,7 +148,7 @@ CG.UI = (() => {
   const pvp = () => CG.Modes.isPvp(mode);
   let localBots = [];                        // bots in your squad while you are not in an online party (jax / duke)
   let botPick = -1;                          // the empty place showing the JAX / DUKE choice (99 = the roster panel)
-  // the home screen's layout (Settings): a = LINEUP (squad on stage), b = CARDS, c = COMMAND (dossier, agent, roster)
+  // the home screen's layout (Settings): a = LINEUP (squad on stage), b = CARDS, c = COMMAND (agent, roster)
   const LOBBY = 'commando.lobby', STORY = 'commando.story';
   let lobbyStyle = store.get(LOBBY, 'a');
   const storyCleared = () => parseInt(store.get(STORY, '0'), 10) || 0;
@@ -189,6 +190,7 @@ CG.UI = (() => {
   }
   const humansIn = () => { const p = N().party; return p && p.members ? Object.keys(p.members).length : 1; };
   const isLead = () => !N().party || N().isLeader;
+  let lastStage = '', lastExtra = '';
   function renderStage() {
     const net = N(), p = net.party, list = squad(), lead = isLead(), max = MAX;
     // you stand in the middle, the others alternate right and left of you
@@ -206,9 +208,11 @@ CG.UI = (() => {
     const removeBot = (x) => (x.bot && lead ? `<button class="x" data-act="squad-unbot" data-uid="${x.i}" title="Remove bot">✕</button>` : '');
     const crown = (x) => (x.leader && humansIn() > 1 ? ico('crown', '👑 ') : '');
     ['a', 'b', 'c'].forEach((k) => $('menu').classList.toggle('lobby-' + k, lobbyStyle === k));
+    let changed = false;
+    const setStage = (html) => { if (html !== lastStage) { changed = !!lastStage; lastStage = html; $('stage').innerHTML = html; } };
     if (lobbyStyle === 'b') {
       // CARDS: everyone in a tall card
-      $('stage').innerHTML = `<div class="cards">${cols.map((x, col) => {
+      setStage(`<div class="cards">${cols.map((x, col) => {
           if (!x) return `<div class="cslot empty ${botPick === col ? 'picking' : ''}">${emptyInner(col)}</div>`;
           const a = CG.AGENT[x.agent] || CG.AGENTS[0];
           return `<div class="cslot ${x.me ? 'me' : ''}" style="--c:${a.color}">
@@ -217,32 +221,14 @@ CG.UI = (() => {
             <b>${esc(x.name)}</b><small>${x.bot ? ico('bot', '') : ''}${a.name}${x.me ? ' · ' + a.role.toUpperCase() : ''}</small>
             ${x.me ? `<button class="btn small" data-act="locker">${ico('locker')}LOCKER</button>` : ''}
           </div>`;
-        }).join('')}</div>`;
+        }).join('')}</div>`);
     } else if (lobbyStyle === 'c') {
-      // COMMAND: the mission dossier, your agent big in the middle; the roster sits in the dock
-      const a = CG.AGENT[me.agent] || CG.AGENTS[0], cleared = storyCleared(), set = CG.Modes.settings(mode);
-      let brief;
-      if (mode.kind === 'story') {
-        brief = `<p>Eight stages against the army, from the jungle to the alien lair.</p><div class="st-list">${CG.STORY.map((st, i) => {
-          const k = i < cleared ? 'done' : i === cleared ? 'next' : '';
-          return `<div class="st-row ${k}"><span>${i + 1} · ${st.name}</span><span>${k === 'done' ? 'CLEARED' : k === 'next' ? 'NEXT' : ''}</span></div>`;
-        }).join('')}</div>`;
-      } else {
-        const sz = CG.Modes.sizes(mode), A = mode.kind === 'custom' ? (CG.DATA.arenas[set.arena] || CG.DATA.arenas[0]).name.replace('ARENA · ', '') : 'Random arena';
-        brief = `<p>Wipe out the other team to take the round. Everyone comes back at full health.</p><div class="st-list">
-          <div class="st-row next"><span>TEAMS</span><span>${sz[0]} v ${sz[1]}</span></div>
-          <div class="st-row"><span>MAP</span><span>${A}</span></div>
-          <div class="st-row"><span>FIRST TO</span><span>${set.rounds}</span></div>
-          <div class="st-row"><span>POWER-UPS</span><span>${set.drops ? 'ON' : 'OFF'}</span></div></div>`;
-      }
-      $('stage').innerHTML = `<div class="dossier"><div class="kick">MISSION DOSSIER</div><h4>${ico(mode.kind === 'story' ? 'story' : mode.kind)}${CG.Modes.label(mode)}</h4>${brief}
-          <button class="btn small" data-act="mode-open" ${lead ? '' : 'disabled'}>${ico('custom')}CHANGE MODE</button></div>
-        <div class="cmd-hero" style="--c:${a.color}"><div class="kick">YOUR AGENT</div><div class="nm">${a.name}</div>
-          <div class="role">${a.role.toUpperCase()} · ${a.ability.name.toUpperCase()}</div>
-          <div class="body" data-act="locker" title="Change agent">${figure(a.id)}</div><div class="pad"></div>
-          <button class="btn small" data-act="locker">${ico('locker')}OPEN LOCKER</button></div>`;
+      // COMMAND: your agent big in the middle; the roster sits in the dock
+      const a = CG.AGENT[me.agent] || CG.AGENTS[0];
+      setStage(`<div class="cmd-hero" style="--c:${a.color}" data-act="locker" title="Change agent">
+          <div class="body">${figure(a.id)}<div class="change-hint">CHANGE AGENT</div></div><div class="pad"></div></div>`);
     } else {
-      $('stage').innerHTML = cols.map((x, col) => {
+      setStage(cols.map((x, col) => {
         if (!x) return `<div class="fig empty ${botPick === col ? 'picking' : ''}"><div class="slot-in">${emptyInner(col)}</div><div class="pad"></div></div>`;
         const a = CG.AGENT[x.agent] || CG.AGENTS[0];
         return `<div class="fig ${x.me ? 'me' : ''} ${x.bot ? 'bot' : ''}" style="--c:${a.color}">
@@ -250,7 +236,7 @@ CG.UI = (() => {
           <div class="body ${col > mid ? 'flip' : ''}" ${clickFig(x)}>${figure(a.id)}</div>
           ${x.me ? '<div class="pad ring" data-act="locker"><svg viewBox="0 0 100 30" preserveAspectRatio="none"><ellipse cx="50" cy="15" rx="48" ry="13"/></svg></div><div class="change-hint">CHANGE AGENT</div>' : '<div class="pad"></div>'}
         </div>`;
-      }).join('');
+      }).join(''));
     }
     // COMMAND's roster panel (in the dock): who is in the squad, invite / + bot, friends online
     let extra = '';
@@ -266,7 +252,8 @@ CG.UI = (() => {
         ${fr.length ? `<div class="kick">FRIENDS ONLINE</div>${fr.map((uid) => `<div class="row-m"><span class="grow">${esc(net.friends[uid].username || net.friends[uid].name)}</span>
           <button class="btn small" data-act="party-invite" data-uid="${esc(uid)}">INVITE</button></div>`).join('')}` : ''}</div>`;
     }
-    $('dock-extra').innerHTML = extra;
+    if (lastExtra !== extra) { lastExtra = extra; $('dock-extra').innerHTML = extra; }
+    if (changed && Date.now() - shownAt > 150) $('menu').classList.remove('enter');            // an update, not the screen opening: no entrance again
     // the dock: mode, PLAY, FIND PLAYERS
     const humans = humansIn(), queued = !!(p && p.state === 'queue'), tooMany = humans > CG.Modes.capacity(mode);
     $('mode-name').innerHTML = ico(mode.kind === 'story' ? 'story' : mode.kind === 'duels' ? 'duels' : 'custom') + CG.Modes.label(mode);
@@ -836,6 +823,7 @@ CG.UI = (() => {
     'fr-remove': (uid) => run(() => N().unfriend(uid), 'Friend removed', 'fr-msg'),
   };
 
+  document.addEventListener('dragstart', (e) => e.preventDefault());       // clicking a picture never drags it
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]');
     if (b && !b.disabled && ACTIONS[b.dataset.act]) ACTIONS[b.dataset.act](b.dataset.uid);

@@ -585,8 +585,8 @@ def blocky(img, target):
 # (up to 7) a short special move the menus play now and then. Rows after these are ignored (room for later art).
 IDLE_ORDER = ['razor', 'nova', 'kite', 'brick', 'volt', 'ghost', 'hammer', 'viper', 'atlas', 'jax', 'duke']
 IDLE_LOOP = 3
-# rows of the current idle.png that came back looking like someone else: these agents keep their standing frame
-IDLE_SKIP = {'razor', 'kite', 'brick', 'hammer'}
+# rows to leave out (an agent then keeps its standing frame in the menus)
+IDLE_SKIP = set()
 
 
 def build_idle():

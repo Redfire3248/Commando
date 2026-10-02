@@ -158,6 +158,8 @@
       const L = CG.DATA.level = this.pvp && all[this.pvpSet.arena] ? all[this.pvpSet.arena]
         : all[(this.cfg.stage - 1) % all.length];                             // stages repeat, harder each time
       this.diff = this.cfg.stage - 1;
+      // more players = a harder stage: tougher, faster-firing soldiers, extra soldiers, quicker boss reinforcements
+      this.crowd = Math.max(0, (this.cfg.players || []).length - 1);
       this.score = this.cfg.score;
       this.over = false; this.cleared = false; this.camX = 0; this.spawnI = 0; this.bossOn = false; this.bossT = 2500;
       this.artScale = (CG.CONFIG.SHEET_ART && CG.DATA.art && CG.DATA.art.scale) || {};
@@ -1227,6 +1229,14 @@
         const e = new CG.Enemy(this, s.t, s.x, s.y, s.extra);
         e.netId = ++this.netSeq;
         this.enemies.add(e);
+        // a bigger squad meets more soldiers: one extra for every two extra players, just behind the first
+        if (['runner', 'rifle', 'grenadier', 'drone'].includes(s.t) && !this.pvp) {
+          for (let k = 1; k <= Math.floor(this.crowd / 2); k++) {
+            const x2 = new CG.Enemy(this, s.t, s.x + 90 * k, s.y, s.extra);
+            x2.netId = ++this.netSeq;
+            this.enemies.add(x2);
+          }
+        }
       }
       for (const e of this.enemies.getChildren().slice()) {
         if (!e.active || e.puppet) continue;
@@ -1249,7 +1259,7 @@
       if (this.bossOn && !this.cleared && !this.isClient) {
         this.bossT -= delta;
         if (this.bossT <= 0) {
-          this.bossT = Math.max(1800, 3800 - 350 * this.diff);
+          this.bossT = Math.max(1100, (3800 - 350 * this.diff) / (1 + 0.25 * this.crowd));
           const r = new CG.Enemy(this, 'runner', this.camX - 40, CG.DATA.level.groundRow * T);
           r.dir = 1; r.netId = ++this.netSeq;
           this.enemies.add(r);

@@ -369,7 +369,8 @@
       const sc = sheet ? (scene.enemyScale || 1) : (scene.artScale[this.texture.key] || 1);
       this.setScale(sc);
       // the fortress gets tougher each stage and with more players
-      this.hp = this.maxHp = Math.ceil(T.hp * (T.boss ? (1 + 0.35 * scene.diff) * (1 + 0.5 * (scene.players.length - 1)) : 1));
+      // bosses: tougher each lap and +50% per extra player; soldiers +20% per extra player (a runner takes 2 shots from 4 players up)
+      this.hp = this.maxHp = Math.ceil(T.hp * (T.boss ? (1 + 0.35 * scene.diff) * (1 + 0.5 * (scene.players.length - 1)) : 1 + 0.2 * (scene.crowd || 0)));
       this.cd = 500 + Math.random() * 900; this.t = Math.random() * 6; this.hurtT = 0; this.dir = 0; this.baseY = y;
       const mid = T.fly || T.center;
       this.setOrigin(0.5, mid ? 0.5 : 1).setDepth(8);
@@ -419,7 +420,7 @@
       }
       const P = sc.nearestPlayer(this.x, this.y);
       const cam = sc.cameras.main, onScreen = this.x > cam.scrollX - 40 && this.x < cam.scrollX + CG.CONFIG.W + 40;
-      const fireMs = Math.max(800, (T.fireMs || 0) * (1 - 0.1 * sc.diff));
+      const fireMs = Math.max(650, (T.fireMs || 0) * (1 - 0.1 * sc.diff) / (1 + 0.12 * (sc.crowd || 0)));
 
       if (T.ai === 'runner') {
         if (!this.dir) this.dir = P && P.body.center.x > this.x ? 1 : -1;

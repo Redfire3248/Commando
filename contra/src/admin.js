@@ -5,7 +5,7 @@
 //   Accounts                             everyone's coins, best score and who is online; give or take coins
 CG.Admin = (() => {
   const $ = (id) => document.getElementById(id);
-  let tab = 'players', refresh = null, users = null;
+  let tab = 'players', refresh = null, users = null, giveTo = null, giveFind = '';
   // The panel's markup is created the first time the owner opens it, so for everyone else it is not on the page at all.
   const MARKUP = `<div class="admin-head">
     <div class="admin-title"><b>ADMIN</b><small id="admin-who"></small></div>
@@ -18,6 +18,7 @@ CG.Admin = (() => {
     <button data-tab="stage">🗺<span>Stage</span></button>
     <button data-tab="hacks">🎯<span>Hacks</span></button>
     <button data-tab="shop">🛒<span>Shop</span></button>
+    <button data-tab="give">🎁<span>Give</span></button>
     <button data-tab="users">👥<span>Accounts</span></button>
   </div>
   <div id="admin-body"></div>
@@ -151,6 +152,34 @@ CG.Admin = (() => {
       h += `<div class="admin-sec">New item</div><div class="admin-row"><input id="adm-new-id" placeholder="id (e.g. armor)"><button class="btn small" data-adm="shop-add">ADD</button></div>`;
       return h;
     },
+    // GIVE: pick an account, then click what it gets — agents, shop items, coins
+    give() {
+      if (!CG.Net.online) return '<p class="admin-tip">Sign in first.</p>';
+      if (!users) { CG.Net.adminUsers().then((u) => { users = u; render(); }).catch((e) => { users = {}; CG.UI.toast(e.message); }); return '<p class="admin-tip">Loading accounts…</p>'; }
+      if (!giveTo || !users[giveTo]) giveTo = users[CG.Net.uid] ? CG.Net.uid : Object.keys(users)[0];
+      const name = (u) => u.username || u.name || '?';
+      const f = giveFind.toLowerCase();
+      const ids = Object.keys(users).filter((id) => !f || name(users[id]).toLowerCase().includes(f) || (users[id].code || '').toLowerCase().includes(f))
+        .sort((a, b) => (a === CG.Net.uid ? -1 : b === CG.Net.uid ? 1 : 0) || (users[b].online ? 1 : 0) - (users[a].online ? 1 : 0)).slice(0, 40);
+      const u = users[giveTo] || {}, own = u.owned || {};
+      const agents = CG.AGENTS.map((a) => ({ a, it: CG.Shop.agentItem(a.id) })).filter((x) => x.it);
+      const items = CG.Shop.items().filter((it) => it.kind !== 'agent');
+      const tile = (id, label, pic, has, sub) => `<button class="tile btn give-tile ${has ? 'owned' : ''}" data-adm="give-item" data-id="${esc(id)}" data-on="${has ? 0 : 1}">
+        ${pic}<span>${esc(label)}</span><small>${has ? '✔ OWNED · tap to take' : sub}</small></button>`;
+      return `<div class="give-who"><input id="give-find" placeholder="Search callsign or code" value="${esc(giveFind)}" autocomplete="off">
+          <div class="give-people">${ids.map((id) => `<button class="btn small ${id === giveTo ? 'on' : ''}" data-adm="give-who" data-uid="${id}">
+            ${users[id].online ? '<i class="dot on"></i>' : ''}${esc(name(users[id]))}${id === CG.Net.uid ? ' (you)' : ''}</button>`).join('') || '<i>Nobody found</i>'}</div></div>
+        <div class="give-target">Giving to <b>${esc(name(u))}</b> · 🪙 ${u.coins || 0} · ${Object.keys(own).length} items</div>
+        <div class="admin-sec">Coins</div>
+        <div class="admin-row give-coins">${[100, 500, 1000, 5000, 10000].map((n) => `<button class="btn" data-adm="give-coins" data-n="${n}">+${n}</button>`).join('')}
+          <input id="give-n" type="number" placeholder="Amount"><button class="btn primary" data-adm="give-coins-n">GIVE</button>
+          <button class="btn" data-adm="give-coins" data-n="-1000">−1000</button></div>
+        <div class="admin-sec">Agents <button class="btn small" data-adm="give-all" data-kind="agent">UNLOCK ALL</button></div>
+        <div class="admin-grid">${agents.map(({ a, it }) => tile(it.id, a.name, img(CG.PORTRAITS && CG.PORTRAITS[a.id]), !!own[it.id], it.price + ' coins in the shop')).join('')}</div>
+        <div class="admin-sec">Perks and gear <button class="btn small" data-adm="give-all" data-kind="item">GIVE ALL</button></div>
+        <div class="admin-grid">${items.map((it) => tile(it.id, it.name, `<b class="give-icon">${esc(it.icon || '★')}</b>`, !!own[it.id], it.price + ' coins')).join('')}</div>
+        <div class="admin-row"><button class="btn" data-adm="give-none">TAKE EVERYTHING BACK</button></div>`;
+    },
     users() {
       if (!CG.Net.online) return '<p class="admin-tip">Sign in first.</p>';
       if (!users) { CG.Net.adminUsers().then((u) => { users = u; render(); }).catch((e) => { users = {}; CG.UI.toast(e.message); }); return '<p class="admin-tip">Loading accounts…</p>'; }
@@ -237,12 +266,46 @@ CG.Admin = (() => {
       return ensureDb().then(() => CG.Net.adminSetItem(id, { name: 'New item', desc: '', price: 500, kind: 'perk', effect: 'hp', icon: '★', order: 60 }));
     },
     coins: (d) => CG.Net.adminGiveCoins(d.uid, +d.n).then(() => { users = null; }),
+    // the GIVE board (changes are copied into the cached account so the board updates at once)
+    'give-item': (d) => grant({ [d.id]: d.on === '1' }),
+    'give-all': (d) => {
+      const ids = {};
+      (d.kind === 'agent' ? CG.Shop.allItems().filter((it) => it.kind === 'agent') : CG.Shop.items().filter((it) => it.kind !== 'agent')).forEach((it) => { ids[it.id] = true; });
+      return grant(ids);
+    },
+    'give-none': () => { const ids = {}; Object.keys((users[giveTo] || {}).owned || {}).forEach((id) => { ids[id] = null; }); return grant(ids); },
+    'give-coins': (d) => giveCoins(+d.n),
+    'give-coins-n': () => { const n = Math.round(+$('give-n').value || 0); return n ? giveCoins(n) : Promise.reject(new Error('Type an amount')); },
     'users-reload': () => { users = null; return Promise.resolve(); },
   };
+
+  function grant(ids) {
+    return CG.Net.adminSetOwned(giveTo, ids).then(() => {
+      const u = users[giveTo];
+      u.owned = Object.assign({}, u.owned);
+      for (const id in ids) { if (ids[id]) u.owned[id] = true; else delete u.owned[id]; }
+    });
+  }
+  function giveCoins(n) {
+    return CG.Net.adminGiveCoins(giveTo, n).then(() => { const u = users[giveTo]; u.coins = Math.max(0, (u.coins || 0) + n); });
+  }
+  // picking who to give to, and the search box, only redraw the board
+  const uiAct = {
+    'give-who': (d) => { giveTo = d.uid; },
+  };
+  document.addEventListener('input', (e) => {
+    if (e.target.id !== 'give-find') return;
+    giveFind = e.target.value;
+    const at = e.target.selectionStart;
+    render();
+    const i = $('give-find');
+    if (i) { i.focus(); i.setSelectionRange(at, at); }
+  });
 
   function open() {
     if (!CG.Net.isAdmin) return;                          // not the owner's account: F2 does nothing
     build();
+    if (!scene() && !['give', 'users', 'shop'].includes(tab)) tab = 'give';        // from the menu: the GIVE board
     $('admin').classList.remove('hidden');
     render();
     clearInterval(refresh);
@@ -256,6 +319,7 @@ CG.Admin = (() => {
     const b = e.target.closest('[data-adm]');
     if (!b || !CG.Net.isAdmin) return;
     const a = b.dataset.adm;
+    if (uiAct[a]) { uiAct[a](b.dataset); render(); return; }
     if (gameAct[a]) {
       const s = scene();
       if (!s || s.isClient) return;

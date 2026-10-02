@@ -1570,10 +1570,31 @@ CG.DATA.art = {
   ]
  },
  "idle": {
+  "razor": {
+   "path": "assets/atlas/idle_razor.png",
+   "fw": 388,
+   "fh": 492,
+   "n": 10,
+   "loop": 3
+  },
   "nova": {
    "path": "assets/atlas/idle_nova.png",
    "fw": 328,
    "fh": 492,
+   "n": 10,
+   "loop": 3
+  },
+  "kite": {
+   "path": "assets/atlas/idle_kite.png",
+   "fw": 368,
+   "fh": 484,
+   "n": 10,
+   "loop": 3
+  },
+  "brick": {
+   "path": "assets/atlas/idle_brick.png",
+   "fw": 425,
+   "fh": 535,
    "n": 10,
    "loop": 3
   },
@@ -1589,6 +1610,13 @@ CG.DATA.art = {
    "fw": 375,
    "fh": 545,
    "n": 9,
+   "loop": 3
+  },
+  "hammer": {
+   "path": "assets/atlas/idle_hammer.png",
+   "fw": 440,
+   "fh": 525,
+   "n": 10,
    "loop": 3
   },
   "viper": {

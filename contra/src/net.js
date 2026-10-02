@@ -219,6 +219,12 @@ CG.Net = {
   adminResetShop() { return this.db.ref('shop/items').set(CG.Shop.DEFAULTS); },
   async adminGiveCoins(uid, n) { await this.db.ref('users/' + uid + '/coins').transaction((c) => Math.max(0, (c || 0) + n)); },
   async adminUsers() { return (await this.db.ref('users').get()).val() || {}; },
+  // give or take shop items (agents included) from any account; ids: { itemId: true | null }
+  adminSetOwned(uid, ids) {
+    const up = {};
+    for (const id in ids) up['users/' + uid + '/owned/' + id] = ids[id] ? true : null;
+    return this.db.ref().update(up);
+  },
 
   // ---------------------------------------------------------------- friends
   // who has this friend code or callsign? (uid or null)

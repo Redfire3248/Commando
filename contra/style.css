@@ -815,3 +815,32 @@ body:not(.playing) #game canvas { visibility: hidden; }
 .enter .sel-main { animation: fadeIn .4s ease-out both; }
 .enter .sel-tiles .tile { animation: riseIn .4s ease-out both; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; } }
+
+img { -webkit-user-drag: none; user-drag: none; }
+.lobby-c .stage { grid-template-columns: minmax(0, 1fr); }
+@media (max-height: 560px), (max-width: 760px) { .lobby-c .stage { grid-template-columns: minmax(0, 1fr); } }
+
+/* COMMAND: the agent alone, lifts and glows on hover with CHANGE AGENT over it */
+.cmd-hero { cursor: pointer; }
+.cmd-hero .body { position: relative; transition: transform .2s, filter .2s; }
+.cmd-hero:hover .body { transform: translateY(-8px) scale(1.03); filter: drop-shadow(0 0 18px var(--c)); }
+.cmd-hero .change-hint { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; pointer-events: none; white-space: nowrap;
+  font: 400 20px var(--head); letter-spacing: .08em; padding: 7px 14px; background: rgba(0, 0, 0, .72); border: 2px solid var(--c); opacity: 0; transition: opacity .15s; }
+.cmd-hero:hover .change-hint { opacity: 1; }
+.cmd-hero:hover .pad { opacity: 1; filter: brightness(1.3); }
+@media (hover: none) { .cmd-hero .change-hint { opacity: .85; top: auto; bottom: 8px; font-size: 12px; padding: 3px 8px; } }
+/* the install chip stays small */
+.chip.install-btn { padding: 6px 12px; }
+@media (max-width: 1450px) { .chip.install-btn .lbl { display: none; } }
+/* admin GIVE board */
+#admin .give-who { display: flex; flex-direction: column; gap: 6px; }
+#admin .give-who input, #admin .give-coins input { font: 600 15px Rajdhani, sans-serif; background: rgba(0, 0, 0, .45); color: #fff; border: 1px solid var(--line); padding: 7px 10px; }
+#admin .give-coins input { width: 110px; }
+#admin .give-people { display: flex; flex-wrap: wrap; gap: 5px; max-height: 120px; overflow: auto; }
+#admin .give-people .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #5cff8a; margin-right: 5px; }
+#admin .give-target { padding: 8px 10px; background: rgba(255, 210, 60, .12); border-left: 3px solid #ffd23c; font-size: 15px; }
+#admin .give-tile small { font-size: 11px; color: var(--dim); }
+#admin .give-tile.owned { border-color: #5cff8a; background: rgba(92, 255, 138, .14); }
+#admin .give-tile.owned small { color: #5cff8a; }
+#admin .give-icon { font-size: 28px; line-height: 1; }
+#admin .admin-sec .btn { margin-left: 8px; font-size: 11px; padding: 3px 8px; }
