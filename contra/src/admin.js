@@ -16,6 +16,7 @@ CG.Admin = (() => {
     <button data-tab="spawn">👾<span>Enemies</span></button>
     <button data-tab="items">✚<span>Items</span></button>
     <button data-tab="stage">🗺<span>Stage</span></button>
+    <button data-tab="hacks">🎯<span>Hacks</span></button>
     <button data-tab="shop">🛒<span>Shop</span></button>
     <button data-tab="users">👥<span>Accounts</span></button>
   </div>
@@ -94,9 +95,9 @@ CG.Admin = (() => {
         const key = s.textures.exists('pk_' + k) ? 'pk_' + k : 'pk_life';
         return `<button class="tile btn ${extra || ''}" data-adm="item" data-k="${k}">${img(thumb(key))}<span>${n}</span></button>`;
       };
-      return '<p class="admin-tip">Drops next to the first player.</p><div class="admin-grid">' + list.map((x) => tile(x)).join('') + '</div>'
-        + '<div class="admin-sec">Admin only</div><p class="admin-tip">Never drops in the game: only this panel can give it out.</p>'
-        + '<div class="admin-grid">' + tile(['overdrive', 'OVERDRIVE · 15 s untouchable, five-way piercing spray'], 'admin-only') + '</div>';
+      return '<div class="admin-sec">Admin only</div><p class="admin-tip">Never drops in the game: only this panel can give it out.</p>'
+        + '<div class="admin-grid">' + tile(['overdrive', 'OVERDRIVE · 15 s untouchable, five-way piercing spray'], 'admin-only') + '</div>'
+        + '<div class="admin-sec">Pick-ups</div><p class="admin-tip">Drop next to the first player.</p><div class="admin-grid">' + list.map((x) => tile(x)).join('') + '</div>';
     },
     stage(s) {
       if (!s) return needGame();
@@ -108,6 +109,20 @@ CG.Admin = (() => {
       </div><div class="admin-sec">Go to stage</div><div class="admin-grid wide">
         ${[1, 2, 3, 4, 5, 6].map((n) => `<button class="btn" data-adm="goto" data-n="${n}">STAGE ${n} · ${CG.DATA.levels[(n - 1) % CG.DATA.levels.length].name}</button>`).join('')}
       </div>`;
+    },
+    hacks(s) {
+      if (!s) return needGame();
+      if (s.isClient) return '<p class="admin-tip">Online, only the host can use hacks.</p>';
+      const HACKS = [['aim', '🎯 AUTO AIM', 'Shots lock on to the nearest target'], ['strafe', '↔ STRAFE', 'Keep facing forward while shooting and moving'],
+        ['speed', '⚡ SPEED', 'Run 60% faster'], ['jump', '🦘 SUPER JUMP', 'Jump 45% higher'], ['oneshot', '💀 ONE SHOT', 'Every bullet kills'],
+        ['dash', '» INFINITE DASH', 'Tac Dash has no cooldown']];
+      let h = `<div class="admin-row"><b>Whole game</b><button class="btn small ${s.physics.world.gravity.y < CG.CONFIG.GRAVITY ? 'on' : ''}" data-adm="lowgrav">🌙 LOW GRAVITY</button></div>`;
+      s.players.forEach((p, i) => {
+        if (p.remote) return;
+        h += `<div class="admin-card" style="--c:${p.color}"><div class="grow"><b>${esc(p.name)}</b> <small>${p.agent.name}${p.bot ? ' · bot' : ''}</small></div>
+          <div class="btns">${HACKS.map(([k, n, t]) => `<button class="btn ${p.hack[k] ? 'on' : ''}" title="${t}" data-adm="hack" data-i="${i}" data-k="${k}">${n}</button>`).join('')}</div></div>`;
+      });
+      return h;
     },
     shop() {
       if (!CG.Net.online) return '<p class="admin-tip">Sign in first.</p>';
@@ -194,6 +209,8 @@ CG.Admin = (() => {
       s.players.forEach((p, i) => { if (p.alive && !p.remote) p.body.reset(s.bossCamX + 300 + i * 70, CG.DATA.level.groundRow * T - 60); });
     },
     clear: (s) => { s.stageClear(); },
+    hack: (s, d) => { const p = s.players[d.i]; p.hack[d.k] = !p.hack[d.k]; },
+    lowgrav: (s) => { const g = s.physics.world.gravity; g.y = g.y < CG.CONFIG.GRAVITY ? CG.CONFIG.GRAVITY : CG.CONFIG.GRAVITY * 0.45; },
     slow: (s) => { const k = s.time.timeScale < 1 ? 1 : 0.4; s.time.timeScale = k; s.physics.world.timeScale = 1 / k; s.tweens.timeScale = k; },
     goto: (s, d) => { s.scene.restart(Object.assign({}, s.cfg, { stage: +d.n, adminUsed: true })); },
   };

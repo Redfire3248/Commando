@@ -31,7 +31,7 @@ CG.Bot = (() => {
   }
 
   function think(sc, p, mem) {
-    const s = { left: false, right: false, up: false, down: false, shoot: false, jump: false, ability: false };
+    const s = { left: false, right: false, up: false, down: false, shoot: false, jump: false, ability: false, dash: false };
     if (!p.alive) return s;
     const c = p.body.center, cam = sc.cameras.main;
     mem.t = (mem.t || 0) + 1;
@@ -79,7 +79,7 @@ CG.Bot = (() => {
     }
     if (p.onGround) mem.rescued = false;
     if (mem.rescued && !p.onGround) { s.left = p.facing < 0; s.right = p.facing > 0; s.down = false; }
-    if (p.onGround && danger(sc, p)) s.jump = true;
+    if (danger(sc, p)) { if (p.onGround) s.jump = true; else if (p.mdashCd <= 0 && mem.t % 4 === 0) s.dash = true; }
 
     // abilities
     const ab = p.agent.id, enemiesNear = sc.enemies.getChildren().filter((e) => e.active && Math.abs(e.x - c.x) < 700).length;

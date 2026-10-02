@@ -40,6 +40,7 @@
         invT: 0, barrierT: 0, rapid: false, spread: false, fireCd: 0, dropT: 0, ledgeT: -1e9, runT: 0, spin: 0,
         abilityCd: 0, stormT: 0, domeT: 0, dashT: 0, adrenT: 0, overT: 0, god: false, freeAbility: false, dashHit: null,
         pierce: false, blast: false, double: false, ice: false,
+        mdashT: 0, mdashCd: 0, airDashed: false, hack: {},
       });
     }
 
@@ -63,27 +64,42 @@
       if (this.out) { this.tag.setVisible(false); this.bar.clear(); return; }
       const ms = dt * 1000, C = this.C, b = this.body, sc = this.scene;
       const wasCd = this.abilityCd;
-      for (const k of ['invT', 'barrierT', 'fireCd', 'dropT', 'abilityCd', 'stormT', 'domeT', 'dashT', 'adrenT', 'overT']) this[k] = Math.max(0, this[k] - ms);
+      for (const k of ['invT', 'barrierT', 'fireCd', 'dropT', 'abilityCd', 'stormT', 'domeT', 'dashT', 'adrenT', 'overT', 'mdashT', 'mdashCd']) this[k] = Math.max(0, this[k] - ms);
+      if (this.hack.dash) this.mdashCd = 0;
       if (this.freeAbility) this.abilityCd = 0;
       if (wasCd > 0 && this.abilityCd <= 0) sc.abilityReady(this);
       if (this.dead) { this.tag.setVisible(false); this.bar.clear(); return; }
 
       const onGround = this.onGround = b.blocked.down || b.touching.down;
       const dir = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
+      if (onGround) this.airDashed = false;
+      // Tac Dash: a quick burst sideways, once per jump in the air (like a Valorant dash)
+      if (inp.dashPressed && this.mdashCd <= 0 && this.dashT <= 0 && !(this.airDashed && !onGround)) {
+        if (dir) this.facing = dir;
+        this.mdashT = 190; this.mdashCd = 3200;
+        if (!onGround) this.airDashed = true;
+        this.setProne(false);
+        sc.dashFx(this);
+        CG.Sfx.play('jump');
+      }
 
-      if (this.dashT > 0) {                                   // Phase Dash: straight line, no gravity, untouchable
+      if (this.mdashT > 0) {                                  // Tac Dash: straight line, no gravity
+        b.allowGravity = false;
+        b.velocity.set(this.facing * 2700, 0);
+        if (Math.random() < 0.5) sc.afterimage(this);
+      } else if (this.dashT > 0) {                            // Phase Dash: straight line, no gravity, untouchable
         b.allowGravity = false;
         b.velocity.set(this.facing * this.agent.ability.dist / 0.18, 0);
         sc.dashHits(this);
       } else {
         b.allowGravity = true;
-        if (dir) this.facing = dir;
+        if (dir && !(this.hack.strafe && inp.shoot)) this.facing = dir;          // strafe hack: keep facing while shooting
         this.setProne(onGround && inp.down && !dir);
-        b.velocity.x = this.prone ? 0 : dir * C.run * this.agent.speed * (this.adrenT > 0 ? 1.35 : 1) * (this.perkSpeed || 1);
+        b.velocity.x = this.prone ? 0 : dir * C.run * this.agent.speed * (this.adrenT > 0 ? 1.35 : 1) * (this.perkSpeed || 1) * (this.hack.speed ? 1.6 : 1);
         if (onGround) this.airJumps = 1;
         if (inp.jumpPressed && onGround) {
           if (inp.down && sc.time.now - this.ledgeT < 80) this.dropT = 260;      // drop through a ledge
-          else { b.velocity.y = -C.jump; this.setProne(false); CG.Sfx.play('jump'); }
+          else { b.velocity.y = -C.jump * (this.hack.jump ? 1.45 : 1); this.setProne(false); CG.Sfx.play('jump'); }
         } else if (inp.jumpPressed && this.airJumps > 0) {                       // double jump
           this.airJumps--;
           b.velocity.y = -C.jump * 0.9;
@@ -101,6 +117,14 @@
       if (ay === 0) ax = this.facing;
       const len = Math.hypot(ax, ay);
       this.aimX = ax / len; this.aimY = ay / len;
+      if (this.hack.aim && inp.shoot) {
+        const t = sc.nearestTarget(this);
+        if (t) {
+          const dx = t.x - b.center.x, dy = t.y - b.center.y, d = Math.hypot(dx, dy) || 1;
+          this.aimX = dx / d; this.aimY = dy / d;
+          if (!(this.hack.strafe && dir)) this.facing = dx < 0 ? -1 : 1;
+        }
+      }
 
       // stay on screen (the camera never scrolls back)
       const cam = sc.cameras.main, minX = cam.scrollX + PW / 2 + 8, maxX = cam.scrollX + CG.CONFIG.W - PW / 2 - 8;
@@ -169,7 +193,7 @@
       const b = this.body;
       if (!this.onGround) return { x: b.center.x + this.aimX * 40, y: b.center.y + this.aimY * 40 };
       const M = this.art.muzzle, s = this.art.scale;
-      const m = this.prone ? M.prone : this.aimY < 0 ? (this.aimX ? M.dup : M.up) : this.aimY > 0 ? M.ddown : M.fwd;
+      const m = this.prone ? M.prone : this.aimY < -0.9 ? M.up : this.aimY < -0.3 ? M.dup : this.aimY > 0.3 ? M.ddown : M.fwd;
       return { x: b.center.x + this.facing * m[0] * s, y: b.bottom + m[1] * s };
     }
 

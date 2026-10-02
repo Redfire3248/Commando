@@ -7,7 +7,7 @@
   // one button to another, so presses never get stuck or lost. Settings live in CG.Touch.opts.
   const T = CG.Touch = {
     enabled: false,
-    s: { left: false, right: false, up: false, down: false, shoot: false, jump: false, ability: false },
+    s: { left: false, right: false, up: false, down: false, shoot: false, jump: false, ability: false, dash: false },
     opts: { style: 'stick', size: 1, autofire: false },
   };
   try { Object.assign(T.opts, JSON.parse(localStorage.getItem('commando.touch')) || {}); } catch (e) { /* defaults */ }
@@ -119,7 +119,26 @@
   document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAll(); });
   T.syncButtons = syncButtons;
   // the SKILL button shows its cooldown (called by the game every frame)
-  T.cooldown = (f) => { if (btns.ability) btns.ability.style.setProperty('--cd', Math.max(0, Math.min(1, f)).toFixed(3)); };
+  // The SKILL button shows the agent's ability icon, its cooldown sweep and the seconds left; DASH shows its cooldown.
+  T.setAbility = (agent) => {
+    const b = btns.ability, icon = CG.ABICONS && CG.ABICONS[agent.id];
+    if (!b) return;
+    b.style.backgroundImage = icon ? `conic-gradient(rgba(0,0,0,.72) calc(var(--cd) * 360deg), transparent 0), url("${icon}")` : '';
+    b.style.borderColor = agent.color;
+    b.classList.toggle('has-icon', !!icon);
+    b.textContent = icon ? '' : 'SKILL';
+  };
+  let lastSecs = -1;
+  T.cooldown = (f, msLeft, dashF) => {
+    const b = btns.ability;
+    if (b) {
+      b.style.setProperty('--cd', Math.max(0, Math.min(1, f)).toFixed(3));
+      const secs = msLeft > 0 ? Math.ceil(msLeft / 1000) : 0;
+      if (secs !== lastSecs && b.classList.contains('has-icon')) { b.textContent = secs ? secs : ''; lastSecs = secs; }
+      b.classList.toggle('ready', !(msLeft > 0));
+    }
+    if (btns.dash && dashF !== undefined) btns.dash.style.setProperty('--cd', Math.max(0, Math.min(1, dashF)).toFixed(3));
+  };
 
   // One entry per player, in join order:
   //   { type: 'kbAll' }            a lone keyboard player: Arrows or WASD, X / J / F / click shoot, Z / K / G / Space jump
@@ -136,20 +155,21 @@
       // capture is off so typing a name in the friends menu still works
       const mk = (m) => { const o = {}; for (const a in m) o[a] = m[a].map((c) => kb.addKey(c, false)); return o; };
       this.maps = {
-        kbA: mk({ left: [K.A], right: [K.D], up: [K.W], down: [K.S], shoot: [K.F], jump: [K.G], ability: [K.H] }),
-        kbB: mk({ left: [K.LEFT], right: [K.RIGHT], up: [K.UP], down: [K.DOWN], shoot: [K.K], jump: [K.L], ability: [K.O] }),
+        kbA: mk({ left: [K.A], right: [K.D], up: [K.W], down: [K.S], shoot: [K.F], jump: [K.G], ability: [K.H], dash: [K.T] }),
+        kbB: mk({ left: [K.LEFT], right: [K.RIGHT], up: [K.UP], down: [K.DOWN], shoot: [K.K], jump: [K.L], ability: [K.O], dash: [K.I] }),
         kbAll: mk({
           left: [K.LEFT, K.A], right: [K.RIGHT, K.D], up: [K.UP, K.W], down: [K.DOWN, K.S],
-          shoot: [K.X, K.J, K.F], jump: [K.Z, K.K, K.G, K.SPACE], ability: [K.C, K.E, K.SHIFT],
+          shoot: [K.X, K.J, K.F], jump: [K.Z, K.K, K.G, K.SPACE], ability: [K.C, K.E], dash: [K.SHIFT, K.V],
         }),
       };
       this.prevJump = devices.map(() => false);
       this.prevAbility = devices.map(() => false);
+      this.prevDash = devices.map(() => false);
       this.botMem = devices.map(() => ({}));
     }
 
     readKeys(type) {
-      const s = { left: false, right: false, up: false, down: false, shoot: false, jump: false, ability: false };
+      const s = { left: false, right: false, up: false, down: false, shoot: false, jump: false, ability: false, dash: false };
       const m = this.maps[type];
       for (const a in m) s[a] = m[a].some((k) => k.isDown);
       const p = this.scene.input.activePointer;
@@ -163,13 +183,13 @@
       const ax = pad.axes[0] || 0, ay = pad.axes[1] || 0;
       s.left = s.left || ax < -0.35 || B(14); s.right = s.right || ax > 0.35 || B(15);
       s.up = s.up || ay < -0.5 || B(12); s.down = s.down || ay > 0.5 || B(13);
-      s.jump = s.jump || B(0); s.shoot = s.shoot || B(2) || B(7); s.ability = s.ability || B(3) || B(5);
+      s.jump = s.jump || B(0); s.shoot = s.shoot || B(2) || B(7); s.ability = s.ability || B(3) || B(5); s.dash = s.dash || B(1) || B(4);
     }
 
     read() {
       const pads = navigator.getGamepads ? navigator.getGamepads() : [];
       return this.devices.map((d, i) => {
-        let s = { left: false, right: false, up: false, down: false, shoot: false, jump: false, ability: false };
+        let s = { left: false, right: false, up: false, down: false, shoot: false, jump: false, ability: false, dash: false };
         if (d.type === 'any') {                     // online: this device's keyboard, mouse, first gamepad and touch screen
           s = Object.assign(this.readKeys('kbAll'), {});
           const t = CG.Touch.s;
@@ -192,6 +212,8 @@
         s.jumpPressed = s.jump && !this.prevJump[i];
         this.prevJump[i] = s.jump;
         s.abilityPressed = s.ability && !this.prevAbility[i];
+        s.dashPressed = s.dash && !this.prevDash[i];
+        this.prevDash[i] = s.dash;
         this.prevAbility[i] = s.ability;
         return s;
       });

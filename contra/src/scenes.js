@@ -165,6 +165,7 @@
         if (fx.life && !this.cfg.online && (this.cfg.teamLives === null || this.cfg.teamLives === undefined)) this.teamLives++;
       }
       this.touchPlayer = this.players.find((p) => p.device && (p.device.type === 'touch' || p.device.type === 'any'));
+      if (this.touchPlayer) CG.Touch.setAbility(this.touchPlayer.agent);
       this.netSeq = 0;
       this.net = this.cfg.online && CG.Online.mid ? CG.Online.attach(this) : null;
       this.isClient = !!(this.net && !this.net.host);       // online but not the host: the host runs the stage
@@ -188,6 +189,7 @@
       this.inp = new CG.Input(this, this.cfg.devices);
 
       this.buildHud();
+      this.buildAbilitySlots();
       // coins hanging along the high route: each one is 5 coins for this account (yours alone online)
       this.coinsEarned = this.cfg.coinsEarned || 0;
       this.coinPickups = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -253,7 +255,59 @@
       this.coinText = fixed(this.add.text(W - 40, 200, '', ts(26, '#ffd23c')).setOrigin(1, 0.5).setShadow(0, 2, '#000', 6));
     }
 
+    // The big ability slot at the bottom of the screen, one per person playing on this device: the icon, a
+    // cooldown sweep with the seconds left, the key to press, a glow when it is ready, a bar while it is active.
+    buildAbilitySlots() {
+      // phone players use the SKILL button instead (it shows the same icon and cooldown, see CG.Touch.setAbility)
+      const onPhone = (p) => p.device && (p.device.type === 'touch' || (p.device.type === 'any' && CG.Touch.enabled));
+      const { W } = CG.CONFIG, mine = this.players.filter((p) => !p.bot && !p.remote && !onPhone(p));
+      const KEY = { kbAll: 'C', kbA: 'H', kbB: 'O', pad: 'Y', touch: 'SKILL', any: CG.Touch.enabled ? 'SKILL' : 'C' };
+      const R = 62, gap = 230;
+      this.slots = mine.map((p, i) => {
+        const x = W - 150, y = 330 + i * gap * 0.85, ab = p.agent.ability;          // top-right corner, under the score
+        const c = this.add.container(x, y).setScrollFactor(0).setDepth(101);
+        const glow = this.add.circle(0, 0, R + 10, parseInt(p.agent.color.slice(1), 16), 0.35);
+        const back = this.add.circle(0, 0, R, 0x0a0d10, 0.85).setStrokeStyle(4, parseInt(p.agent.color.slice(1), 16));
+        const key = 'ab_' + p.agent.id, icon = this.textures.exists(key) ? this.add.image(0, 0, key) : this.add.circle(0, 0, R * 0.7, 0x333333);
+        if (icon.setScale) icon.setScale((R * 1.7) / Math.max(icon.width, icon.height));
+        const sweep = this.add.graphics(), active = this.add.graphics();
+        const secs = this.add.text(0, 0, '', ts(46, '#ffffff')).setOrigin(0.5).setShadow(0, 3, '#000', 8);
+        const name = this.add.text(0, -R - 22, ab.name.toUpperCase(), ts(20, p.agent.color)).setOrigin(0.5).setShadow(0, 2, '#000', 6);
+        const k = (p.device && KEY[p.device.type]) || 'C';
+        const keyBox = this.add.text(0, R + 4, k, ts(20, '#10141a')).setOrigin(0.5, 0).setBackgroundColor('#ffd23c').setPadding(8, 2, 8, 2);
+        const who = mine.length > 1 ? this.add.text(0, -R - 44, p.name, ts(16, p.color)).setOrigin(0.5) : null;
+        // the Tac Dash pip beside it
+        const DK = { kbAll: 'SHIFT', kbA: 'T', kbB: 'I', pad: 'B', touch: 'DASH', any: CG.Touch.enabled ? 'DASH' : 'SHIFT' };
+        const dBack = this.add.circle(R + 52, 18, 30, 0x0a0d10, 0.85).setStrokeStyle(3, 0x78ffaa);
+        const dTxt = this.add.text(R + 52, 18, '»', ts(30, '#78ffaa')).setOrigin(0.5);
+        const dSweep = this.add.graphics();
+        const dKey = this.add.text(R + 52, 52, (p.device && DK[p.device.type]) || 'SHIFT', ts(14, '#10141a')).setOrigin(0.5, 0).setBackgroundColor('#78ffaa').setPadding(5, 1, 5, 1);
+        c.add([glow, back, icon, sweep, active, secs, name, keyBox, dBack, dTxt, dSweep, dKey].concat(who ? [who] : []));
+        this.tweens.add({ targets: glow, scale: 1.12, alpha: 0.15, duration: 700, yoyo: true, repeat: -1 });
+        return { p, c, glow, sweep, active, secs, R, dSweep, dx: R + 52 };
+      });
+    }
+    updateAbilitySlots() {
+      for (const s of this.slots || []) {
+        const p = s.p, ab = p.agent.ability, cd = p.abilityCd, full = ab.cd * (p.perkCd || 1);
+        s.c.setAlpha(p.out ? 0.35 : 1);
+        s.glow.setVisible(cd <= 0 && p.alive);
+        s.sweep.clear();
+        if (cd > 0) {
+          s.sweep.fillStyle(0x000000, 0.7).slice(0, 0, s.R - 2, -Math.PI / 2, -Math.PI / 2 + (cd / full) * Math.PI * 2, false).fillPath();
+          s.secs.setText(Math.ceil(cd / 1000));
+        } else s.secs.setText('');
+        // while an ability with a duration is running: a bright ring that runs down
+        const left = Math.max(p.stormT, p.domeT, p.adrenT, p.overT) / (p.overT > 0 ? 15000 : ab.dur || 1);
+        s.dSweep.clear();
+        if (p.mdashCd > 0) s.dSweep.fillStyle(0x000000, 0.7).slice(s.dx, 18, 28, -Math.PI / 2, -Math.PI / 2 + (p.mdashCd / 3200) * Math.PI * 2, false).fillPath();
+        s.active.clear();
+        if (left > 0 && left <= 1) s.active.lineStyle(7, 0xffd23c, 1).beginPath().arc(0, 0, s.R + 2, -Math.PI / 2, -Math.PI / 2 + left * Math.PI * 2, false).strokePath();
+      }
+    }
+
     updateHud() {
+      this.updateAbilitySlots();
       const heart = this.textures.exists('hud_heart');
       this.hud.forEach((h, i) => {
         const p = this.players[i];
@@ -467,7 +521,7 @@
       if (!b) return null;
       b.isBullet = true; b.shooter = player; b.ghost = !!ghost; b.pierce = 0; b.hitSet = null;
       // bullet power-ups: P pierce, X explosive, D double damage, I ice
-      b.dmg = player && player.double ? 2 : 1;
+      b.dmg = player && player.hack && player.hack.oneshot ? 99 : player && player.double ? 2 : 1;
       b.blast = !!(player && player.blast); b.ice = !!(player && player.ice);
       if (player && player.pierce) b.pierce = 2;
       if (player && player.perkGold) b.setTint(0xffd27a); else b.clearTint();
@@ -702,8 +756,8 @@
     // ---------------------------------------------------------------- breakable cover
     hitCover(cv, dmg, fromNet) {
       if (!cv || cv.broken) return;
-      cv.img.setTintFill(0xffffff);
-      this.time.delayedCall(50, () => { if (!cv.broken) this.tintCover(cv); });
+      cv.img.setTint(0xffc8a0);                          // a quick warm flicker on each hit
+      this.time.delayedCall(60, () => { if (!cv.broken) this.tintCover(cv); });
       if (this.isClient && !fromNet) { this.net.send('cover', { id: cv.id, n: dmg }); return; }     // the host counts it
       cv.hp -= dmg;
       if (cv.hp <= 0) this.breakCover(cv);
@@ -726,6 +780,25 @@
       cv.zone.body.enable = false;
       this.tweens.add({ targets: cv.img, alpha: 0, scaleY: cv.img.scaleY * 0.3, duration: 260, onComplete: () => cv.img.destroy() });
       this.time.delayedCall(0, () => cv.zone.destroy());
+    }
+    // a fading copy of the player (Tac Dash trail)
+    afterimage(p) {
+      const v = p.visual, g = this.add.image(v.x, v.y, v.texture.key, v.frame.name).setOrigin(v.originX, v.originY)
+        .setScale(v.scaleX, v.scaleY).setFlipX(v.flipX).setTintFill(parseInt(p.agent.color.slice(1), 16)).setAlpha(0.45).setDepth(9);
+      this.tweens.add({ targets: g, alpha: 0, duration: 220, onComplete: () => g.destroy() });
+    }
+    // what auto aim locks on to: the closest enemy on screen (or opponent in a duel)
+    nearestTarget(p) {
+      const cam = this.cameras.main, c = p.body.center;
+      let best = null, bd = Infinity;
+      const look = (x, y) => {
+        if (x < cam.scrollX - 20 || x > cam.scrollX + CG.CONFIG.W + 20) return;
+        const d = Math.hypot(x - c.x, y - c.y);
+        if (d < bd) { bd = d; best = { x, y }; }
+      };
+      for (const e of this.enemies.getChildren()) if (e.active && e.T.ai !== 'flyer') look(e.body.center.x, e.body.center.y);
+      if (this.pvp) for (const q of this.players) if (q !== p && q.alive) look(q.body.center.x, q.body.center.y);
+      return best;
     }
     hurtFx(p) {
       this.sparks.explode(6, p.body.center.x, p.body.center.y);
@@ -878,7 +951,7 @@
       });
       if (this.touchPlayer && CG.Touch.enabled) {
         const p = this.touchPlayer;
-        CG.Touch.cooldown(p.abilityCd / (p.agent.ability.cd * (p.perkCd || 1)));
+        CG.Touch.cooldown(p.abilityCd / (p.agent.ability.cd * (p.perkCd || 1)), p.abilityCd, p.mdashCd / 3200);
       }
       this.scoreText.setText(String(this.score).padStart(7, '0'));
     }
