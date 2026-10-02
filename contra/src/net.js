@@ -153,6 +153,7 @@ CG.Net = {
 
     this.state = 'ready';
     CG.UI.netChanged();
+    if (!this.needsUsername) this.postRank();                  // on the leaderboard from the first sign-in
     // back into the party we were in (if it still exists)
     if (p.party) {
       const ps = await this.db.ref('parties/' + p.party).get();
@@ -225,8 +226,10 @@ CG.Net = {
     return text ? this.db.ref('announce').set({ text: String(text).slice(0, 280), at: Date.now(), by: this.profile.username || '' }) : this.db.ref('announce').remove();
   },
   adminSetRR(uid, rr) {
+    rr = Math.max(0, Math.round(rr));
     if (uid === this.uid) this.profile.rr = rr;
-    return this.db.ref('users/' + uid + '/rr').set(Math.max(0, Math.round(rr)));
+    this.db.ref('leaderboard/' + uid + '/rr').set(rr).catch(() => {});
+    return this.db.ref('users/' + uid + '/rr').set(rr);
   },
   adminResetStats(uid) { return this.db.ref('users/' + uid + '/stats').remove(); },
   adminSetOwned(uid, ids) {
@@ -366,11 +369,23 @@ CG.Net = {
     const u = res.snapshot && res.snapshot.val();
     if (u) { this.profile.rr = u.rr; this.profile.stats = u.stats; }
     if (this.partyId && u) this.db.ref('parties/' + this.partyId + '/members/' + this.uid + '/rr').set(u.rr || 0).catch(() => {});
+    if (u) this.postRank();
+  },
+  // the rank leaderboard: one small public entry per account (name, rating, title, banner)
+  postRank() {
+    if (!this.online || !this.profile) return;
+    const p = this.profile;
+    this.db.ref('leaderboard/' + this.uid).set({ name: p.username || p.name || '?', rr: p.rr || 0, title: p.title || 'recruit', banner: p.banner || 'steel' }).catch(() => {});
+  },
+  async leaderboard() {
+    const all = (await this.db.ref('leaderboard').get()).val() || {};
+    return Object.keys(all).map((uid) => Object.assign({ uid }, all[uid])).sort((a, b) => (b.rr || 0) - (a.rr || 0));
   },
   async setLook(kind, id) {
     if (!this.online) return;
     await this.db.ref('users/' + this.uid + '/' + kind).set(id);
     this.profile[kind] = id;
+    this.postRank();
     if (this.partyId) this.db.ref('parties/' + this.partyId + '/members/' + this.uid + '/' + kind).set(id).catch(() => {});
   },
   // someone else's profile card (rank, look, stats)

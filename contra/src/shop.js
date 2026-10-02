@@ -48,11 +48,11 @@ CG.Shop = {
   agentItem(id) { return this.allItems().find((it) => it.kind === 'agent' && it.agent === id); },
   // can this device's player use this agent? (free, bought, or no accounts at all)
   hasAgent(id) {
-    if (!CG.Net.online || this.FREE_AGENTS.includes(id)) return true;
+    if (this.FREE_AGENTS.includes(id)) return true;
     const it = this.agentItem(id);
     return !it || this.owned(it.id);           // an agent with no shop item is free
   },
-  owned(id) { const p = CG.Net.profile; return !!(p && p.owned && p.owned[id]); },
+  owned(id) { const p = CG.Profile.get(); return !!(p && p.owned && p.owned[id]); },
   // the effects this player has paid for
   effects() {
     const out = {};

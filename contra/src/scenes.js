@@ -169,7 +169,10 @@
       this.over = false; this.cleared = false; this.camX = 0; this.spawnI = 0; this.bossOn = false; this.bossT = 2500;
       this.artScale = (CG.CONFIG.SHEET_ART && CG.DATA.art && CG.DATA.art.scale) || {};
       this.enemyScale = (CG.CONFIG.SHEET_ART && CG.DATA.art && CG.DATA.art.enemyScale) || 1;
-      this.bossCamX = L.boss.wallCol * T + 3 * T - W;
+      // field of view (Settings): 1 = the whole screen of world, more = closer
+      this.zoom = Math.max(1, Math.min(1.4, parseFloat((() => { try { return localStorage.getItem('commando.fov'); } catch (e) { return ''; } })()) || 1));
+      this.viewW = W / this.zoom; this.viewH = H / this.zoom;
+      this.bossCamX = L.boss.wallCol * T + 3 * T - this.viewW;
 
       backdrop(this, L.theme, this.cfg.stage);
       this.physics.world.setBounds(0, 0, L.w * T, H + 600);
@@ -287,6 +290,19 @@
         this.tweens.add({ targets: brief, alpha: 0, delay: 2600, duration: 600, onComplete: () => brief.destroy() });
       }
       CG.Sfx.play('start');
+      if (this.zoom > 1) {
+        // the world camera zooms; the HUD (everything fixed to the screen) is drawn by a second camera that does not
+        this.cameras.main.setZoom(this.zoom);
+        this.uiCam = this.cameras.add(0, 0, W, H);
+        this.syncCams = () => {
+          for (const o of this.children.list) {
+            if (o.__cam) continue;
+            o.__cam = 1;
+            if (o.scrollFactorX === 0 && o.depth >= 50) this.cameras.main.ignore(o); else this.uiCam.ignore(o);   // HUD vs world + backdrop
+          }
+        };
+        this.syncCams();
+      }
       CG.UI.onGameStart(this);
     }
 
@@ -578,17 +594,33 @@
       // water fills the bottom of the stage; the ground pieces cover it
       const has = (key) => this.textures.exists(key);
       const fit = (ts) => { const w = ts.texture.getSourceImage().width; if (w !== T) ts.setTileScale(T / w); return ts; };
-      fit(this.add.tileSprite(0, gy + 40, L.w * T, T, k('water')).setOrigin(0).setDepth(1));
-      fit(this.add.tileSprite(0, gy + 40 + T, L.w * T, H - gy, k('water_deep')).setOrigin(0).setDepth(1));
+      // water a little below the banks, darker as it gets deep, and slowly moving
+      this.waterTs = [
+        fit(this.add.tileSprite(0, gy + 40, L.w * T, T, k('water')).setOrigin(0).setDepth(1).setTint(0xd8ecff)),
+        fit(this.add.tileSprite(0, gy + 40 + T, L.w * T, H - gy, k('water_deep')).setOrigin(0).setDepth(1).setTint(0x6f93bd)),
+      ];
       const variant = (name, i) => (has(k(name) + '_' + i) ? k(name) + '_' + i : k(name));
       const tile = (x, y, key) => this.add.image(x, y, key).setOrigin(0).setDisplaySize(T + 0.5, T + 0.5).setDepth(2);
+      // under a rock cliff the ground is all dirt (no grass line running through the rock)
+      const underRock = new Set();
+      (L.blocks || []).forEach(([bc, , bw]) => { for (let i = 0; i < bw; i++) underRock.add(bc + i); });
       L.ground.forEach(([a, b]) => {
         zone(this.solids, a * T, gy, (b - a) * T, H - gy + 300);
         for (let c = a; c < b; c++) {
-          const edge = c === a && has(k('g_left')) ? k('g_left') : c === b - 1 && has(k('g_right')) ? k('g_right') : variant('g_top', c % 3);
+          const edge = underRock.has(c) ? variant('g_in', c % 2) : c === a && has(k('g_left')) ? k('g_left') : c === b - 1 && has(k('g_right')) ? k('g_right') : variant('g_top', c % 3);
           tile(c * T, gy, edge);
           for (let r = L.groundRow + 1; r < L.h; r++) tile(c * T, r * T, variant('g_in', (c + r) % 2));
         }
+      });
+      // moving platforms: a ledge that slides back and forth (or up and down); riders move with it
+      this.movers = this.physics.add.group({ allowGravity: false, immovable: true });
+      (L.movers || []).forEach(([c, r, w, dx, dy, per], i) => {
+        const tex = k('ledge'), src = this.textures.get(tex).getSourceImage(), sc = (T + 8) / src.width;
+        const plat = this.add.tileSprite(c * T, r * T - 6, w * T, Math.max(24, src.height * sc), tex).setOrigin(0).setDepth(3).setTileScale(sc, sc).setTint(0xffe2b0);
+        this.physics.add.existing(plat);
+        plat.body.setAllowGravity(false).setImmovable(true).setSize(w * T, 22, false);
+        plat.mv = { x0: c * T, y0: r * T - 6, dx: dx * T, dy: -dy * T, per, i };
+        this.movers.add(plat);
       });
       // parkour rock: a solid cliff from its top row down to the ground, grass (or plating, or snow) on top
       (L.blocks || []).forEach(([c, r, w]) => {
@@ -661,6 +693,9 @@
       ph.add.collider(this.enemies, this.ledges, null, canLand);
       ph.add.collider(this.pickups, this.solids);
       ph.add.collider(bodies, this.covers);
+      ph.add.collider(bodies, this.movers, (a, b) => { const m = mover(a, b); if (m.owner) m.owner.ledgeT = this.time.now; }, canLand);
+      ph.add.collider(this.enemies, this.movers, null, canLand);
+      ph.add.collider(this.pickups, this.movers);
       // frag grenades burst on the ground, on cover or on an enemy
       const burst = (g) => { if (g.active) this.fragBurst(g); };
       ph.add.collider(this.grenades, this.solids, (a, b) => burst(mover(a, b)));
@@ -878,6 +913,23 @@
     }
 
     // ---------------------------------------------------------------- enemies, power-ups, boss
+    updateMovers() {
+      if (!this.movers) return;
+      const clock = Date.now() / 1000;
+      this.movers.getChildren().forEach((m) => {
+        const v = m.mv, ph = Math.sin((clock / v.per + v.i * 0.37) * Math.PI * 2) * 0.5 + 0.5;
+        const nx = v.x0 + v.dx * ph, ny = v.y0 + v.dy * ph, ddx = nx - m.x, ddy = ny - m.y;
+        // whoever stands on it rides along
+        for (const p of this.players) {
+          const b = p.body;
+          if (p.remote || !p.alive || !b) continue;
+          if (Math.abs(b.bottom - m.body.top) < 8 && b.right > m.body.left + 4 && b.left < m.body.right - 4 && b.velocity.y >= 0) {
+            p.phys.x += ddx; p.phys.y += ddy;
+          }
+        }
+        m.body.reset(nx, ny);
+      });
+    }
     // ---------------------------------------------------------------- Horde
     updateHorde(delta) {
       const { TILE: T } = CG.CONFIG, L = CG.DATA.level, gy = L.groundRow * T, Wd = L.w * T;
@@ -1374,11 +1426,19 @@
       } else if (this.isClient) {
         if (this.netCamX !== undefined) this.camX += (this.netCamX - this.camX) * (1 - Math.exp(-8 * dt));
       } else if (alive.length) {
-        let target = Math.min(Math.max(...alive.map((p) => p.body.center.x)) - W * 0.42, this.bossCamX);
-        for (const e of this.enemies.getChildren()) if (e.active && e.T.solid && e.x > this.camX) target = Math.min(target, e.x + 140 - W);
+        let target = Math.min(Math.max(...alive.map((p) => p.body.center.x)) - this.viewW * 0.42, this.bossCamX);
+        for (const e of this.enemies.getChildren()) if (e.active && e.T.solid && e.x > this.camX) target = Math.min(target, e.x + 140 - this.viewW);
         if (target > this.camX) this.camX += (target - this.camX) * (1 - Math.exp(-7 * dt));
       }
-      cam.scrollX = this.camX;
+      if (this.zoom > 1) {
+        // zoomed in: camX is still the left edge of what is seen; follow the players up and down too
+        const z = this.zoom, alive2 = this.players.filter((p) => p.alive && !p.remote);
+        if (this.pvp && alive2.length) this.camX = Phaser.Math.Clamp(alive2[0].body.center.x - this.viewW / 2, 0, CG.DATA.level.w * CG.CONFIG.TILE - this.viewW);
+        cam.scrollX = this.camX - (W - this.viewW) / 2;
+        const ys = alive2.length ? alive2.reduce((a, p) => a + p.body.center.y, 0) / alive2.length : H * 0.7;
+        const top = Phaser.Math.Clamp(ys - this.viewH * 0.62, 0, H - this.viewH);
+        cam.scrollY += (top - (H - this.viewH) / 2 - cam.scrollY) * Math.min(1, dt * 6);
+      } else cam.scrollX = this.camX;
       this.bgFar.tilePositionX = this.camX * 0.12 * this.bgFar.scrollK;
       this.bgTrees.tilePositionX = this.camX * 0.4 * this.bgTrees.scrollK;
 
@@ -1426,6 +1486,9 @@
       }
 
       CG.Hazards.update(this, dt);
+      this.updateMovers();
+      for (const w of this.waterTs || []) w.tilePositionX += dt * 22;
+      if (this.syncCams) this.syncCams();
       this.updateHud();
       this.updateDomes();
       this.updateDrones(dt);

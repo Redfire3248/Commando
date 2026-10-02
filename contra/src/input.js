@@ -5,10 +5,31 @@
   // Left side: movement — a floating joystick (appears where the thumb lands) or a fixed D-pad, chosen in
   // Settings. Right side: FIRE, JUMP and SKILL. Every finger is tracked on its own and a finger can slide from
   // one button to another, so presses never get stuck or lost. Settings live in CG.Touch.opts.
+  // ---- keyboard bindings for the one-keyboard player (Settings → Controls); saved on this device
+  const K0 = { left: [[37, '←'], [65, 'A']], right: [[39, '→'], [68, 'D']], up: [[38, '↑'], [87, 'W']], down: [[40, '↓'], [83, 'S']],
+    shoot: [[88, 'X'], [74, 'J'], [70, 'F']], jump: [[90, 'Z'], [75, 'K'], [71, 'G'], [32, 'SPACE']], ability: [[67, 'C'], [69, 'E']], dash: [[16, 'SHIFT'], [86, 'V']] };
+  CG.Keys = {
+    ACTIONS: [['left', 'Move left'], ['right', 'Move right'], ['up', 'Aim up / climb'], ['down', 'Aim down / crouch'], ['shoot', 'Shoot'],
+      ['jump', 'Jump'], ['ability', 'Ability'], ['dash', 'Dash (Kite)']],
+    get() {
+      let m = null;
+      try { m = JSON.parse(localStorage.getItem('commando.keys')); } catch (e) { /* defaults */ }
+      return Object.assign({}, K0, m || {});
+    },
+    // one key for this action, in place of its defaults
+    set(action, code, label) {
+      const m = this.get();
+      m[action] = [[code, label]];
+      try { localStorage.setItem('commando.keys', JSON.stringify(m)); } catch (e) { /* */ }
+    },
+    reset() { try { localStorage.removeItem('commando.keys'); } catch (e) { /* */ } },
+    label(action) { return this.get()[action].map((k) => k[1]).join(' / '); },
+  };
+
   const T = CG.Touch = {
     enabled: false,
     s: { left: false, right: false, up: false, down: false, shoot: false, jump: false, ability: false, dash: false },
-    opts: { style: 'dpad', size: 1, autofire: false },
+    opts: { style: 'dpad', size: 1, autofire: false, pos: {} },          // pos: where each button was moved to (Settings)
   };
   try { Object.assign(T.opts, JSON.parse(localStorage.getItem('commando.touch')) || {}); } catch (e) { /* defaults */ }
   T.save = () => { try { localStorage.setItem('commando.touch', JSON.stringify(T.opts)); } catch (e) { /* */ } T.apply(); };
@@ -16,12 +37,27 @@
   function enable() { T.enabled = true; }
   if (window.matchMedia && matchMedia('(pointer: coarse)').matches) enable();
   window.addEventListener('touchstart', enable, { passive: true, once: true });
-  T.show = (on) => { root.classList.toggle('hidden', !(on && T.enabled)); if (!on) releaseAll(); };
+  T.show = (on) => { T.shown = !!(on && T.enabled); root.classList.toggle('hidden', !(on && T.enabled)); if (!on) releaseAll(); };
   // control size: the chosen size, a bit smaller on short phone screens so the buttons leave room to see
   T.apply = () => {
     root.classList.toggle('dpad-mode', T.opts.style === 'dpad');
     const fit = Math.max(0.62, Math.min(1, window.innerHeight / 520));
     root.style.setProperty('--ts', (T.opts.size * fit).toFixed(3));
+    // buttons the player moved: placed by their centre, as a share of the screen
+    const pos = T.opts.pos || {};
+    document.querySelectorAll('#btns [data-btn], #b-pause').forEach((b) => {
+      const id = b.dataset.btn || 'pause', at = pos[id];
+      if (at) Object.assign(b.style, { left: 'calc(' + (at.x * 100).toFixed(2) + 'vw - ' + b.offsetWidth / 2 + 'px)', top: 'calc(' + (at.y * 100).toFixed(2) + 'vh - ' + b.offsetHeight / 2 + 'px)', right: 'auto', bottom: 'auto', marginLeft: '0' });
+      else Object.assign(b.style, { left: '', top: '', right: '', bottom: '', marginLeft: '' });
+    });
+  };
+  // Settings → MOVE BUTTONS: the controls show over a dimmed screen and each one can be dragged to a new place
+  T.editing = false;
+  T.edit = (on) => {
+    T.editing = on;
+    root.classList.toggle('editing', on);
+    root.classList.toggle('hidden', !on && !T.shown);
+    if (on) { root.classList.remove('hidden'); T.apply(); }
   };
   T.apply();
   window.addEventListener('resize', T.apply);
@@ -97,7 +133,26 @@
   }
   function releaseAll() { fingers.clear(); moveEnd(); syncButtons(); }
 
+  // dragging a button while the layout is being edited
+  let drag = null;
   root.addEventListener('pointerdown', (e) => {
+    if (!T.editing) return;
+    const b = e.target.closest('#btns [data-btn], #b-pause');
+    if (!b) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    drag = { b, id: b.dataset.btn || 'pause', pid: e.pointerId };
+    try { root.setPointerCapture(e.pointerId); } catch (err) { /* */ }
+  }, true);
+  root.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.pid) return;
+    e.stopImmediatePropagation();
+    T.opts.pos = T.opts.pos || {};
+    T.opts.pos[drag.id] = { x: Math.max(0.03, Math.min(0.97, e.clientX / innerWidth)), y: Math.max(0.05, Math.min(0.95, e.clientY / innerHeight)) };
+    T.apply();
+  }, true);
+  root.addEventListener('pointerup', (e) => { if (drag && e.pointerId === drag.pid) { drag = null; T.save(); e.stopImmediatePropagation(); } }, true);
+  root.addEventListener('pointerdown', (e) => {
+    if (T.editing) return;
     if (e.target.closest('#b-pause')) return;
     e.preventDefault();
     const leftSide = e.clientX < window.innerWidth * 0.45;
@@ -171,10 +226,8 @@
       this.maps = {
         kbA: mk({ left: [K.A], right: [K.D], up: [K.W], down: [K.S], shoot: [K.F], jump: [K.G], ability: [K.H], dash: [K.T] }),
         kbB: mk({ left: [K.LEFT], right: [K.RIGHT], up: [K.UP], down: [K.DOWN], shoot: [K.K], jump: [K.L], ability: [K.O], dash: [K.I] }),
-        kbAll: mk({
-          left: [K.LEFT, K.A], right: [K.RIGHT, K.D], up: [K.UP, K.W], down: [K.DOWN, K.S],
-          shoot: [K.X, K.J, K.F], jump: [K.Z, K.K, K.G, K.SPACE], ability: [K.C, K.E], dash: [K.SHIFT, K.V],
-        }),
+        // the one-keyboard player's keys come from Settings → Controls (CG.Keys)
+        kbAll: mk(Object.fromEntries(Object.entries(CG.Keys.get()).map(([a, keys]) => [a, keys.map((k) => k[0])]))),
       };
       this.prevJump = devices.map(() => false);
       this.prevAbility = devices.map(() => false);

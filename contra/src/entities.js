@@ -144,10 +144,12 @@
         }
       }
 
-      // stay on screen (the camera never scrolls back)
-      const cam = sc.cameras.main, minX = cam.scrollX + PW / 2 + 8, maxX = cam.scrollX + CG.CONFIG.W - PW / 2 - 8;
-      if (this.phys.x < minX) this.phys.x = minX;
-      if (this.phys.x > maxX) this.phys.x = maxX;
+      // stay inside the part of the world on screen (the camera never scrolls back): sides and top
+      const cam = sc.cameras.main, view = cam.worldView.width ? cam.worldView : { x: cam.scrollX, y: 0, width: CG.CONFIG.W };
+      const minX = view.x + PW / 2 + 8, maxX = view.x + view.width - PW / 2 - 8;
+      if (this.phys.x < minX) { this.phys.x = minX; if (b.velocity.x < 0) b.velocity.x = 0; }
+      if (this.phys.x > maxX) { this.phys.x = maxX; if (b.velocity.x > 0) b.velocity.x = 0; }
+      if (b.top < view.y + 4) { this.phys.y += view.y + 4 - b.top; if (b.velocity.y < 0) b.velocity.y = 0; }
       if (b.top > CG.CONFIG.H + 60) { sc.splash(b.center.x); this.die(); return; }   // fell in the water
 
       const storm = this.stormT > 0, spread = this.spread || storm;

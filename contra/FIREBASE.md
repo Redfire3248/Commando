@@ -66,6 +66,10 @@ Then **Settings → Authorized domains → Add domain** → your website (for ex
       ".write": "auth != null && auth.token.email === 'redjai1981@gmail.com'"
     },
     "admins": { ".read": "auth != null" },
+    "leaderboard": {
+      ".read": "auth != null",
+      "$uid": { ".write": "auth != null && (auth.uid === $uid || auth.token.email === 'redjai1981@gmail.com')" }
+    },
     "announce": {
       ".read": "auth != null",
       ".write": "auth != null && auth.token.email === 'redjai1981@gmail.com'"

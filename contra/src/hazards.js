@@ -141,8 +141,9 @@ CG.Hazards = (() => {
     if (!sc.hz) return;
     const off = !!sc.hzOff;                              // admin: hazards off
     const cam = sc.cameras.main, W = CG.CONFIG.W, T = CG.CONFIG.TILE, gy = CG.DATA.level.groundRow * T, near = (x) => x > cam.scrollX - 200 && x < cam.scrollX + W + 200;
+    const clock = Date.now() / 1000;                     // the same on every screen online (each game's own timer is not)
     for (const h of sc.hz) {
-      h.t += dt;
+      h.t = clock + h.i * 0.9;
       if (h.type === 'flame') {
         // 3.2 s: 1.6 off, 0.5 warning, 1.1 burning
         const ph = h.t % 3.2, on = ph > 2.1, warn = ph > 1.6 && !on;
@@ -170,15 +171,17 @@ CG.Hazards = (() => {
       } else if (h.type === 'rocks') {
         // boulders tumble down while the falls are on screen
         if (!near(h.x) && !near(h.x2)) continue;
-        h.cd -= dt;
-        if (h.cd <= 0 && !sc.isClient && !off) {
-          h.cd = Math.max(0.7, 1.8 / (1 + 0.15 * (sc.crowd || 0)));
-          const r = sc.rocks.get(Phaser.Math.Between(h.x, h.x2), -40, 'rock');
+        // a boulder in every time slot, at a place worked out from the slot number: the same rock on every screen
+        const every = Math.max(0.7, 1.8 / (1 + 0.15 * (sc.crowd || 0))), slot = Math.floor(clock / every);
+        if (slot !== h.slot && !off) {
+          h.slot = slot;
+          const rnd = (n) => { const v = Math.sin(slot * 127.1 + h.i * 311.7 + n * 74.7) * 43758.5453; return v - Math.floor(v); };
+          const r = sc.rocks.get(h.x + (h.x2 - h.x) * rnd(1), -40, 'rock');
           if (r) {
             r.setActive(true).setVisible(true).setDepth(9);
             r.body.enable = true; r.body.reset(r.x, -40);
             r.setScale(sc.artScale.rock || 1);
-            r.body.setCircle(r.width * 0.4, r.width * 0.1, r.height * 0.05).setBounce(0.45, 0.35).setVelocity(Phaser.Math.Between(-160, 160), 0);
+            r.body.setCircle(r.width * 0.4, r.width * 0.1, r.height * 0.05).setBounce(0.45, 0.35).setVelocity((rnd(2) * 2 - 1) * 160, 0);
             r.life = 6;
           }
         }
@@ -207,7 +210,7 @@ CG.Hazards = (() => {
     sc.gateFx.clear();
     for (const e of sc.enemies.getChildren()) {
       if (!e.active || e.type !== 'gate') continue;
-      const on = (sc.time.now / 1400 | 0) % 2 === 0, fx = e.x - 70, top = e.y - e.displayHeight;
+      const on = (Date.now() / 1400 | 0) % 2 === 0, fx = e.x - 70, top = e.y - e.displayHeight;
       if (!on) continue;
       sc.gateFx.lineStyle(3, 0x9ad8ff, 0.9);
       for (let k = 0; k < 3; k++) {

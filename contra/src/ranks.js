@@ -81,18 +81,19 @@ CG.Cosmetics = (() => {
     gold:     { name: 'Gold Leaf', price: 1200, css: 'linear-gradient(120deg,#6b4a08 0%,#ffd86a 30%,#fff2c0 45%,#e2a91c 60%,#6b4a08 100%)' },
     legend:   { name: 'Legend', earn: 'Reach LEGEND rank', css: 'radial-gradient(circle at 50% 120%,#ff5a5a,transparent 60%),linear-gradient(160deg,#3a0610,#0a0204)' },
   };
+  // every title has its own colour (shown under the name on the squad screen, the profile, the VS screen)
   const TITLES = {
-    recruit:  { name: 'RECRUIT', free: true },
-    gunner:   { name: 'RUN & GUN', free: true },
-    breaker:  { name: 'WALL BREAKER', earn: 'Clear stage 1', check: (s) => (s.stages || 0) >= 1 },
-    survivor: { name: 'SURVIVOR', earn: 'Reach wave 10 in Horde', check: (s) => (s.wave || 0) >= 10 },
-    duelist:  { name: 'DUELIST', earn: 'Win 10 duels', check: (s) => (s.wins || 0) >= 10 },
-    hunter:   { name: 'HEADHUNTER', earn: '100 headshots', check: (s) => (s.heads || 0) >= 100 },
-    golden:   { name: 'GOLDEN GUN', earn: 'Reach GOLD', rr: 600 },
-    diamond:  { name: 'DIAMOND HANDS', earn: 'Reach DIAMOND', rr: 1200 },
-    legend:   { name: 'LIVING LEGEND', earn: 'Reach LEGEND', rr: 1800 },
-    hollow:   { name: 'GHOST OF THE JUNGLE', price: 500 },
-    boss:     { name: 'THE BOSS', price: 900 },
+    recruit:  { name: 'RECRUIT', free: true, color: '#b8c2bb' },
+    gunner:   { name: 'RUN & GUN', free: true, color: '#ff9a3c' },
+    breaker:  { name: 'WALL BREAKER', earn: 'Clear stage 1', check: (s) => (s.stages || 0) >= 1, color: '#7cff8a' },
+    survivor: { name: 'SURVIVOR', earn: 'Reach wave 10 in Horde', check: (s) => (s.wave || 0) >= 10, color: '#ffd23c' },
+    duelist:  { name: 'DUELIST', earn: 'Win 10 duels', check: (s) => (s.wins || 0) >= 10, color: '#ff5a4f' },
+    hunter:   { name: 'HEADHUNTER', earn: '100 headshots', check: (s) => (s.heads || 0) >= 100, color: '#ff6ad5' },
+    golden:   { name: 'GOLDEN GUN', earn: 'Reach GOLD', rr: 600, color: '#ffcc3a' },
+    diamond:  { name: 'DIAMOND HANDS', earn: 'Reach DIAMOND', rr: 1200, color: '#8aa8ff' },
+    legend:   { name: 'LIVING LEGEND', earn: 'Reach LEGEND', rr: 1800, color: '#ff4a4a' },
+    hollow:   { name: 'GHOST OF THE JUNGLE', price: 500, color: '#4fe0d0' },
+    boss:     { name: 'THE BOSS', price: 900, color: '#c46bff' },
   };
   const itemId = (kind, id) => kind + '_' + id;
   // what this account may equip: free ones, bought ones (shop item `banner_<id>` / `title_<id>`), earned ones
@@ -101,14 +102,20 @@ CG.Cosmetics = (() => {
     if (!x) return false;
     if (x.free) return true;
     const p = prof || CG.Net.profile || CG.Profile.local();
-    if (x.price) return !CG.Net.online || !!(p.owned && p.owned[itemId(kind, id)]);
+    if (x.price) return !!(p.owned && p.owned[itemId(kind, id)]);
     const stats = p.stats || {}, rr = p.rr || 0;
     if (x.rr) return rr >= x.rr;
     if (kind === 'banner' && id === 'legend') return rr >= CG.Ranks.LEGEND_AT;
     return x.check ? x.check(stats) : false;
   }
-  const bannerCss = (id) => (BANNERS[id] || BANNERS.steel).css;
+  // a painted banner from banners.png when it is in, else the CSS one
+  const bannerCss = (id) => {
+    const art = CG.DATA.art && CG.DATA.art.images && CG.DATA.art.images['banner_' + id];
+    return art ? 'url("' + art + '") center / cover no-repeat' : (BANNERS[id] || BANNERS.steel).css;
+  };
   const titleName = (id) => (TITLES[id] || TITLES.recruit).name;
+  const titleColor = (id) => (TITLES[id] || TITLES.recruit).color;
+  const titleHtml = (id, cls) => (id ? `<i class="${cls || 'ttl'}" style="color:${titleColor(id)}">${titleName(id)}</i>` : '');
   // shop items for the banners and titles that are sold
   function shopItems() {
     const out = {};
@@ -117,7 +124,7 @@ CG.Cosmetics = (() => {
     for (const id in TITLES) if (TITLES[id].price) out[itemId('title', id)] = { name: '“' + TITLES[id].name + '”', kind: 'title', look: id, price: TITLES[id].price, order: o++ };
     return out;
   }
-  return { BANNERS, TITLES, has, bannerCss, titleName, shopItems };
+  return { BANNERS, TITLES, has, bannerCss, titleName, titleColor, titleHtml, shopItems };
 })();
 
 // This account's rank, stats and look — the database profile when signed in, else kept on this device.
@@ -145,6 +152,18 @@ CG.Profile = {
     };
     if (CG.Net.online) return CG.Net.recordResult(apply);
     this.saveLocal(apply(this.local()));
+    return Promise.resolve();
+  },
+  // guests (and anyone offline) keep coins and what they bought on this device
+  coins() { return this.get().coins || 0; },
+  addCoinsLocal(n) { const p = this.local(); p.coins = Math.max(0, (p.coins || 0) + n); this.saveLocal(p); },
+  buyLocal(item) {
+    const p = this.local();
+    p.owned = p.owned || {};
+    if (p.owned[item.id]) return Promise.reject(new Error('You already have it'));
+    if ((p.coins || 0) < item.price) return Promise.reject(new Error('Not enough coins'));
+    p.coins -= item.price; p.owned[item.id] = true;
+    this.saveLocal(p);
     return Promise.resolve();
   },
   setLook(kind, id) {

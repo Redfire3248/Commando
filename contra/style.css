@@ -962,3 +962,37 @@ img { -webkit-user-drag: none; user-drag: none; }
 #admin .give-rank .btn { font-size: 13px; }
 /* menus: the scene behind the squad is softly out of focus (like a lobby) — slightly enlarged so the blur has no edges */
 body:not(.playing) #game { filter: blur(3px) brightness(.92); transform: scale(1.04); }
+
+/* ---------- your agent: a crisp 1-pixel white outline instead of a glow (hover, and in the locker) ---------- */
+.fig .body .idle, .fig .body > img, .cslot .cs-art .idle, .cmd-hero .body .idle { filter: none; }
+.fig .body:hover .idle, .fig .body:hover > img, .cslot:hover .cs-art .idle, .cslot:hover .cs-art > img, .sel-hero .idle, .sel-hero > img {
+  filter: drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff); }
+.cmd-hero:hover .body { filter: none; }
+.cslot:hover { box-shadow: none; }
+/* titles: a coloured line under the name */
+.ttl { display: block; font-style: normal; font: 700 11px Rajdhani, sans-serif; letter-spacing: .2em; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+.fig .tag .ttl { margin: 1px 0 2px; }
+.member-pop .mp-head .ttl { font-size: 12px; }
+.vs-fig .ttl { font-size: 12px; }
+/* the shop's BACK sits at the top */
+.shop-head { display: flex; align-items: center; gap: 14px; }
+.shop-head h2 { flex: 1; text-align: left; }
+/* settings: keyboard rows */
+.keys-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; }
+.key-row .btn { min-width: 120px; }
+.key-row .btn.on { animation: glowPulse 1s infinite; }
+/* touch: moving the buttons */
+#touch-edit-bar { display: none; }
+#touch.editing { background: rgba(0, 0, 0, .55); z-index: 50; }
+#touch.editing #touch-edit-bar { display: flex; position: absolute; top: 74px; left: 50%; transform: translateX(-50%); align-items: center; gap: 10px;
+  padding: 8px 14px; background: rgba(10, 13, 16, .95); border: 1px solid var(--acc); font-weight: 700; letter-spacing: .08em; z-index: 3; }
+#touch.editing #btns .tb, #touch.editing #b-pause { outline: 2px dashed #ffd23c; outline-offset: 4px; cursor: grab; touch-action: none; }
+#touch.editing #dpad { opacity: .35; }
+/* the leaderboard */
+.lb-me { margin-bottom: 8px; }
+.lb-list { display: flex; flex-direction: column; gap: 4px; max-height: 60vh; overflow: auto; }
+.lb-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: linear-gradient(90deg, rgba(0, 0, 0, .55), rgba(0, 0, 0, .75)), var(--bn, rgba(255, 255, 255, .05)); }
+.lb-row.me { outline: 2px solid var(--acc); }
+.lb-row .pos { width: 28px; font: 400 18px var(--head); color: var(--acc2); text-align: right; }
+.lb-row b { font-size: 16px; } .lb-row .grow { flex: 1; } .lb-row small { color: var(--dim); min-width: 64px; text-align: right; }
+.lb-row .ttl { display: inline; margin-left: 6px; }
