@@ -82,22 +82,42 @@
       this.anims.create({ key: 'boom', frames: this.anims.generateFrameNumbers(painted ? 'fx_boom' : 'px_boom', { start: 0, end: painted ? 3 : 4 }), frameRate: painted ? 14 : 18 });
       if (this.textures.exists('fx_splash')) this.anims.create({ key: 'splash', frames: this.anims.generateFrameNumbers('fx_splash', { start: 0, end: 1 }), frameRate: 7 });
       // pictures for the menus: the agents' portraits and ability icons (painted sheet, else a frame of the sheet)
-      CG.PORTRAITS = {}; CG.ABICONS = {};
+      CG.PORTRAITS = {}; CG.ABICONS = {}; CG.BODIES = {};
       const img = (k) => art && art.images && art.images[k];
       for (const a of CG.AGENTS) {
         if (img('portrait_' + a.id)) CG.PORTRAITS[a.id] = img('portrait_' + a.id);
-        else if ((art && art.agents && art.agents[a.id] && !a.classic && this.textures.exists('agents')) || (art && art.players && this.textures.exists(a.fallback))) {
-          // no painted portrait (the classic commandos, the season-4 agents): head and shoulders from a standing frame
+        const own = !!(art && art.agents && art.agents[a.id] && !a.classic && this.textures.exists('agents'));
+        if (own || (art && art.players && this.textures.exists(a.fallback))) {
+          // the standing frame: its outline is measured, then the whole figure is cut out for the menus (the squad on
+          // the home screen, the locker), and when there is no painted portrait the head and shoulders are cut too
           try {
-            const own = art.agents && art.agents[a.id] && !a.classic;
             const fr = own ? this.textures.getFrame('agents', art.agents[a.id].anims.stand_fwd[0])
               : this.textures.getFrame(a.fallback, art.players[a.fallbackWho].anims.stand_fwd[0]);
-            const src = fr.source.image, c = document.createElement('canvas'), g = c.getContext('2d');
-            // the standing figure's feet are on the frame's ground line; frame its head and shoulders
-            const box = Math.round(fr.cutHeight * 0.3), sx = fr.cutX + fr.cutWidth / 2 - box / 2 + 4, sy = fr.cutY + fr.cutHeight * 0.36;
-            c.width = c.height = 240;
-            g.drawImage(src, sx, sy, box, box, 0, 0, 240, 240);
-            CG.PORTRAITS[a.id] = c.toDataURL();
+            const src = fr.source.image, w = fr.cutWidth, h = fr.cutHeight;
+            const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
+            const tg = tmp.getContext('2d'); tg.drawImage(src, fr.cutX, fr.cutY, w, h, 0, 0, w, h);
+            const px = tg.getImageData(0, 0, w, h).data;
+            let x0 = w, x1 = 0, y0 = h, y1 = 0;
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (px[(y * w + x) * 4 + 3] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+            const bw = x1 - x0 + 5, bh = y1 - y0 + 5, bc = document.createElement('canvas');
+            bc.width = bw; bc.height = bh;
+            bc.getContext('2d').drawImage(tmp, x0 - 2, y0 - 2, bw, bh, 0, 0, bw, bh);
+            CG.BODIES[a.id] = bc.toDataURL();
+            if (!CG.PORTRAITS[a.id]) {
+              // the head: the middle of the solid pixels in the top sixth of the figure
+              let sum = 0, n = 0;
+              const headEnd = y0 + (y1 - y0) * 0.16;
+              for (let y = y0; y < headEnd; y++) for (let x = x0; x <= x1; x++) if (px[(y * w + x) * 4 + 3] > 40) { sum += x; n++; }
+              const hx = n ? sum / n : (x0 + x1) / 2, box = Math.max(40, (y1 - y0) * 0.56);
+              const c = document.createElement('canvas'), g = c.getContext('2d');
+              c.width = c.height = 240;
+              g.imageSmoothingEnabled = false;
+              g.drawImage(tmp, hx - box * 0.5, y0 - box * 0.06, box, box, 0, 0, 240, 240);
+              CG.PORTRAITS[a.id] = c.toDataURL();
+              if (!this.textures.exists('portrait_' + a.id)) {                     // the HUD uses it too
+                this.textures.addCanvas('portrait_' + a.id, c).setFilter(Phaser.Textures.FilterMode.NEAREST);
+              }
+            }
           } catch (e) { /* no picture */ }
         }
         if (img('ab_' + a.id)) CG.ABICONS[a.id] = img('ab_' + a.id);
@@ -322,7 +342,7 @@
     buildAbilitySlots() {
       // phone players use the SKILL button instead (it shows the same icon and cooldown, see CG.Touch.setAbility)
       const onPhone = (p) => p.device && (p.device.type === 'touch' || (p.device.type === 'any' && CG.Touch.enabled));
-      const { W } = CG.CONFIG, mine = this.players.filter((p) => !p.bot && !p.remote && !onPhone(p));
+      const { W } = CG.CONFIG, mine = this.players.filter((p) => !p.bot && !p.remote && !onPhone(p)).slice(0, 1);   // only the main player's; the rest see theirs on their HUD card
       const KEY = { kbAll: 'C', kbA: 'H', kbB: 'O', pad: 'Y', touch: 'SKILL', any: CG.Touch.enabled ? 'SKILL' : 'C' };
       const R = 62, gap = 230;
       this.slots = mine.map((p, i) => {
@@ -854,6 +874,21 @@
       }
       if (this.pvp) for (const q of this.players) {
         if (q !== g.owner && q.alive && Phaser.Math.Distance.Between(x, y, q.body.center.x, q.body.center.y) < ab.radius) this.damagePlayer(q, 3, g.owner);
+      }
+      // the blast throws players (Jax too: grenade jumps). Teammates are only thrown, never hurt.
+      this.launchPlayers(x, y, ab.radius * 1.15);
+      if (this.net) this.net.shout('blast', { x: Math.round(x), y: Math.round(y), r: Math.round(ab.radius * 1.15) });
+    }
+    launchPlayers(x, y, r) {
+      for (const p of this.players) {
+        if (!p.alive || p.remote) continue;
+        const c = p.body.center, dx = c.x - x, dy = c.y - y, d = Math.hypot(dx, dy);
+        if (d > r) continue;
+        const k = 1 - d / r * 0.5;                            // stronger close to the blast
+        p.body.velocity.x = (dx / (d || 1)) * 950 * k;
+        p.body.velocity.y = -Math.max(700, 1350 * k);
+        p.airDashed = false; p.airJumps = 1;                 // you can still dash / double jump after the launch
+        p.launchT = 400;                                     // let the throw carry for a moment before steering takes over
       }
     }
     // Viper: a cloud of gas where the canister lands, poisoning everything inside

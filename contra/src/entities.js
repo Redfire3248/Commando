@@ -88,15 +88,20 @@
         b.allowGravity = false;
         b.velocity.set(this.facing * 2700, 0);
         if (Math.random() < 0.5) sc.afterimage(this);
-      } else if (this.dashT > 0) {                            // Phase Dash: straight line, no gravity, untouchable
+      } else if (this.dashT > 0) {                            // Phase Dash: straight along the aim (up too), untouchable
         b.allowGravity = false;
-        b.velocity.set(this.facing * this.agent.ability.dist / 0.18, 0);
+        const v = this.dashVec || { x: this.facing, y: 0 }, sp = this.agent.ability.dist / 0.18;
+        b.velocity.set(v.x * sp, v.y * sp * 0.8);
         sc.dashHits(this);
+        this.wasPhasing = true;
       } else {
+        if (this.wasPhasing) { this.wasPhasing = false; if (b.velocity.y < -650) b.velocity.y = -650; }      // ease out of an upward dash
         b.allowGravity = true;
         if (dir && !(this.hack.strafe && inp.shoot)) this.facing = dir;          // strafe hack: keep facing while shooting
         this.setProne(onGround && inp.down && !dir);
-        b.velocity.x = this.prone ? 0 : dir * C.run * this.agent.speed * (this.adrenT > 0 ? 1.35 : 1) * (this.perkSpeed || 1) * (this.hack.speed ? 1.6 : 1);
+        const run = dir * C.run * this.agent.speed * (this.adrenT > 0 ? 1.35 : 1) * (this.perkSpeed || 1) * (this.hack.speed ? 1.6 : 1);
+        if (this.launchT > 0) { this.launchT -= ms; b.velocity.x += (run - b.velocity.x) * Math.min(1, dt * 2); }   // thrown by a blast: drift, don't snap
+        else b.velocity.x = this.prone ? 0 : run;
         if (onGround) this.airJumps = 1;
         if (inp.jumpPressed && onGround) {
           if (inp.down && sc.time.now - this.ledgeT < 80) this.dropT = 260;      // drop through a ledge
@@ -155,11 +160,17 @@
       switch (this.agent.id) {
         case 'razor': this.stormT = ab.dur; break;
         case 'brick': this.domeT = ab.dur; sc.domeFx(this); break;
-        case 'kite':
+        case 'kite': {
+          // the way you are aiming: forward, up, the diagonals — and down too while in the air
+          let vx = this.aimX, vy = this.aimY;
+          if (vy > 0 && this.onGround) { vx = this.facing; vy = 0; }
+          const len = Math.hypot(vx, vy) || 1;
+          this.dashVec = { x: vx / len, y: vy / len };
           this.dashT = 180; this.invT = Math.max(this.invT, 450); this.dashHit = new Set();
           this.setProne(false);
           sc.dashFx(this);
           break;
+        }
         case 'nova':
           for (const p of sc.players) {
             if (sc.pvp && p !== this) continue;                // a duel: Mend only heals yourself

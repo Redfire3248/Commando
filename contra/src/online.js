@@ -204,6 +204,7 @@ CG.Online = {
       if (p && p.alive) { p.lastHitBy = sc.players.find((q) => q.netId === m.by) || null; p.hit(m.n || 1); }
       return;
     }
+    if (m.t === 'blast') { sc.launchPlayers(m.x, m.y, m.r); return; }       // a teammate's grenade threw me
     if (m.t === 'heal') {
       for (const p of sc.players) {
         if (p.owner !== N.uid || !(m.all || Math.abs(p.body.center.x - m.x) < m.range)) continue;

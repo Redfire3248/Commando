@@ -1,15 +1,17 @@
 {
-  "name": "COMMANDO — GUNHOLLOW",
+  "id": "../",
+  "name": "COMMANDO",
   "short_name": "COMMANDO",
-  "description": "Run-and-gun for 1 to 5 players.",
-  "start_url": "./index.html",
-  "scope": "./",
+  "description": "Run-and-gun for 1 to 5 players: agents, abilities, online squads and 1v1 duels.",
+  "start_url": "../",
+  "scope": "../",
   "display": "fullscreen",
   "orientation": "landscape",
-  "background_color": "#0b1410",
-  "theme_color": "#0b1410",
+  "background_color": "#07090b",
+  "theme_color": "#07090b",
   "icons": [
     { "src": "../hollow/assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "../hollow/assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "../hollow/assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "../hollow/assets/icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

@@ -1,12 +1,13 @@
 // Menus (plain HTML over the game canvas) and the flow between them:
 //   sign in (Google, required) → choose a callsign (first time) → home
-//   home → PLAY: who is playing (+ bots) → choose agents → game
-//        → PLAY ONLINE: squad (invite friends, pick agent, start or find players) → game
-//        → SHOP · FRIENDS · SETTINGS · HOW TO PLAY
+//   home = your squad standing together (Fortnite style): you in the middle, friends and bots either side.
+//        PLAY: alone (+ bots) on this device, or the online match when friends are in the squad; FIND PLAYERS queues.
+//        LOCKER: choose your agent once, it is used in every match · LOCAL CO-OP: 1-5 people on this device
+//        SHOP · FRIENDS · SETTINGS · HOW TO PLAY
 // Offline play is only offered when the online service is not set up or cannot be reached.
 CG.UI = (() => {
   const $ = (id) => document.getElementById(id);
-  const PANELS = ['login', 'username', 'menu', 'lobby', 'select', 'party', 'shop', 'settings', 'how', 'friends', 'pause', 'over'];
+  const PANELS = ['login', 'username', 'menu', 'lobby', 'select', 'shop', 'settings', 'how', 'friends', 'pause', 'over'];
   const BEST = 'commando.best', NAME = 'commando.name', AGENT = 'commando.agent';
   let lastPlayers = null, scene = null, booted = false, offline = false, current = null;
 
@@ -32,6 +33,7 @@ CG.UI = (() => {
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const visible = (id) => !$(id).classList.contains('hidden');
   const portrait = (id) => (CG.PORTRAITS && CG.PORTRAITS[id]) || '';
+  const body = (id) => (CG.BODIES && CG.BODIES[id]) || portrait(id);
   const abIcon = (id) => (CG.ABICONS && CG.ABICONS[id]) || '';
   const N = () => CG.Net;
 
@@ -40,7 +42,6 @@ CG.UI = (() => {
     PANELS.forEach((p) => $(p).classList.toggle('hidden', p !== id));
     if (id === 'menu') renderMenu();
     if (id === 'friends') refreshFriends();
-    if (id === 'party') renderParty();
     if (id === 'shop') renderShop();
     if (id === 'settings') renderSettings();
     if (id === 'username') { const i = $('un-input'); i.value = (N().profile && N().profile.username) || ''; setTimeout(() => i.focus(), 50); }
@@ -82,17 +83,17 @@ CG.UI = (() => {
       if (net.online) home(); else renderLogin();
       return;
     }
-    if (!net.online && !offline && ['menu', 'shop', 'party', 'friends', 'settings', 'username'].includes(current)) { home(); return; }
+    if (!net.online && !offline && ['menu', 'shop', 'friends', 'settings', 'username'].includes(current)) { home(); return; }
     if (current === 'menu' && net.needsUsername) { show('username'); return; }
     if (current === 'menu') renderMenu();
     else if (current === 'friends') refreshFriends();
-    else if (current === 'party') renderParty();
     else if (current === 'shop') renderShop();
     else if (current === 'settings') renderSettings();
   }
 
-  // ---------------------------------------------------------------- home
-  let showIdx = -1;
+  // ---------------------------------------------------------------- home: the squad on stage
+  let mode = 'squad';                        // 'squad' (co-op against the army) or 'duel' (1v1)
+  let localBots = [];                        // bots in your squad while you are not in an online party
   function renderMenu() {
     const net = N(), prof = net.profile, on = net.online;
     $('menu-name').textContent = myName();
@@ -105,27 +106,108 @@ CG.UI = (() => {
     const inv = Object.keys(net.invites || {});
     $('menu-invites').innerHTML = inv.map((pid) => `<div class="invite"><span>🎖 <b>${esc(net.invites[pid].name)}</b> invited you to their squad</span>
       <button class="btn small primary" data-act="inv-accept" data-uid="${esc(pid)}">JOIN</button><button class="btn small" data-act="inv-decline" data-uid="${esc(pid)}">✕</button></div>`).join('');
-    renderShowcase();
+    renderStage();
+    if (!$('invite-pop').classList.contains('hidden')) renderInvites();
   }
-  function renderShowcase() {
-    if (showIdx < 0) showIdx = Math.max(0, CG.AGENTS.findIndex((a) => a.id === myAgent()));
-    const a = CG.AGENTS[showIdx], ab = a.ability, own = CG.Shop.hasAgent(a.id), mine = a.id === myAgent();
-    const action = !own
-      ? `<button class="btn small primary" data-act="buy-agent" data-uid="${a.id}" ${coins() < priceOf(a.id) ? 'disabled' : ''}>🔒 UNLOCK · <span class="coin"></span> ${priceOf(a.id)}</button>`
-      : `<button class="btn small ${mine ? 'on' : ''}" data-act="show-fav">${mine ? 'SELECTED' : 'MAKE MY AGENT'}</button>`;
-    $('showcase').innerHTML = `
-      <button class="btn arrow" data-act="show-prev">◀</button>
-      <div class="hero ${own ? '' : 'locked'}" style="--c:${a.color}">
-        ${portrait(a.id) ? `<img src="${portrait(a.id)}" alt="">` : ''}
-        <div class="name">${a.name}</div><div class="role">${a.role}</div>
-        <div class="fav">${mine ? '★ your agent' : own ? '' : '🔒 locked'}</div>
-      </div>
-      <div class="info" style="--c:${a.color}">
-        <div class="stat-rows"><span>HEALTH</span>${bar(a.hp / 8)}<span>SPEED</span>${bar((a.speed - 0.8) / 0.4)}</div>
-        <div class="ab">${abIcon(a.id) ? `<img src="${abIcon(a.id)}" alt="">` : ''}<div><b>${ab.name}</b><br>${ab.desc}</div></div>
-        ${action}
-      </div>
-      <button class="btn arrow" data-act="show-next">▶</button>`;
+  // everyone in the squad: online party members (in the order they came) and bots, or just you and your bots
+  function squad() {
+    const net = N(), p = net.party, list = [];
+    if (p && p.members) {
+      Object.keys(p.members).sort((a, b) => (+p.members[a].at || 0) - (+p.members[b].at || 0)).forEach((uid) => {
+        const m = p.members[uid], me = uid === net.uid;
+        list.push({ uid, me, name: me ? myName() : m.name, agent: me ? myAgent() : m.agent, leader: uid === p.leader });
+      });
+      (p.bots || []).forEach((agent, i) => list.push({ bot: true, agent, name: 'BOT ' + (i + 1), i }));
+    } else {
+      list.push({ me: true, name: myName(), agent: myAgent() });
+      localBots.forEach((agent, i) => list.push({ bot: true, agent, name: 'BOT ' + (i + 1), i }));
+    }
+    return list;
+  }
+  const humansIn = () => { const p = N().party; return p && p.members ? Object.keys(p.members).length : 1; };
+  const isLead = () => !N().party || N().isLeader;
+  function renderStage() {
+    const net = N(), p = net.party, list = squad(), lead = isLead(), max = MAX;
+    // you stand in the middle, the others alternate right and left of you
+    const mid = Math.floor(max / 2), cols = new Array(max).fill(null);
+    const me = list.find((x) => x.me), rest = list.filter((x) => !x.me);
+    [me].concat(rest).slice(0, max).forEach((x, i) => { cols[i === 0 ? mid : mid + (i % 2 ? 1 : -1) * Math.ceil(i / 2)] = x; });
+    $('stage').innerHTML = cols.map((x, col) => {
+      if (!x) {
+        return `<div class="fig empty"><div class="slot-in">
+          ${net.online && lead ? '<button class="plus" data-act="invite-open" title="Invite a friend">＋</button><small>INVITE</small>' : ''}
+          ${lead ? '<button class="btn small" data-act="squad-bot">+ BOT</button>' : ''}
+        </div><div class="pad"></div></div>`;
+      }
+      const a = CG.AGENT[x.agent] || CG.AGENTS[0];
+      return `<div class="fig ${x.me ? 'me' : ''} ${x.bot ? 'bot' : ''}" style="--c:${a.color}">
+        <div class="tag">${x.leader && humansIn() > 1 ? '👑 ' : ''}<b>${esc(x.name)}</b><small>${x.bot ? '🤖 ' : ''}${a.name}</small>
+          ${x.bot && lead ? `<button class="x" data-act="squad-unbot" data-uid="${x.i}" title="Remove bot">✕</button>` : ''}</div>
+        <div class="body ${col > mid ? 'flip' : ''}" ${x.me ? 'data-act="locker" title="Change agent"' : ''}>${body(a.id) ? `<img src="${body(a.id)}" alt="">` : ''}</div>
+        <div class="pad"></div>
+        ${x.me ? '<button class="btn small change" data-act="locker">CHANGE AGENT</button>' : ''}
+      </div>`;
+    }).join('');
+    // the dock: mode, PLAY, FIND PLAYERS
+    const humans = humansIn(), queued = !!(p && p.state === 'queue');
+    document.querySelectorAll('[data-act="mode"]').forEach((b) => b.classList.toggle('on', b.dataset.uid === mode));
+    $('home-mode').classList.toggle('hidden', !lead);
+    const play = $('play-main');
+    play.disabled = !lead || queued || (mode === 'duel' && humans > 2);
+    play.textContent = !lead ? 'LEADER STARTS' : queued ? 'SEARCHING…' : mode === 'duel' && humans > 2 ? 'DUEL IS 1v1' : humans > 1 ? 'START MATCH' : 'PLAY';
+    const find = $('find-btn');
+    find.classList.toggle('hidden', !net.online || !lead || (mode === 'duel' && humans > 1));
+    find.textContent = queued ? 'CANCEL SEARCH' : mode === 'duel' ? 'FIND A DUEL' : 'FIND PLAYERS';
+    $('leave-btn').classList.toggle('hidden', !(p && humans > 1));
+    $('party-status').textContent = queued ? 'Looking for other players… (starts on its own after 30 s)'
+      : humans > 1 ? (lead ? 'Squad of ' + humans + ' — start when ready' : 'Waiting for the leader to start')
+        : mode === 'duel' ? 'Alone you fight a bot · find a duel to fight a real player' : 'Add bots, invite friends or find players';
+  }
+  // the bots you set up alone go with you into a new online party
+  function takeLocalBots() { const b = localBots.length ? localBots.slice() : null; localBots = []; return b; }
+  function freeAgent(used) {
+    const free = CG.AGENTS.filter((a) => !used.includes(a.id));
+    return (free.length ? free[Math.floor(Math.random() * free.length)] : CG.AGENTS[Math.floor(Math.random() * CG.AGENTS.length)]).id;
+  }
+  function addSquadBot() {
+    const p = N().party, list = squad();
+    if (list.length >= MAX) return;
+    const agent = freeAgent(list.map((x) => x.agent));
+    if (p) run(() => N().setBots((p.bots || []).concat([agent])), '', 'party-msg');
+    else { localBots.push(agent); renderStage(); }
+  }
+  function removeSquadBot(i) {
+    const p = N().party;
+    if (p) { const bots = (p.bots || []).slice(); bots.splice(+i, 1); run(() => N().setBots(bots), '', 'party-msg'); }
+    else { localBots.splice(+i, 1); renderStage(); }
+  }
+  function playMain() {
+    const net = N(), p = net.party;
+    if (!isLead()) return;
+    if (humansIn() > 1) { run(() => net.startMatch(null, mode), '', 'party-msg'); return; }
+    // alone: a game on this device with your bots (a duel: against a bot)
+    const me = { device: { type: 'any' }, agent: myAgent(), name: myName() };
+    const bots = (p ? p.bots || [] : localBots).slice();
+    const bot = (agent, i) => ({ device: { type: 'bot' }, agent, name: 'BOT ' + (i + 1), bot: true });
+    play(mode === 'duel' ? [me, bot(bots[0] || freeAgent([me.agent]), 0)] : [me].concat(bots.map(bot)));
+  }
+  async function findPlayers() {
+    const net = N();
+    if (net.party && net.party.state === 'queue') return CG.Queue.cancel();
+    if (mode === 'duel') localBots = [];
+    await net.createParty();
+    if (mode === 'duel' && net.party && net.party.bots) { await net.setBots([]); net.party.bots = null; }
+    return CG.Queue.join(mode);
+  }
+  function renderInvites() {
+    const net = N(), p = net.party, inParty = (p && p.members) || {};
+    const fr = Object.keys(net.friends).filter((f) => !inParty[f])
+      .sort((a, b) => (net.friends[b].online ? 1 : 0) - (net.friends[a].online ? 1 : 0));
+    $('party-friends').innerHTML = fr.length ? fr.map((uid) => {
+      const f = net.friends[uid];
+      return `<div class="item"><span class="dot ${f.online ? 'on' : ''}"></span><span class="grow">${esc(f.username || f.name)}</span>
+        <button class="btn small" data-act="party-invite" data-uid="${esc(uid)}" ${f.online ? '' : 'disabled'}>INVITE</button></div>`;
+    }).join('') : '<i>Add friends first (FRIENDS on the left)</i>';
   }
 
   const running = () => booted && CG.game.scene.isActive('Game');
@@ -142,7 +224,6 @@ CG.UI = (() => {
     CG.Touch.show(touch);
     if (touch && CG.Touch.enabled && !document.fullscreenElement) landscape();
   }
-  let mode = 'squad';                        // local games: 'squad' (co-op against the army) or 'duel' (1v1)
   function play(players) {
     if (!booted) return;
     lastPlayers = players;
@@ -170,7 +251,7 @@ CG.UI = (() => {
     CG.game.scene.stop('Game');
     if (!CG.game.scene.isActive('Backdrop')) CG.game.scene.start('Backdrop');
     CG.Touch.show(false);
-    if (N().partyId) show('party'); else home();
+    home();
   }
   function gameOver(score, stage, opts) {
     opts = opts || {};
@@ -208,9 +289,32 @@ CG.UI = (() => {
   };
   let joined = [], padPrev = {}, botN = 0;
 
+  const humanAgents = (except) => joined.filter((d) => d !== except && d.type !== 'bot').map((d) => d.agent);
   function join(id, type, index) {
     if (joined.length >= MAX || joined.some((d) => d.id === id)) return;
-    joined.push({ id, type, index });
+    const d = { id, type, index };
+    if (type === 'bot') d.agent = freeAgent(joined.map((q) => q.agent));
+    else {
+      // the first person keeps the locker agent; the others get the next agent nobody has
+      const first = !joined.some((q) => q.type !== 'bot');
+      d.agent = first ? myAgent() : (CG.AGENTS.find((a) => CG.Shop.hasAgent(a.id) && !humanAgents().includes(a.id)) || CG.AGENTS[0]).id;
+    }
+    joined.push(d);
+    renderLobby();
+  }
+  // left / right: the next agent this person owns that no other person has (bots give way at the start)
+  function cycle(d, dir) {
+    if (!d || d.type === 'bot') return;
+    const taken = humanAgents(d), n = CG.AGENTS.length;
+    let i = CG.AGENTS.findIndex((a) => a.id === d.agent);
+    for (let k = 0; k < n; k++) {
+      i = (i + dir + n) % n;
+      const a = CG.AGENTS[i];
+      if (CG.Shop.hasAgent(a.id) && !taken.includes(a.id)) break;
+    }
+    d.agent = CG.AGENTS[i].id;
+    if (joined.find((q) => q.type !== 'bot') === d) { store.set(AGENT, d.agent); N().setAgent(d.agent); }
+    CG.Sfx.play('pickup');
     renderLobby();
   }
   function leave(id) { joined = joined.filter((d) => d.id !== id); renderLobby(); }
@@ -218,9 +322,15 @@ CG.UI = (() => {
     let html = '';
     for (let i = 0; i < MAX; i++) {
       const d = joined[i];
+      const a = d && CG.AGENT[d.agent];
       html += d
-        ? `<div class="slot" style="--c:${CG.PLAYER_COLORS[i]}"><b>P${i + 1}</b><span class="grow">${d.type === 'bot' ? '🤖 ' : ''}${esc(d.type === 'pad' ? LABEL.pad(d.index) : LABEL[d.type])}</span><button class="btn small" data-act="leave" data-uid="${esc(d.id)}">✕</button></div>`
-        : `<div class="slot empty"><b>P${i + 1}</b><span class="grow">Press FIRE to join</span></div>`;
+        ? `<div class="lfig" style="--c:${CG.PLAYER_COLORS[i]};--ac:${a.color}">
+            <div class="lhead"><b>P${i + 1}</b><button class="btn small x" data-act="leave" data-uid="${esc(d.id)}" title="Leave">✕</button></div>
+            <div class="body">${body(a.id) ? `<img src="${body(a.id)}" alt="">` : ''}</div>
+            <div class="lname">${d.type === 'bot' ? '🤖 ' : ''}${a.name}</div>
+            ${d.type === 'bot' ? '<div class="arrows"></div>' : `<div class="arrows"><button class="btn small" data-act="lob-prev" data-uid="${esc(d.id)}">◀</button><button class="btn small" data-act="lob-next" data-uid="${esc(d.id)}">▶</button></div>`}
+            <small>${esc(d.type === 'pad' ? LABEL.pad(d.index) : LABEL[d.type])}</small></div>`
+        : `<div class="lfig empty"><b>P${i + 1}</b><span>Press FIRE to join</span></div>`;
     }
     $('lobby-slots').innerHTML = html;
     const humans = joined.filter((d) => d.type !== 'bot').length;
@@ -229,7 +339,7 @@ CG.UI = (() => {
       : 'Everyone press their FIRE button to join · B adds a bot';
     const tooMany = mode === 'duel' && joined.length > 2;
     $('lobby-start').disabled = humans === 0 || tooMany;
-    $('lobby-start').textContent = tooMany ? 'A DUEL IS TWO PLAYERS' : humans ? 'CHOOSE AGENTS ▸' : 'WAITING FOR PLAYERS';
+    $('lobby-start').textContent = tooMany ? 'A DUEL IS TWO PLAYERS' : humans ? 'START ▸' : 'WAITING FOR PLAYERS';
     $('lobby-touch').classList.toggle('hidden', !CG.Touch.enabled || joined.some((d) => d.id === 'touch'));
     $('lobby-bot').disabled = joined.length >= MAX;
   }
@@ -252,67 +362,58 @@ CG.UI = (() => {
       }).catch(() => {});
     } catch (e) { /* not supported here */ }
   }
-  function toSelect() {
+  function startLocal() {
     if (!joined.some((d) => d.type !== 'bot')) return;
     if (mode === 'duel') {
       if (joined.length > 2) return;
-      if (joined.length === 1) { botN++; joined.push({ id: 'bot' + botN, type: 'bot' }); }      // alone: fight a bot
+      if (joined.length === 1) addBot();                                                 // alone: fight a bot
     }
-    const devices = joined.map((d) => ({ id: d.id, type: d.type, index: d.index }));
+    // bots never take an agent a person has
+    joined.filter((d) => d.type === 'bot' && humanAgents().includes(d.agent)).forEach((d) => { d.agent = freeAgent(joined.map((q) => q.agent)); });
     // a lone keyboard player gets both key layouts and the mouse
-    const kb = devices.filter((d) => d.type === 'kbA' || d.type === 'kbB');
-    if (kb.length === 1) kb[0].type = 'kbAll';
-    openSelect(devices);
+    const kb = joined.filter((d) => d.type === 'kbA' || d.type === 'kbB');
+    let human = 0;
+    play(joined.map((d, i) => {
+      const bot = d.type === 'bot';
+      return { device: { type: kb.length === 1 && kb[0] === d ? 'kbAll' : d.type, index: d.index }, agent: d.agent, bot,
+        name: bot ? 'BOT ' + (i + 1) : human++ === 0 ? myName() : 'P' + (i + 1) };
+    }));
   }
   const KEY_JOIN = {
     KeyF: 'kbA', KeyG: 'kbA', KeyW: 'kbA', KeyA: 'kbA', KeyS: 'kbA', KeyD: 'kbA',
     KeyK: 'kbB', KeyL: 'kbB', ArrowLeft: 'kbB', ArrowRight: 'kbB', ArrowUp: 'kbB', ArrowDown: 'kbB',
   };
   const KEY_ANY = ['KeyX', 'KeyZ', 'KeyJ', 'Space'];          // single-player keys: take the first free keyboard seat
+  const CYCLE = { KeyA: ['kbA', -1], KeyD: ['kbA', 1], ArrowLeft: ['kbB', -1], ArrowRight: ['kbB', 1] };
   function lobbyKey(e) {
-    if (e.code === 'Enter') { toSelect(); return; }
+    if (e.code === 'Enter') { startLocal(); return; }
     if (e.code === 'Escape') { home(); return; }
     if (e.code === 'KeyB') { addBot(); return; }
+    const cy = CYCLE[e.code], who = cy && joined.find((d) => d.id === cy[0]);
+    if (who) { cycle(who, cy[1]); e.preventDefault(); return; }
     let seat = KEY_JOIN[e.code];
     if (!seat && KEY_ANY.includes(e.code)) seat = joined.some((d) => d.id === 'kbA') ? 'kbB' : 'kbA';
     if (seat) { join(seat, seat); e.preventDefault(); }
   }
   function addBot() { if (joined.length < MAX) { botN++; join('bot' + botN, 'bot'); } }
 
-  // ---------------------------------------------------------------- choose agents (each agent once)
-  let picks = [];
-  function openSelect(devices) {
-    let human = 0;
-    const firstFree = (from) => {
-      for (let k = 0; k < CG.AGENTS.length; k++) {
-        const i = (from + k) % CG.AGENTS.length;
-        if (CG.Shop.hasAgent(CG.AGENTS[i].id)) return i;
-      }
-      return 0;
-    };
-    picks = devices.map((d, i) => ({
-      device: { type: d.type, index: d.index }, bot: d.type === 'bot', locked: false, agent: null,
-      cursor: d.type === 'bot' ? 0 : (human++ === 0 ? CG.AGENTS.findIndex((a) => a.id === myAgent()) : firstFree(human * 2)),
-      name: d.type === 'bot' ? 'BOT ' + (i + 1) : i === 0 ? myName() : 'P' + (i + 1),
-    }));
-    renderSelect();
+  // ---------------------------------------------------------------- the locker: choose your agent once, used in every match
+  let lookAt = 0;
+  function openLocker() {
+    lookAt = Math.max(0, CG.AGENTS.findIndex((a) => a.id === myAgent()));
+    renderLocker();
     show('select');
   }
-  const taken = (id, except) => picks.some((p) => p !== except && p.locked && p.agent === id);
-  const chooser = () => picks.find((p) => !p.bot && !p.locked);
-  function renderSelect() {
-    const focus = chooser() || picks[0], looking = CG.AGENTS[focus.cursor], ab = looking.ability;
-    const own = CG.Shop.hasAgent(looking.id), isTaken = taken(looking.id, focus);
+  function renderLocker() {
+    const looking = CG.AGENTS[lookAt], ab = looking.ability, own = CG.Shop.hasAgent(looking.id), mine = looking.id === myAgent();
     let action;
-    if (!chooser()) action = '<div class="sel-wait">ALL LOCKED IN — DEPLOYING…</div>';
-    else if (!own) action = `<button class="btn primary big-btn" data-act="buy-agent" data-uid="${looking.id}" ${coins() < priceOf(looking.id) ? 'disabled' : ''}>🔒 UNLOCK FOR <span class="coin"></span> ${priceOf(looking.id)}</button>
+    if (!own) action = `<button class="btn primary big-btn" data-act="buy-agent" data-uid="${looking.id}" ${coins() < priceOf(looking.id) ? 'disabled' : ''}>🔒 UNLOCK FOR <span class="coin"></span> ${priceOf(looking.id)}</button>
       <div class="sel-note">${coins() < priceOf(looking.id) ? 'You have ' + coins() + ' coins — keep playing to earn more' : 'Buy once, play forever'}</div>`;
-    else if (isTaken) action = `<button class="btn primary big-btn" disabled>TAKEN BY A TEAMMATE</button>`;
-    else action = `<button class="btn primary big-btn" data-act="lock">LOCK IN ${looking.name}</button>
-      <div class="sel-note">${esc(focus.name)} is choosing</div>`;
+    else if (mine) action = '<button class="btn primary big-btn" disabled>✔ EQUIPPED</button><div class="sel-note">You play as ' + looking.name + ' in every match</div>';
+    else action = `<button class="btn primary big-btn" data-act="lock">EQUIP ${looking.name}</button><div class="sel-note">You keep it for every match</div>`;
     $('sel-main').innerHTML = `
       <div class="sel-hero ${own ? '' : 'locked'}" style="--c:${looking.color}">
-        ${portrait(looking.id) ? `<img src="${portrait(looking.id)}" alt="">` : ''}
+        ${body(looking.id) ? `<img src="${body(looking.id)}" alt="">` : ''}
         ${own ? '' : '<div class="lock-badge">🔒</div>'}
       </div>
       <div class="sel-info" style="--c:${looking.color}">
@@ -322,63 +423,37 @@ CG.UI = (() => {
         <div class="sel-ab">${abIcon(looking.id) ? `<img src="${abIcon(looking.id)}" alt="">` : ''}<div><small>ABILITY</small><b>${ab.name}</b><p>${ab.desc}</p></div></div>
         ${action}
       </div>`;
-    $('agent-cards').innerHTML = CG.AGENTS.map((a, i) => {
-      const who = picks.filter((p) => !p.bot && (p.locked ? p.agent === a.id : p.cursor === i));
-      const has = CG.Shop.hasAgent(a.id), gone = taken(a.id, focus);
-      return `<button class="tile ${looking === a ? 'look' : ''} ${has ? '' : 'locked'} ${gone ? 'taken' : ''}" data-act="pick" data-uid="${a.id}" style="--c:${a.color}">
+    $('agent-cards').innerHTML = CG.AGENTS.map((a) => {
+      const has = CG.Shop.hasAgent(a.id);
+      return `<button class="tile ${looking === a ? 'look' : ''} ${has ? '' : 'locked'}" data-act="pick" data-uid="${a.id}" style="--c:${a.color}">
         ${portrait(a.id) ? `<img src="${portrait(a.id)}" alt="">` : ''}
         <b>${a.name}</b>
         ${has ? '' : `<span class="price"><span class="coin"></span>${priceOf(a.id)}</span>`}
-        <span class="marks">${who.map((p) => `<i style="background:${CG.PLAYER_COLORS[picks.indexOf(p)]}" title="${esc(p.name)}">${p.locked ? '✔' : ''}</i>`).join('')}</span>
+        <span class="marks">${a.id === myAgent() ? '<i style="background:var(--acc)">✔</i>' : ''}</span>
       </button>`;
     }).join('');
-    $('select-slots').innerHTML = picks.map((p, i) => `<div class="pick ${p.locked ? 'done' : ''}" style="--c:${CG.PLAYER_COLORS[i]}">
-      <b>${esc(p.name)}</b><span>${p.locked ? CG.AGENT[p.agent].name : p.bot ? 'bot' : '…'}</span></div>`).join('');
+    $('select-slots').innerHTML = '';
   }
-  function moveCursor(p, d) {
-    if (!p || p.locked) return;
-    p.cursor = (p.cursor + d + CG.AGENTS.length) % CG.AGENTS.length;
-    renderSelect();
-  }
-  function lockIn(p, id) {
-    if (!p || p.locked) return;
-    id = id || CG.AGENTS[p.cursor].id;
+  function look(d) { lookAt = (lookAt + d + CG.AGENTS.length) % CG.AGENTS.length; renderLocker(); }
+  function equip(id) {
+    id = id || CG.AGENTS[lookAt].id;
     if (!CG.Shop.hasAgent(id)) { toast(CG.AGENT[id].name + ' is locked — unlock it first'); return; }
-    if (taken(id, p)) { toast(CG.AGENT[id].name + ' is already taken'); return; }
-    p.agent = id; p.locked = true;
-    p.cursor = CG.AGENTS.findIndex((a) => a.id === id);
-    if (picks.indexOf(p) === 0) store.set(AGENT, id);
+    store.set(AGENT, id);
+    N().setAgent(id);
     CG.Sfx.play('pickup');
-    renderSelect();
-    if (picks.every((q) => q.bot || q.locked)) {
-      picks.filter((q) => q.bot).forEach((q) => {                       // bots take what is left (any agent)
-        const free = CG.AGENTS.filter((a) => !taken(a.id, q));
-        q.agent = (free[Math.floor(Math.random() * free.length)] || CG.AGENTS[0]).id;
-        q.locked = true;
-      });
-      renderSelect();
-      setTimeout(() => {
-        if (!visible('select')) return;
-        play(picks.map((q) => ({ device: q.device, agent: q.agent, name: q.name, bot: q.bot })));
-      }, 900);
-    }
+    toast(CG.AGENT[id].name + ' equipped');
+    show('menu');
   }
-  function unlock(p) { if (p && p.locked && !p.bot) { p.locked = false; renderSelect(); } }
-  const pickFor = (types) => picks.find((p) => types.includes(p.device.type));
   function selectKey(e) {
     const c = e.code;
-    if (c === 'Escape') { openLobby(); return; }
-    const A = pickFor(['kbA']), B = pickFor(['kbB']), all = pickFor(['kbAll']);
-    const left = { KeyA: A || all, ArrowLeft: B || all }, right = { KeyD: A || all, ArrowRight: B || all };
-    if (left[c]) { moveCursor(left[c], -1); return; }
-    if (right[c]) { moveCursor(right[c], 1); return; }
-    const lock = { KeyF: A || all, KeyK: B || all, Enter: all || A || B, Space: all, KeyX: all, KeyJ: all, KeyZ: all };
-    if (lock[c]) { lockIn(lock[c]); e.preventDefault(); return; }
-    const back = { KeyG: A, KeyL: B, Backspace: all || A || B };
-    if (back[c]) unlock(back[c]);
+    if (c === 'Escape' || c === 'Backspace') { home(); return; }
+    if (c === 'ArrowLeft' || c === 'KeyA') { look(-1); return; }
+    if (c === 'ArrowRight' || c === 'KeyD') { look(1); return; }
+    if (['Enter', 'Space', 'KeyF', 'KeyX', 'KeyJ', 'KeyZ'].includes(c)) { equip(); e.preventDefault(); }
   }
 
-  // gamepads: in the lobby A or X joins, B leaves, Y adds a bot, Start begins; in agent select left/right, A locks, B unlocks
+  // gamepads: in the lobby A or X joins, B leaves, Y adds a bot, left/right change agent, Start begins;
+  // in the locker left/right look, A equips, B goes back
   setInterval(() => {
     if (!navigator.getGamepads || !(visible('lobby') || visible('select'))) return;
     for (const gp of navigator.getGamepads()) {
@@ -386,70 +461,24 @@ CG.UI = (() => {
       const ax = gp.axes[0] || 0;
       const now = gp.buttons.map((b) => b.pressed).concat([ax < -0.5, ax > 0.5]), was = padPrev[gp.index] || [];
       const hit = (i) => now[i] && !was[i];
+      const L = gp.buttons.length;
       if (visible('lobby')) {
+        const d = joined.find((q) => q.id === 'pad' + gp.index);
         if (hit(0) || hit(2)) join('pad' + gp.index, 'pad', gp.index);
         if (hit(1)) leave('pad' + gp.index);
         if (hit(3)) addBot();
-        if (hit(9)) toSelect();
+        if (hit(14) || hit(L)) cycle(d, -1);
+        if (hit(15) || hit(L + 1)) cycle(d, 1);
+        if (hit(9)) startLocal();
       } else {
-        const p = picks.find((q) => q.device.type === 'pad' && q.device.index === gp.index);
-        const L = gp.buttons.length;
-        if (hit(14) || hit(L)) moveCursor(p, -1);
-        if (hit(15) || hit(L + 1)) moveCursor(p, 1);
-        if (hit(0)) lockIn(p);
-        if (hit(1)) unlock(p);
+        if (hit(14) || hit(L)) look(-1);
+        if (hit(15) || hit(L + 1)) look(1);
+        if (hit(0)) equip();
+        if (hit(1)) home();
       }
       padPrev[gp.index] = now;
     }
   }, 50);
-
-  // ---------------------------------------------------------------- online squad
-  async function openParty() {
-    if (!N().online) { toast('Sign in to play online'); return; }
-    show('party');
-    try { await N().createParty(); } catch (e) { $('party-msg').textContent = e.message; }
-    renderParty();
-  }
-  function renderParty() {
-    const net = N(), p = net.party;
-    if (!p) { $('party-members').innerHTML = '<i>Making a squad…</i>'; return; }
-    const lead = net.isLeader, members = Object.keys(p.members || {}).sort((a, b) => (p.members[a].at || 0) - (p.members[b].at || 0));
-    let html = members.map((uid, i) => {
-      const m = p.members[uid], ag = CG.AGENT[m.agent] || CG.AGENTS[0];
-      return `<div class="slot" style="--c:${CG.PLAYER_COLORS[i % 5]}">
-        ${portrait(ag.id) ? `<img class="face" src="${portrait(ag.id)}" alt="">` : ''}
-        <span class="grow">${uid === p.leader ? '👑 ' : ''}<b class="nm">${esc(m.name)}</b> · ${ag.name}${uid === net.uid ? ' (you)' : ''}</span></div>`;
-    }).join('');
-    (p.bots || []).forEach((agent, i) => {
-      html += `<div class="slot" style="--c:#8a998a"><span class="grow">🤖 BOT · ${(CG.AGENT[agent] || CG.AGENTS[0]).name}</span>
-        ${lead ? `<button class="btn small" data-act="party-unbot" data-uid="${i}">✕</button>` : ''}</div>`;
-    });
-    if (lead && net.partySize() < net.MAX) html += '<button class="btn small" data-act="party-bot">+ ADD BOT</button>';
-    $('party-members').innerHTML = html;
-    const mine = (p.members[net.uid] && p.members[net.uid].agent) || myAgent();
-    $('party-agents').innerHTML = CG.AGENTS.map((a) => {
-      const has = CG.Shop.hasAgent(a.id);
-      return `<button class="mini ${a.id === mine ? 'on' : ''} ${has ? '' : 'locked'}" data-act="${has ? 'party-agent' : 'shop-agents'}" data-uid="${a.id}" style="--c:${a.color}" title="${has ? a.ability.name + ': ' + esc(a.ability.desc) : 'Locked — unlock it in the shop'}">
-      ${portrait(a.id) ? `<img src="${portrait(a.id)}" alt="">` : ''}<span>${has ? a.name : '🔒 ' + a.name}</span></button>`;
-    }).join('');
-    const queued = p.state === 'queue';
-    $('party-start').classList.toggle('hidden', !lead || queued);
-    $('party-queue').classList.toggle('hidden', !lead);
-    $('party-queue').textContent = queued ? 'CANCEL SEARCH' : 'FIND PLAYERS';
-    const humansIn = Object.keys(p.members || {}).length;
-    $('party-duel').classList.toggle('hidden', !lead || queued || humansIn !== 2);
-    $('party-duel-queue').classList.toggle('hidden', !lead || humansIn !== 1 || (queued && p.queueMode !== 'duel'));
-    $('party-duel-queue').textContent = queued && p.queueMode === 'duel' ? 'CANCEL DUEL SEARCH' : '⚔ FIND A DUEL';
-    $('party-status').textContent = queued ? 'Looking for other players… (starts on its own after 30 s)'
-      : lead ? 'Invite friends, then start — or find other players to team up with' : 'Waiting for the leader to start';
-    const fr = Object.keys(net.friends).filter((f) => !(p.members || {})[f])
-      .sort((a, b) => (net.friends[b].online ? 1 : 0) - (net.friends[a].online ? 1 : 0));
-    $('party-friends').innerHTML = fr.length ? fr.map((uid) => {
-      const f = net.friends[uid];
-      return `<div class="item"><span class="dot ${f.online ? 'on' : ''}"></span><span class="grow">${esc(f.username || f.name)}</span>
-        <button class="btn small" data-act="party-invite" data-uid="${esc(uid)}" ${f.online ? '' : 'disabled'}>INVITE</button></div>`;
-    }).join('') : '<i>Add friends first (FRIENDS on the home screen)</i>';
-  }
 
   // ---------------------------------------------------------------- shop
   let shopTab = 'agents';
@@ -540,7 +569,15 @@ CG.UI = (() => {
     'un-change': () => { $('un-cancel').classList.remove('hidden'); show('username'); },
     'un-cancel': () => show('settings'),
     lobby: openLobby,
-    party: openParty,
+    locker: openLocker,
+    'play-main': playMain,
+    find: () => run(findPlayers, '', 'party-msg'),
+    'squad-bot': addSquadBot,
+    'squad-unbot': removeSquadBot,
+    'invite-open': () => { renderInvites(); $('invite-pop').classList.remove('hidden'); },
+    'invite-close': () => $('invite-pop').classList.add('hidden'),
+    'lob-prev': (id) => cycle(joined.find((d) => d.id === id), -1),
+    'lob-next': (id) => cycle(joined.find((d) => d.id === id), 1),
     shop: () => show('shop'),
     settings: () => show('settings'),
     buy: (id) => { const it = CG.Shop.items().find((x) => x.id === id); if (it) run(() => N().buy(it).then(() => { CG.Sfx.play('pickup'); renderShop(); }), it.name + ' bought!', 'shop-msg'); },
@@ -548,9 +585,6 @@ CG.UI = (() => {
     'touch-style': (v) => { CG.Touch.opts.style = v; CG.Touch.save(); renderSettings(); },
     'touch-size': (v) => { CG.Touch.opts.size = +v; CG.Touch.save(); renderSettings(); },
     'touch-auto': () => { CG.Touch.opts.autofire = !CG.Touch.opts.autofire; CG.Touch.save(); CG.Touch.syncButtons(); renderSettings(); },
-    'show-prev': () => { showIdx = (showIdx + CG.AGENTS.length - 1) % CG.AGENTS.length; renderShowcase(); },
-    'show-next': () => { showIdx = (showIdx + 1) % CG.AGENTS.length; renderShowcase(); },
-    'show-fav': () => { const id = CG.AGENTS[showIdx].id; if (!CG.Shop.hasAgent(id)) return; store.set(AGENT, id); N().setAgent(id); renderShowcase(); },
     'shop-tab': (t) => { shopTab = t; renderShop(); },
     'shop-agents': () => { shopTab = 'agents'; show('shop'); },
     // unlock an agent from wherever its button is (home, agent select, shop)
@@ -561,25 +595,23 @@ CG.UI = (() => {
       run(() => N().buy(it).then(() => {
         CG.Sfx.play('ability');
         toast(CG.AGENT[id].name + ' unlocked!');
-        if (visible('select')) renderSelect();
+        if (visible('select')) renderLocker();
         if (visible('shop')) renderShop();
-        if (visible('menu')) renderShowcase();
+        if (visible('menu')) renderMenu();
       }), '', where);
     },
-    lock: () => lockIn(chooser()),
+    lock: () => equip(),
     landscape,
-    start: toSelect,
+    start: startLocal,
     leave: (id) => leave(id),
     'add-bot': addBot,
     'join-touch': () => join('touch', 'touch'),
-    // tapping a tile looks at that agent; the big button locks it in (tap the same tile again to lock too)
+    // tapping a tile looks at that agent; the big button equips it (tap the same tile again to equip too)
     pick: (id) => {
-      const p = picks.find((q) => !q.bot && !q.locked && (q.device.type === 'touch' || q.device.type === 'kbAll')) || chooser();
-      if (!p) return;
       const i = CG.AGENTS.findIndex((a) => a.id === id);
-      if (p.cursor === i && CG.Shop.hasAgent(id)) { lockIn(p, id); return; }
-      p.cursor = i;
-      renderSelect();
+      if (lookAt === i && CG.Shop.hasAgent(id)) { equip(id); return; }
+      lookAt = i;
+      renderLocker();
     },
     friends: () => show('friends'),
     how: () => show('how'),
@@ -588,23 +620,11 @@ CG.UI = (() => {
     admin: () => { resume(); CG.Admin.open(); },
     'admin-close': () => CG.Admin.close(),
     retry: () => (lastPlayers ? play(lastPlayers) : toMenu()),
-    'inv-accept': (pid) => run(() => N().acceptInvite(pid).then(() => show('party')), ''),
+    'inv-accept': (pid) => run(() => N().acceptInvite(pid).then(() => home()), ''),
     'inv-decline': (pid) => run(() => N().declineInvite(pid), ''),
-    'party-agent': (id) => { store.set(AGENT, id); N().setAgent(id); renderParty(); },
-    'party-invite': (uid) => run(() => N().invite(uid), 'Invite sent', visible('party') ? 'party-msg' : 'fr-msg'),
-    'party-start': () => run(() => N().startMatch(), '', 'party-msg'),
-    'party-duel': () => run(() => N().startMatch(null, 'duel'), '', 'party-msg'),
-    'party-duel-queue': () => run(() => (N().party && N().party.state === 'queue' ? CG.Queue.cancel() : CG.Queue.join('duel')), '', 'party-msg'),
-    mode: (m) => { mode = m; renderLobby(); },
-    'party-queue': () => run(() => (N().party && N().party.state === 'queue' ? CG.Queue.cancel() : CG.Queue.join()), '', 'party-msg'),
+    'party-invite': (uid) => run(() => N().invite(uid), 'Invite sent', visible('menu') ? 'party-msg' : 'fr-msg'),
+    mode: (m) => { mode = m; if (visible('lobby')) renderLobby(); else renderStage(); },
     'party-leave': () => run(() => N().leaveParty().then(() => home()), ''),
-    'party-bot': () => {
-      const p = N().party, bots = (p.bots || []).slice(), used = Object.values(p.members).map((m) => m.agent).concat(bots);
-      const free = CG.AGENTS.filter((a) => !used.includes(a.id));
-      bots.push((free[0] || CG.AGENTS[bots.length % CG.AGENTS.length]).id);
-      run(() => N().setBots(bots), '', 'party-msg');
-    },
-    'party-unbot': (i) => { const bots = (N().party.bots || []).slice(); bots.splice(+i, 1); run(() => N().setBots(bots), '', 'party-msg'); },
     'fr-copy': () => run(() => navigator.clipboard.writeText(N().profile.code), 'Code copied', 'fr-msg'),
     'fr-send': () => run(() => N().sendRequest($('fr-add').value).then(() => { $('fr-add').value = ''; }), 'Request sent', 'fr-msg'),
     'fr-accept': (uid) => run(() => N().accept(uid), 'Friend added', 'fr-msg'),
@@ -618,15 +638,14 @@ CG.UI = (() => {
   });
   document.addEventListener('mouseover', (e) => {          // hovering a card shows that agent's details
     const c = e.target.closest('#agent-cards .tile');
-    if (!c) return;
-    const p = picks.find((q) => !q.bot && !q.locked);
-    if (p) { const i = CG.AGENTS.findIndex((a) => a.id === c.dataset.uid); if (i !== p.cursor) { p.cursor = i; renderSelect(); } }
+    if (!c || CG.Touch.enabled) return;
+    const i = CG.AGENTS.findIndex((a) => a.id === c.dataset.uid);
+    if (i !== lookAt) { lookAt = i; renderLocker(); }
   });
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT') { if (e.code === 'Enter' && visible('username')) ACTIONS['un-save'](); return; }
     if (visible('lobby')) { lobbyKey(e); return; }
     if (visible('select')) { selectKey(e); return; }
-    if (visible('menu') && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) { ACTIONS[e.code === 'ArrowLeft' ? 'show-prev' : 'show-next'](); return; }
     if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
       if (visible('pause')) resume(); else if (running()) pause();
     }
@@ -641,6 +660,6 @@ CG.UI = (() => {
     },
     onGameStart(s) { scene = s; },
     localDevice() { return { type: 'any' }; },
-    gameOver, matchEnded, refreshFriends, netChanged, loginMessage, localBest, localName, myAgent, myName, show, toast, play, playOnline,
+    gameOver, matchEnded, refreshFriends, netChanged, loginMessage, localBest, localName, myAgent, myName, show, toast, play, playOnline, takeLocalBots,
   };
 })();

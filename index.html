@@ -27,6 +27,7 @@
     <button data-act="google" id="google-btn" class="btn google"><span class="g">G</span> CONTINUE WITH GOOGLE</button>
     <div id="login-msg" class="msg"></div>
     <button data-act="offline" id="offline-btn" class="btn ghost hidden">PLAY OFFLINE</button>
+    <button class="btn ghost install-btn hidden" data-act="install">⬇ INSTALL THE APP</button>
     <p class="fine">You need a Google account to play. Your progress, coins and friends are saved to it.</p>
   </div>
 </div>
@@ -47,7 +48,17 @@
 <div id="menu" class="overlay home hidden">
   <header class="topbar">
     <div class="logo small">COMMANDO</div>
+    <nav class="topnav">
+      <button class="on" data-act="menu">PLAY</button>
+      <button data-act="locker">LOCKER</button>
+      <button data-act="lobby">LOCAL CO-OP</button>
+      <button data-act="shop" class="online-only">SHOP</button>
+      <button data-act="friends" class="online-only">FRIENDS</button>
+      <button data-act="how">HOW TO PLAY</button>
+      <button data-act="settings">SETTINGS</button>
+    </nav>
     <div class="chips">
+      <button class="chip install-btn hidden" data-act="install" title="Install COMMANDO as an app">⬇ INSTALL APP</button>
       <div class="chip coins" title="Coins"><span class="coin"></span><b id="menu-coins">0</b></div>
       <button class="chip profile" data-act="settings" title="Settings">
         <img id="menu-photo" class="avatar hidden" alt=""><span id="menu-name">Soldier</span><i class="gear">⚙</i>
@@ -55,19 +66,30 @@
     </div>
   </header>
   <div class="home-body">
-    <nav class="nav">
-      <button data-act="lobby" class="nav-btn primary"><b>PLAY</b><small>this device · 1–5 players + bots</small></button>
-      <button data-act="party" class="nav-btn online-only"><b>PLAY ONLINE</b><small>party · invite · find players</small></button>
-      <button data-act="shop" class="nav-btn online-only"><b>SHOP</b><small>perks and gear for coins</small></button>
-      <button data-act="friends" class="nav-btn online-only"><b>FRIENDS</b><small>codes · requests · invites</small></button>
-      <div class="nav-row">
-        <button data-act="how" class="nav-btn small">HOW TO PLAY</button>
-        <button data-act="settings" class="nav-btn small">SETTINGS</button>
-      </div>
+    <!-- your squad standing together: you in the middle, everyone else either side -->
+    <section class="stage" id="stage"></section>
+    <div class="play-dock">
       <div id="menu-invites" class="invites"></div>
       <div class="best-line">Best score <b id="menu-best">0</b></div>
-    </nav>
-    <section class="showcase" id="showcase"></section>
+      <div class="seg mode-seg" id="home-mode">
+        <button class="btn small on" data-act="mode" data-uid="squad">🛡 SQUAD vs ARMY</button>
+        <button class="btn small" data-act="mode" data-uid="duel">⚔ 1v1 DUEL</button>
+      </div>
+      <div id="party-status" class="dock-status"></div>
+      <button data-act="play-main" id="play-main" class="btn primary play-big">PLAY</button>
+      <div class="dock-row">
+        <button data-act="find" id="find-btn" class="btn">FIND PLAYERS</button>
+        <button data-act="party-leave" id="leave-btn" class="btn ghost hidden">LEAVE SQUAD</button>
+      </div>
+      <div id="party-msg" class="msg"></div>
+    </div>
+  </div>
+  <div id="invite-pop" class="pop hidden">
+    <div class="pop-card">
+      <h3>INVITE FRIENDS</h3>
+      <div id="party-friends" class="list"></div>
+      <button data-act="invite-close" class="btn ghost small">CLOSE</button>
+    </div>
   </div>
 </div>
 
@@ -80,10 +102,10 @@
       <button class="btn small" data-act="mode" data-uid="duel">⚔ 1v1 DUEL</button>
     </div>
     <p class="sub center" id="lobby-sub">Everyone press their FIRE button to join · B adds a bot</p>
-    <div id="lobby-slots" class="slots"></div>
+    <div id="lobby-slots" class="lineup"></div>
     <p class="hint" id="lobby-hint">
-      Keyboard 1: <b>F</b> (W A S D, G jump, H ability) · Keyboard 2: <b>K</b> (arrows, L jump, O ability) ·
-      Gamepad: <b>A</b> or <b>X</b>. Alone on a keyboard? You get both layouts.
+      Join — Keyboard 1: <b>F</b> · Keyboard 2: <b>K</b> · Gamepad: <b>A</b>. Change agent — <b>A / D</b>, <b>← / →</b> or the D-pad.
+      Alone on a keyboard? You get both layouts.
     </p>
     <div class="row center-row">
       <button data-act="join-touch" id="lobby-touch" class="btn hidden">JOIN ON THIS SCREEN</button>
@@ -99,39 +121,13 @@
 <!-- ============ agent select ============ -->
 <div id="select" class="overlay select-screen hidden">
   <div class="sel-top">
-    <button data-act="lobby" class="btn ghost small">◀ BACK</button>
-    <h2>CHOOSE YOUR AGENT</h2>
+    <button data-act="menu" class="btn ghost small">◀ BACK</button>
+    <h2>LOCKER</h2>
     <div id="select-slots" class="picks"></div>
   </div>
   <div id="sel-main" class="sel-main"></div>
   <div id="agent-cards" class="sel-tiles"></div>
-  <p class="sub center sel-hint">Left / right to look · FIRE to lock in · tap a card, tap again to lock</p>
-</div>
-
-<!-- ============ online party ============ -->
-<div id="party" class="overlay hidden">
-  <div class="card wide">
-    <h2>SQUAD</h2>
-    <p class="sub center" id="party-status">Invite friends, then start or find players</p>
-    <div id="party-members" class="slots"></div>
-    <h3>Your agent</h3>
-    <div id="party-agents" class="mini-cards"></div>
-    <div class="row center-row">
-      <button data-act="party-start" id="party-start" class="btn primary">START MATCH</button>
-      <button data-act="party-queue" id="party-queue" class="btn primary">FIND PLAYERS</button>
-    </div>
-    <div class="row center-row">
-      <button data-act="party-duel" id="party-duel" class="btn">⚔ DUEL YOUR FRIEND</button>
-      <button data-act="party-duel-queue" id="party-duel-queue" class="btn">⚔ FIND A DUEL</button>
-    </div>
-    <div id="party-msg" class="msg"></div>
-    <h3>Invite friends</h3>
-    <div id="party-friends" class="list"></div>
-    <div class="row center-row">
-      <button data-act="menu" class="btn ghost">BACK</button>
-      <button data-act="party-leave" class="btn ghost">LEAVE SQUAD</button>
-    </div>
-  </div>
+  <p class="sub center sel-hint">Left / right to look · Enter to equip · tap a card, tap it again to equip · you keep it for every match</p>
 </div>
 
 <!-- ============ shop ============ -->
@@ -276,6 +272,7 @@
 <script src="src/online.js"></script>
 <script src="src/admin.js"></script>
 <script src="src/ui.js"></script>
+<script src="src/pwa.js"></script>
 <script src="src/main.js"></script>
 </body>
 </html>

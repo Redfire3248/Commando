@@ -269,7 +269,9 @@ CG.Net = {
   async createParty() {
     if (this.partyId) return this.partyId;
     const ref = this.db.ref('parties').push();
-    await ref.set({ leader: this.uid, state: 'lobby', members: { [this.uid]: this.me() } });
+    const first = { leader: this.uid, state: 'lobby', members: { [this.uid]: this.me() }, bots: CG.UI.takeLocalBots() };
+    await ref.set(first);
+    this.party = first;                              // until the database answers
     await this.db.ref('users/' + this.uid + '/party').set(ref.key);
     this.watchParty(ref.key);
     return ref.key;
