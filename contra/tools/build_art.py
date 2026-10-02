@@ -645,6 +645,10 @@ def build_idle():
         out.append(len(proj))
         return out
     def own_pixels(piece):
+        # the image tool leaves an almost invisible haze (alpha under ~1/5) around every pose; it shows up as a box as
+        # soon as an outline or shadow is drawn around the figure, so those pixels are cleared
+        piece = piece.copy()
+        piece[piece[..., 3] < 48] = 0
         # a cut can carry a sliver of the neighbouring pose (a few pixels of its rifle, or its faint glow) along the
         # left / right edge; keep the pose itself (and anything floating inside the frame, like a thrown grenade) and
         # drop the small bits that touch a side

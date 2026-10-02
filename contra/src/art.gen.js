@@ -1641,7 +1641,7 @@ CG.DATA.art = {
   },
   "nova": {
    "path": "assets/atlas/idle_nova.png",
-   "fw": 198,
+   "fw": 197,
    "fh": 392,
    "bh": 392,
    "n": 4,
@@ -1650,16 +1650,16 @@ CG.DATA.art = {
   "kite": {
    "path": "assets/atlas/idle_kite.png",
    "fw": 178,
-   "fh": 335,
-   "bh": 335,
+   "fh": 334,
+   "bh": 334,
    "n": 4,
    "loop": 4
   },
   "brick": {
    "path": "assets/atlas/idle_brick.png",
-   "fw": 234,
-   "fh": 364,
-   "bh": 364,
+   "fw": 236,
+   "fh": 363,
+   "bh": 363,
    "n": 4,
    "loop": 4
   },
@@ -1714,8 +1714,8 @@ CG.DATA.art = {
   "duke": {
    "path": "assets/atlas/idle_duke.png",
    "fw": 239,
-   "fh": 386,
-   "bh": 386,
+   "fh": 385,
+   "bh": 385,
    "n": 4,
    "loop": 4
   }
