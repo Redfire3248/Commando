@@ -865,6 +865,7 @@
     stageClear() {
       if (this.cleared || this.isClient) return;
       this.cleared = true;
+      CG.UI.storyCleared(((this.cfg.stage - 1) % CG.DATA.levels.length) + 1);     // the COMMAND home screen shows it
       this.time.delayedCall(0, () => {             // after the physics step that killed the core has finished
         this.enemies.getChildren().slice().forEach((e) => { if (e.active) { this.boom(e.x, e.y - 40, 16); e.destroy(); } });
         this.ebullets.children.iterate((b) => { if (b && b.active) this.kill(b); });

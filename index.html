@@ -49,12 +49,12 @@
   <header class="topbar">
     <div class="logo small">COMMANDO</div>
     <nav class="topnav">
-      <button class="on" data-act="menu">PLAY</button>
-      <button data-act="locker">LOCKER</button>
-      <button data-act="lobby">LOCAL CO-OP</button>
-      <button data-act="shop" class="online-only">SHOP</button>
-      <button data-act="friends" class="online-only">FRIENDS</button>
-      <button data-act="settings">SETTINGS</button>
+      <button class="on" data-act="menu"><span>PLAY</span></button>
+      <button data-act="locker"><span>LOCKER</span></button>
+      <button data-act="lobby"><span>LOCAL CO-OP</span></button>
+      <button data-act="shop" class="online-only"><span>SHOP</span></button>
+      <button data-act="friends" class="online-only"><span>FRIENDS</span></button>
+      <button data-act="settings"><span>SETTINGS</span></button>
     </nav>
     <div class="chips">
       <button class="chip install-btn hidden" data-act="install" title="Install COMMANDO as an app">⬇ INSTALL APP</button>
@@ -68,6 +68,7 @@
     <!-- your squad standing together: you in the middle, everyone else either side -->
     <section class="stage" id="stage"></section>
     <div class="play-dock">
+      <div id="dock-extra"></div>
       <div id="menu-invites" class="invites"></div>
       <div class="best-line">Best score <b id="menu-best">0</b></div>
       <button id="mode-card" class="mode-card" data-act="mode-open" title="Change mode">
@@ -88,6 +89,19 @@
       <div id="party-friends" class="list"></div>
       <button data-act="invite-close" class="btn ghost small">CLOSE</button>
     </div>
+  </div>
+</div>
+
+<!-- ============ duels: the VS screen before the fight ============ -->
+<div id="versus" class="overlay vs-screen hidden">
+  <div class="vs-half a"><div class="vs-team">ALPHA</div><div id="vs-a" class="vs-line"></div></div>
+  <div class="vs-half b"><div class="vs-team">BRAVO</div><div id="vs-b" class="vs-line"></div></div>
+  <div class="vs-badge">VS</div>
+  <div class="vs-top" id="vs-top"></div>
+  <div class="vs-btns">
+    <button data-act="vs-switch" id="vs-switch" class="btn">SWITCH TEAM</button>
+    <button data-act="vs-ready" class="btn vs-ready">READY</button>
+    <button data-act="vs-leave" class="btn">LEAVE</button>
   </div>
 </div>
 
@@ -159,6 +173,8 @@
     <h2>SETTINGS</h2>
     <div class="set-row"><span>Callsign</span><b id="set-name">—</b><button data-act="un-change" class="btn small online-only">CHANGE</button></div>
     <div class="set-row"><span>Sound</span><button data-act="sound" id="sound-btn" class="btn small">ON</button></div>
+    <div class="set-row"><span>Home screen</span>
+      <div class="seg"><button data-act="lobby-style" data-uid="a" class="btn small">LINEUP</button><button data-act="lobby-style" data-uid="b" class="btn small">CARDS</button><button data-act="lobby-style" data-uid="c" class="btn small">COMMAND</button></div></div>
     <h3>Touch controls</h3>
     <div class="set-row"><span>Movement</span>
       <div class="seg"><button data-act="touch-style" data-uid="stick" class="btn small">JOYSTICK</button><button data-act="touch-style" data-uid="dpad" class="btn small">D-PAD</button></div></div>

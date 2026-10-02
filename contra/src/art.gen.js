@@ -1569,6 +1569,57 @@ CG.DATA.art = {
    "cv50_37"
   ]
  },
+ "idle": {
+  "nova": {
+   "path": "assets/atlas/idle_nova.png",
+   "fw": 328,
+   "fh": 492,
+   "n": 10,
+   "loop": 3
+  },
+  "volt": {
+   "path": "assets/atlas/idle_volt.png",
+   "fw": 336,
+   "fh": 488,
+   "n": 10,
+   "loop": 3
+  },
+  "ghost": {
+   "path": "assets/atlas/idle_ghost.png",
+   "fw": 375,
+   "fh": 545,
+   "n": 9,
+   "loop": 3
+  },
+  "viper": {
+   "path": "assets/atlas/idle_viper.png",
+   "fw": 415,
+   "fh": 530,
+   "n": 10,
+   "loop": 3
+  },
+  "atlas": {
+   "path": "assets/atlas/idle_atlas.png",
+   "fw": 498,
+   "fh": 528,
+   "n": 10,
+   "loop": 3
+  },
+  "jax": {
+   "path": "assets/atlas/idle_jax.png",
+   "fw": 402,
+   "fh": 528,
+   "n": 10,
+   "loop": 3
+  },
+  "duke": {
+   "path": "assets/atlas/idle_duke.png",
+   "fw": 415,
+   "fh": 495,
+   "n": 10,
+   "loop": 3
+  }
+ },
  "ui": {
   "fire": "assets/atlas/ui_fire.png",
   "jump": "assets/atlas/ui_jump.png",

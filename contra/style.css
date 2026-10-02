@@ -671,3 +671,147 @@ input:focus { border-color: var(--acc); }
 #b-pause.ico-btn::before { content: ""; position: absolute; inset: 24%; background: var(--ico) center / contain no-repeat; image-rendering: pixelated; }
 .mode-card b .ico { width: .9em; height: .9em; }
 .best-line .ico { width: 1.2em; height: 1.2em; }
+
+/* ---------- home layouts: B = CARDS, C = COMMAND (A = the lineup above) ---------- */
+#dock-extra:empty { display: none; }
+.lobby-b .stage { flex-direction: column; align-items: stretch; justify-content: flex-end; gap: 14px; padding: 0 1vw 2vh; }
+.cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1.2vw; align-items: end; }
+.cslot { --ch: min(52vh, 27vw); height: var(--ch); position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px;
+  padding: 10px 6px 12px; box-sizing: border-box; border: 2px solid var(--c); text-align: center;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(8, 10, 13, .92) 62%); }
+.cslot.me { height: calc(var(--ch) * 1.1); border-width: 3px; box-shadow: 0 0 26px -6px var(--c); }
+.cslot .cs-art { flex: 1; min-height: 0; width: 100%; display: flex; align-items: flex-end; justify-content: center; cursor: pointer; }
+.cslot .cs-art > img { height: 100%; width: 100%; object-fit: contain; object-position: 50% 100%; image-rendering: pixelated; }
+.cslot .cs-art .idle { height: 100%; }
+.cslot b { font: 400 20px var(--head); letter-spacing: .03em; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cslot small { font-size: 12px; letter-spacing: .16em; color: var(--c); font-weight: 700; }
+.cslot .btn { font-size: 12px; padding: 5px 10px; }
+.cslot .crown { position: absolute; top: 8px; left: 8px; }
+.cslot .x { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; padding: 0; font-size: 12px; line-height: 22px; border-radius: 50%; clip-path: none; border: none; background: #c0392b; color: #fff; }
+.cslot.empty { border: 2px dashed rgba(255, 255, 255, .22); background: rgba(8, 10, 13, .6); justify-content: center; gap: 8px; }
+.cslot.empty .plus { width: 60px; height: 60px; padding: 0; border-radius: 50%; clip-path: none; border: 2px solid rgba(255, 255, 255, .35); background: rgba(0, 0, 0, .5); font-size: 28px; }
+.cslot.empty .plus .ico { width: 55%; height: 55%; margin: 0; }
+.cslot.empty small { color: var(--dim); }
+
+.lobby-c .stage { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); gap: 2vw; align-items: stretch; padding: 1vh 0 2vh; }
+.dossier, .roster { background: rgba(6, 9, 12, .86); border: 1px solid var(--line); padding: 14px; display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: auto; }
+.kick { font-size: 11px; letter-spacing: .3em; color: var(--acc2); font-weight: 700; }
+.dossier h4 { margin: 0; font: 400 26px var(--head); }
+.dossier p { margin: 0; font-size: 14px; color: var(--dim); line-height: 1.35; }
+.st-list { display: flex; flex-direction: column; gap: 5px; }
+.st-row { display: flex; justify-content: space-between; gap: 8px; padding: 6px 10px; font-weight: 700; font-size: 14px; color: #8a968c;
+  background: rgba(255, 255, 255, .05); border-left: 3px solid rgba(255, 255, 255, .2); }
+.st-row.done { background: rgba(92, 255, 138, .12); border-left-color: #5cff8a; color: var(--text); }
+.st-row.done span:last-child { color: #5cff8a; }
+.st-row.next { background: rgba(255, 154, 60, .22); border-left-color: var(--acc); color: var(--text); }
+.st-row.next span:last-child { color: var(--acc2); }
+.dossier .btn { margin-top: auto; display: flex; align-items: center; justify-content: center; }
+.cmd-hero { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; text-align: center; }
+.cmd-hero .nm { font: 400 clamp(30px, 7vh, 58px) var(--head); color: var(--c); line-height: 1; text-shadow: 0 4px 0 rgba(0, 0, 0, .6); }
+.cmd-hero .role { letter-spacing: .24em; font-size: 13px; color: #cfd9cc; font-weight: 700; }
+.cmd-hero .body { height: min(44vh, 24vw); display: flex; align-items: flex-end; justify-content: center; cursor: pointer; }
+.cmd-hero .body > img { height: 100%; width: auto; image-rendering: pixelated; filter: drop-shadow(0 12px 16px rgba(0, 0, 0, .7)); }
+.cmd-hero .body .idle { height: 100%; }
+.cmd-hero .pad { width: min(320px, 60%); height: 26px; margin-top: -18px; border-radius: 50%; background: radial-gradient(ellipse at center, var(--c), transparent 70%); }
+.lobby-c .play-dock { justify-content: flex-end; }
+.roster { flex: 1; }
+.roster .row-m { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
+.roster .row-m .grow { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.roster .row-m .ico { width: 20px; height: 20px; margin: 0; display: inline-block; }
+.roster .row-m .swap { cursor: pointer; text-decoration: underline dotted; }
+.roster .row-m .x { width: 20px; height: 20px; padding: 0; font-size: 11px; border-radius: 50%; clip-path: none; border: none; background: #c0392b; color: #fff; }
+.roster .row-btns { display: flex; gap: 6px; }
+.roster .row-btns .btn { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+.roster .slot-in { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+
+/* ---------- the VS screen before a duel ---------- */
+.overlay.vs-screen { display: block; padding: 0; background: #05070a; overflow: hidden; }
+.vs-half { position: absolute; top: 0; bottom: 0; width: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh; }
+.vs-half.a { left: 0; background: linear-gradient(135deg, #0d2a4d, #06101c); }
+.vs-half.b { right: 0; background: linear-gradient(225deg, #4d0d0d, #1c0606); }
+.vs-team { font: 400 clamp(30px, 8vh, 64px) var(--head); letter-spacing: .05em; }
+.vs-half.a .vs-team { color: #4da6ff; } .vs-half.b .vs-team { color: #ff5a4f; }
+.vs-line { display: flex; align-items: flex-end; gap: 2vw; }
+.vs-fig { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; animation: vsIn .4s ease-out both; }
+.vs-fig .body { height: min(34vh, 12vw); display: flex; align-items: flex-end; justify-content: center; }
+.vs-fig .body > img { height: 100%; width: auto; image-rendering: pixelated; filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .7)); }
+.vs-fig .body .idle { height: 100%; }
+.vs-fig.flip .body { transform: scaleX(-1); }
+.vs-fig b { font: 400 clamp(14px, 3vh, 22px) var(--head); }
+.vs-fig small { font-size: 12px; letter-spacing: .2em; font-weight: 700; color: var(--c); }
+@keyframes vsIn { from { opacity: 0; transform: translateY(30px); } }
+.vs-badge { position: absolute; left: 50%; top: 46%; width: 18vh; height: 18vh; margin: -9vh 0 0 -9vh; border-radius: 50%; background: #0a0d10; border: 4px solid #ffd23c;
+  display: flex; align-items: center; justify-content: center; font: 400 8vh var(--head); color: #ffd23c; box-shadow: 0 0 40px rgba(255, 210, 60, .35); animation: vsPop .5s ease-out; }
+@keyframes vsPop { from { transform: scale(2.4); opacity: 0; } }
+.vs-top { position: absolute; top: 3vh; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 8px 20px; white-space: nowrap;
+  background: rgba(0, 0, 0, .6); border: 1px solid var(--line); font-weight: 700; letter-spacing: .18em; font-size: clamp(11px, 2.2vh, 16px); }
+.vs-btns { position: absolute; bottom: 4vh; left: 0; right: 0; display: flex; justify-content: center; align-items: stretch; gap: 12px; }
+.vs-btns .vs-ready { font: 400 clamp(22px, 5vh, 36px) var(--head); padding: 10px 60px; color: #1a0f04; border: none;
+  background: linear-gradient(180deg, #ffd86a, #ff9a3c 60%, #e2711c); }
+
+@media (max-height: 560px), (max-width: 760px) {
+  .cslot b { font-size: 13px; } .cslot small { font-size: 9px; letter-spacing: .08em; } .cslot .btn { font-size: 10px; padding: 3px 6px; }
+  .lobby-c .stage { grid-template-columns: minmax(150px, 200px) minmax(0, 1fr); }
+  .dossier, .roster { padding: 8px; gap: 5px; } .dossier h4 { font-size: 16px; } .dossier p { display: none; }
+  .st-row { font-size: 10px; padding: 3px 6px; } .roster .row-m { font-size: 12px; }
+  .cmd-hero .role { font-size: 9px; letter-spacing: .1em; }
+  /* the phone layout (E): tabs show only their icons */
+  .ui-icons .topnav button .ico + span { display: none; }
+  .ui-icons .topnav button .ico { width: 22px; height: 22px; margin: 0; }
+  .vs-btns .vs-ready { padding: 6px 30px; }
+}
+
+/* behind the menus the jungle scene fills the whole window (the game canvas is letterboxed to 16:9) and pans slowly */
+body:not(.playing) #game { background: #07090b url(assets/atlas/bg15_1.png) 0 50% / auto 100% repeat-x; image-rendering: pixelated; animation: bgPan 160s linear infinite; }
+body:not(.playing) #game canvas { visibility: hidden; }
+@keyframes bgPan { to { background-position: -300vh 50%; } }
+
+/* ---------- motion: entrances, idle shimmer, hover ---------- */
+@keyframes riseIn { from { opacity: 0; transform: translateY(40px); } }
+@keyframes dropIn { from { opacity: 0; transform: translateY(-24px); } }
+@keyframes slideL { from { opacity: 0; transform: translateX(-60px); } }
+@keyframes slideR { from { opacity: 0; transform: translateX(60px); } }
+@keyframes fadeIn { from { opacity: 0; } }
+@keyframes shine { 0%, 62% { transform: translateX(-120%) skewX(-20deg); } 100% { transform: translateX(220%) skewX(-20deg); } }
+@keyframes padPulse { 50% { opacity: .45; transform: scaleX(.92); } }
+@keyframes glowPulse { 50% { box-shadow: 0 0 26px 2px rgba(255, 170, 60, .55), inset 0 -5px 0 rgba(0, 0, 0, .25); } }
+/* the squad (lineup and cards) rises in one after another, nametags drop on top */
+.enter .fig, .enter .cslot { animation: riseIn .55s cubic-bezier(.2, .8, .2, 1) both; }
+.enter .fig:nth-child(2), .enter .cslot:nth-child(2) { animation-delay: .08s; }
+.enter .fig:nth-child(3), .enter .cslot:nth-child(3) { animation-delay: .16s; }
+.enter .fig:nth-child(4), .enter .cslot:nth-child(4) { animation-delay: .24s; }
+.enter .fig:nth-child(5), .enter .cslot:nth-child(5) { animation-delay: .32s; }
+.enter .fig .tag { animation: dropIn .45s .45s ease-out both; }
+.enter .topbar { animation: dropIn .4s ease-out both; }
+.enter .play-dock { animation: slideR .5s .15s cubic-bezier(.2, .8, .2, 1) both; }
+.enter .dossier { animation: slideL .5s .1s cubic-bezier(.2, .8, .2, 1) both; }
+.enter .cmd-hero { animation: riseIn .6s .2s cubic-bezier(.2, .8, .2, 1) both; }
+/* PLAY: a light sweep every few seconds and a soft glow */
+.play-big { position: relative; overflow: hidden; animation: glowPulse 2.4s ease-in-out infinite; transition: transform .12s; }
+.play-big::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .55), transparent);
+  animation: shine 3.2s ease-in-out infinite; pointer-events: none; }
+.play-big:hover:not([disabled]) { transform: scale(1.03); }
+.play-big:active:not([disabled]) { transform: scale(.97); }
+.play-big[disabled] { animation: none; } .play-big[disabled]::after { display: none; }
+/* tabs: the underline grows in, hover lifts */
+.topnav button { transition: color .15s, transform .15s, border-color .25s; }
+.topnav button:hover { transform: translateY(-2px); }
+.topnav button.on { animation: fadeIn .3s; }
+/* pads breathe; the mode card and cards lift on hover */
+.fig:not(.me) .pad { animation: padPulse 2.6s ease-in-out infinite; }
+.mode-card { transition: transform .15s, filter .15s; }
+.mode-card:hover:not([disabled]) { transform: translateX(-4px); }
+.cslot { transition: transform .18s, box-shadow .18s; }
+.cslot:hover { transform: translateY(-6px); box-shadow: 0 10px 30px -8px var(--c, #fff); }
+.cslot.me:hover { transform: translateY(-6px); }
+.fig .body { transition: transform .2s; }
+.fig.me .body:hover { transform: translateY(-4px); }
+/* VS screen: the teams slide in from their sides */
+.enter .vs-half.a { animation: slideL .5s cubic-bezier(.2, .8, .2, 1) both; }
+.enter .vs-half.b { animation: slideR .5s cubic-bezier(.2, .8, .2, 1) both; }
+.enter .vs-badge { animation: vsPop .5s .35s ease-out both; }
+.vs-fig:nth-child(2) { animation-delay: .1s; } .vs-fig:nth-child(3) { animation-delay: .2s; }
+/* locker: the hero slides in, tiles rise */
+.enter .sel-main { animation: fadeIn .4s ease-out both; }
+.enter .sel-tiles .tile { animation: riseIn .4s ease-out both; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; } }

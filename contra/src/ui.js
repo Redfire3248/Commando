@@ -7,7 +7,7 @@
 // Offline play is only offered when the online service is not set up or cannot be reached.
 CG.UI = (() => {
   const $ = (id) => document.getElementById(id);
-  const PANELS = ['login', 'username', 'menu', 'lobby', 'select', 'shop', 'settings', 'friends', 'pause', 'over'];
+  const PANELS = ['login', 'username', 'menu', 'lobby', 'select', 'versus', 'shop', 'settings', 'friends', 'pause', 'over'];
   const BEST = 'commando.best', NAME = 'commando.name', AGENT = 'commando.agent';
   let lastPlayers = null, scene = null, booted = false, offline = false, current = null;
 
@@ -73,9 +73,20 @@ CG.UI = (() => {
   const abIcon = (id) => (CG.ABICONS && CG.ABICONS[id]) || '';
   const N = () => CG.Net;
 
+  let enterT = null;
   function show(id) {
+    const fresh = id && id !== current;
     current = id;
     PANELS.forEach((p) => $(p).classList.toggle('hidden', p !== id));
+    // a screen that just opened plays its entrance (figures rise in one after another, panels slide in)
+    if (fresh) {
+      const el = $(id);
+      el.classList.remove('enter');
+      void el.offsetWidth;
+      el.classList.add('enter');
+      clearTimeout(enterT);
+      enterT = setTimeout(() => el.classList.remove('enter'), 1400);
+    }
     if (id === 'menu') renderMenu();
     if (id === 'friends') refreshFriends();
     if (id === 'shop') renderShop();
@@ -135,7 +146,11 @@ CG.UI = (() => {
   let custom = loadJson(CUSTOM, CG.Modes.CUSTOM);
   const pvp = () => CG.Modes.isPvp(mode);
   let localBots = [];                        // bots in your squad while you are not in an online party (jax / duke)
-  let botPick = -1;                          // the empty place showing the JAX / DUKE choice
+  let botPick = -1;                          // the empty place showing the JAX / DUKE choice (99 = the roster panel)
+  // the home screen's layout (Settings): a = LINEUP (squad on stage), b = CARDS, c = COMMAND (dossier, agent, roster)
+  const LOBBY = 'commando.lobby', STORY = 'commando.story';
+  let lobbyStyle = store.get(LOBBY, 'a');
+  const storyCleared = () => parseInt(store.get(STORY, '0'), 10) || 0;
   function renderMenu() {
     const net = N(), prof = net.profile, on = net.online;
     $('menu-name').textContent = myName();
@@ -153,7 +168,7 @@ CG.UI = (() => {
     // tab icons (ui_icons.png) once it is in
     const U = CG.DATA.art && CG.DATA.art.ui;
     if (U) document.querySelectorAll('.topnav button').forEach((b) => {
-      const name = { locker: 'locker', shop: 'shop', friends: 'friends', menu: 'story' }[b.dataset.act];
+      const name = { locker: 'locker', shop: 'shop', friends: 'friends', menu: 'story', settings: 'custom' }[b.dataset.act];
       if (name && U[name] && !b.querySelector('.ico')) b.insertAdjacentHTML('afterbegin', ico(name));
     });
   }
@@ -180,25 +195,78 @@ CG.UI = (() => {
     const mid = Math.floor(max / 2), cols = new Array(max).fill(null);
     const me = list.find((x) => x.me), rest = list.filter((x) => !x.me);
     [me].concat(rest).slice(0, max).forEach((x, i) => { cols[i === 0 ? mid : mid + (i % 2 ? 1 : -1) * Math.ceil(i / 2)] = x; });
-    $('stage').innerHTML = cols.map((x, col) => {
-      if (!x) {
-        const choose = botPick === col;
-        return `<div class="fig empty ${choose ? 'picking' : ''}"><div class="slot-in">
-          ${choose ? `<small>BOT AGENT</small><div class="bot-pick">${CG.Modes.BOT_AGENTS.map((id) => `<button data-act="squad-bot-as" data-uid="${id}" style="--c:${CG.AGENT[id].color}">
-              ${portrait(id) ? `<img src="${portrait(id)}" alt="">` : ''}<span>${CG.AGENT[id].name}</span></button>`).join('')}</div>
-              <button class="btn small ghost" data-act="squad-bot-cancel">CANCEL</button>`
-            : `${net.online && lead ? `<button class="plus" data-act="invite-open" title="Invite a friend">${ico('invite', '＋')}</button><small>INVITE</small>` : ''}
-          ${lead ? `<button class="btn small" data-act="squad-bot" data-uid="${col}">+ BOT</button>` : ''}`}
-        </div><div class="pad"></div></div>`;
+    // an empty place: INVITE / + BOT, or the JAX / DUKE choice after + BOT
+    const emptyInner = (col) => (botPick === col
+      ? `<small>BOT AGENT</small><div class="bot-pick">${CG.Modes.BOT_AGENTS.map((id) => `<button data-act="squad-bot-as" data-uid="${id}" style="--c:${CG.AGENT[id].color}">
+          ${portrait(id) ? `<img src="${portrait(id)}" alt="">` : ''}<span>${CG.AGENT[id].name}</span></button>`).join('')}</div>
+          <button class="btn small ghost" data-act="squad-bot-cancel">CANCEL</button>`
+      : `${net.online && lead ? `<button class="plus" data-act="invite-open" title="Invite a friend">${ico('invite', '＋')}</button><small>INVITE</small>` : ''}
+          ${lead ? `<button class="btn small" data-act="squad-bot" data-uid="${col}">+ BOT</button>` : ''}`);
+    const clickFig = (x) => (x.me ? 'data-act="locker" title="Change agent"' : '');
+    const removeBot = (x) => (x.bot && lead ? `<button class="x" data-act="squad-unbot" data-uid="${x.i}" title="Remove bot">✕</button>` : '');
+    const crown = (x) => (x.leader && humansIn() > 1 ? ico('crown', '👑 ') : '');
+    ['a', 'b', 'c'].forEach((k) => $('menu').classList.toggle('lobby-' + k, lobbyStyle === k));
+    if (lobbyStyle === 'b') {
+      // CARDS: everyone in a tall card
+      $('stage').innerHTML = `<div class="cards">${cols.map((x, col) => {
+          if (!x) return `<div class="cslot empty ${botPick === col ? 'picking' : ''}">${emptyInner(col)}</div>`;
+          const a = CG.AGENT[x.agent] || CG.AGENTS[0];
+          return `<div class="cslot ${x.me ? 'me' : ''}" style="--c:${a.color}">
+            ${x.leader && humansIn() > 1 ? `<span class="crown">${ico('crown', '👑')}</span>` : ''}${removeBot(x)}
+            <div class="cs-art" ${clickFig(x)}>${figure(a.id)}</div>
+            <b>${esc(x.name)}</b><small>${x.bot ? ico('bot', '') : ''}${a.name}${x.me ? ' · ' + a.role.toUpperCase() : ''}</small>
+            ${x.me ? `<button class="btn small" data-act="locker">${ico('locker')}LOCKER</button>` : ''}
+          </div>`;
+        }).join('')}</div>`;
+    } else if (lobbyStyle === 'c') {
+      // COMMAND: the mission dossier, your agent big in the middle; the roster sits in the dock
+      const a = CG.AGENT[me.agent] || CG.AGENTS[0], cleared = storyCleared(), set = CG.Modes.settings(mode);
+      let brief;
+      if (mode.kind === 'story') {
+        brief = `<p>Eight stages against the army, from the jungle to the alien lair.</p><div class="st-list">${CG.STORY.map((st, i) => {
+          const k = i < cleared ? 'done' : i === cleared ? 'next' : '';
+          return `<div class="st-row ${k}"><span>${i + 1} · ${st.name}</span><span>${k === 'done' ? 'CLEARED' : k === 'next' ? 'NEXT' : ''}</span></div>`;
+        }).join('')}</div>`;
+      } else {
+        const sz = CG.Modes.sizes(mode), A = mode.kind === 'custom' ? (CG.DATA.arenas[set.arena] || CG.DATA.arenas[0]).name.replace('ARENA · ', '') : 'Random arena';
+        brief = `<p>Wipe out the other team to take the round. Everyone comes back at full health.</p><div class="st-list">
+          <div class="st-row next"><span>TEAMS</span><span>${sz[0]} v ${sz[1]}</span></div>
+          <div class="st-row"><span>MAP</span><span>${A}</span></div>
+          <div class="st-row"><span>FIRST TO</span><span>${set.rounds}</span></div>
+          <div class="st-row"><span>POWER-UPS</span><span>${set.drops ? 'ON' : 'OFF'}</span></div></div>`;
       }
-      const a = CG.AGENT[x.agent] || CG.AGENTS[0];
-      return `<div class="fig ${x.me ? 'me' : ''} ${x.bot ? 'bot' : ''}" style="--c:${a.color}">
-        <div class="tag">${x.leader && humansIn() > 1 ? ico('crown', '👑 ') : ''}<b>${esc(x.name)}</b><small>${x.bot ? ico('bot', '🤖 ') : ''}${a.name}</small>
-          ${x.bot && lead ? `<button class="x" data-act="squad-unbot" data-uid="${x.i}" title="Remove bot">✕</button>` : ''}</div>
-        <div class="body ${col > mid ? 'flip' : ''}" ${x.me ? 'data-act="locker" title="Change agent"' : x.bot && lead ? `data-act="bot-swap" data-uid="${x.i}" title="Swap JAX / DUKE"` : ''}>${figure(a.id)}</div>
-        ${x.me ? '<div class="pad ring" data-act="locker"><svg viewBox="0 0 100 30" preserveAspectRatio="none"><ellipse cx="50" cy="15" rx="48" ry="13"/></svg></div><div class="change-hint">CHANGE AGENT</div>' : '<div class="pad"></div>'}
-      </div>`;
-    }).join('');
+      $('stage').innerHTML = `<div class="dossier"><div class="kick">MISSION DOSSIER</div><h4>${ico(mode.kind === 'story' ? 'story' : mode.kind)}${CG.Modes.label(mode)}</h4>${brief}
+          <button class="btn small" data-act="mode-open" ${lead ? '' : 'disabled'}>${ico('custom')}CHANGE MODE</button></div>
+        <div class="cmd-hero" style="--c:${a.color}"><div class="kick">YOUR AGENT</div><div class="nm">${a.name}</div>
+          <div class="role">${a.role.toUpperCase()} · ${a.ability.name.toUpperCase()}</div>
+          <div class="body" data-act="locker" title="Change agent">${figure(a.id)}</div><div class="pad"></div>
+          <button class="btn small" data-act="locker">${ico('locker')}OPEN LOCKER</button></div>`;
+    } else {
+      $('stage').innerHTML = cols.map((x, col) => {
+        if (!x) return `<div class="fig empty ${botPick === col ? 'picking' : ''}"><div class="slot-in">${emptyInner(col)}</div><div class="pad"></div></div>`;
+        const a = CG.AGENT[x.agent] || CG.AGENTS[0];
+        return `<div class="fig ${x.me ? 'me' : ''} ${x.bot ? 'bot' : ''}" style="--c:${a.color}">
+          <div class="tag">${crown(x)}<b>${esc(x.name)}</b><small>${x.bot ? ico('bot', '🤖 ') : ''}${a.name}</small>${removeBot(x)}</div>
+          <div class="body ${col > mid ? 'flip' : ''}" ${clickFig(x)}>${figure(a.id)}</div>
+          ${x.me ? '<div class="pad ring" data-act="locker"><svg viewBox="0 0 100 30" preserveAspectRatio="none"><ellipse cx="50" cy="15" rx="48" ry="13"/></svg></div><div class="change-hint">CHANGE AGENT</div>' : '<div class="pad"></div>'}
+        </div>`;
+      }).join('');
+    }
+    // COMMAND's roster panel (in the dock): who is in the squad, invite / + bot, friends online
+    let extra = '';
+    if (lobbyStyle === 'c') {
+      const fr = Object.keys(net.friends || {}).filter((f) => net.friends[f].online && !((p && p.members) || {})[f]).slice(0, 4);
+      extra = `<div class="roster"><div class="kick">SQUAD · ${list.length} / ${max}</div>
+        ${list.map((x) => { const a = CG.AGENT[x.agent] || CG.AGENTS[0];
+          return `<div class="row-m">${x.bot ? ico('bot', '') : crown(x) || '<span class="ico"></span>'}<span class="grow">${esc(x.name)}</span>
+            <span style="color:${a.color}">${a.name}</span>${removeBot(x)}</div>`; }).join('')}
+        ${botPick === 99 ? `<div class="slot-in">${emptyInner(99)}</div>` : list.length < max && lead ? `<div class="row-btns">
+          ${net.online ? `<button class="btn small" data-act="invite-open">${ico('invite')}INVITE</button>` : ''}
+          <button class="btn small" data-act="squad-bot" data-uid="99">+ BOT</button></div>` : ''}
+        ${fr.length ? `<div class="kick">FRIENDS ONLINE</div>${fr.map((uid) => `<div class="row-m"><span class="grow">${esc(net.friends[uid].username || net.friends[uid].name)}</span>
+          <button class="btn small" data-act="party-invite" data-uid="${esc(uid)}">INVITE</button></div>`).join('')}` : ''}</div>`;
+    }
+    $('dock-extra').innerHTML = extra;
     // the dock: mode, PLAY, FIND PLAYERS
     const humans = humansIn(), queued = !!(p && p.state === 'queue'), tooMany = humans > CG.Modes.capacity(mode);
     $('mode-name').innerHTML = ico(mode.kind === 'story' ? 'story' : mode.kind === 'duels' ? 'duels' : 'custom') + CG.Modes.label(mode);
@@ -260,20 +328,13 @@ CG.UI = (() => {
   }
   // the bots you set up alone go with you into a new online party
   function takeLocalBots() { const b = localBots.length ? localBots.slice() : null; localBots = []; return b; }
-  // bots only play the two basic commandos: you choose which one when you add it, tap it to swap
+  // bots only play the two basic commandos: you choose which one when you add it
   function addSquadBot(agent) {
     const p = N().party, list = squad();
     botPick = -1;
     if (list.length >= MAX || !CG.Modes.BOT_AGENTS.includes(agent)) { renderStage(); return; }
     if (p) run(() => N().setBots((p.bots || []).concat([agent])), '', 'party-msg');
     else { localBots.push(agent); renderStage(); }
-  }
-  function swapSquadBot(i) {
-    const p = N().party, bots = (p ? p.bots || [] : localBots).slice(), B = CG.Modes.BOT_AGENTS;
-    if (bots[+i] === undefined) return;
-    bots[+i] = B[(B.indexOf(bots[+i]) + 1) % B.length];
-    if (p) run(() => N().setBots(bots), '', 'party-msg');
-    else { localBots = bots; renderStage(); }
   }
   function removeSquadBot(i) {
     const p = N().party;
@@ -288,8 +349,36 @@ CG.UI = (() => {
     const me = { device: { type: 'any' }, agent: myAgent(), name: myName() };
     const bots = (p ? p.bots || [] : localBots).slice();
     const bot = (agent, i) => ({ device: { type: 'bot' }, agent, name: 'BOT ' + (i + 1), bot: true });
-    if (pvp()) play(CG.Modes.teams(mode, [me], (n) => bot(bots[n] || CG.Modes.botAgent(), n)));
+    if (pvp()) openVersus(CG.Modes.teams(mode, [me], (n) => bot(bots[n] || CG.Modes.botAgent(), n)), home);
     else play([me].concat(bots.map(bot)));
+  }
+  // ---------------------------------------------------------------- the VS screen (duels on this device)
+  let vs = null;
+  function openVersus(players, back) {
+    vs = { players, settings: CG.Modes.settings(mode), back };
+    renderVersus();
+    show('versus');
+    CG.Sfx.play('start');
+  }
+  function renderVersus() {
+    const A = CG.DATA.arenas[vs.settings.arena] || CG.DATA.arenas[0];
+    $('vs-top').innerHTML = ico(mode.kind === 'custom' ? 'custom' : 'duels') + CG.Modes.label(mode) + ' · ' + A.name.replace('ARENA · ', '') + ' · FIRST TO ' + vs.settings.rounds;
+    const line = (t) => vs.players.filter((q) => q.team === t).map((q) => {
+      const a = CG.AGENT[q.agent] || CG.AGENTS[0];
+      return `<div class="vs-fig ${t ? 'flip' : ''}" style="--c:${a.color}"><div class="body">${figure(a.id)}</div><b>${esc(q.name)}</b><small>${a.name} · ${q.bot ? 'BOT' : 'READY'}</small></div>`;
+    }).join('');
+    $('vs-a').innerHTML = line(0);
+    $('vs-b').innerHTML = line(1);
+    const me = vs.players.find((q) => !q.bot);
+    $('vs-switch').disabled = !(me && vs.players.some((q) => q.bot && q.team !== me.team));
+  }
+  // you change sides with a bot from the other team
+  function vsSwitch() {
+    const me = vs.players.find((q) => !q.bot), other = me && vs.players.find((q) => q.bot && q.team !== me.team);
+    if (!other) return;
+    [me.team, other.team] = [other.team, me.team];
+    CG.Sfx.play('pickup');
+    renderVersus();
   }
   async function findPlayers() {
     const net = N();
@@ -315,6 +404,7 @@ CG.UI = (() => {
 
   // ---------------------------------------------------------------- playing
   function startScene(data) {
+    document.body.classList.add('playing');        // menus over: the game canvas instead of the full-screen backdrop
     show(null);
     CG.Admin.close();
     CG.game.scene.stop('Backdrop');
@@ -325,10 +415,10 @@ CG.UI = (() => {
     if (touch && CG.Touch.enabled && !document.fullscreenElement) landscape();
   }
   let lastCfg = null;
-  function play(players) {
+  function play(players, settings) {
     if (!booted) return;
     lastPlayers = players;
-    lastCfg = pvp() ? { players, mode: 'pvp', pvp: CG.Modes.settings(mode) } : { players, mode: 'squad' };
+    lastCfg = pvp() ? { players, mode: 'pvp', pvp: settings || CG.Modes.settings(mode) } : { players, mode: 'squad' };
     startScene(lastCfg);
   }
   function playOnline(cfg) {
@@ -348,6 +438,7 @@ CG.UI = (() => {
     if (paused()) CG.game.scene.resume('Game');
   }
   function toMenu() {
+    document.body.classList.remove('playing');
     if (CG.Online.mid) CG.Online.leave();
     CG.Admin.close();
     CG.game.scene.stop('Game');
@@ -407,12 +498,7 @@ CG.UI = (() => {
   // left / right: the next agent this person owns that no other person has (bots give way at the start)
   function cycle(d, dir) {
     if (!d) return;
-    if (d.type === 'bot') {                                   // bots: JAX or DUKE
-      const B = CG.Modes.BOT_AGENTS;
-      d.agent = B[(B.indexOf(d.agent) + 1) % B.length];
-      renderLobby();
-      return;
-    }
+    if (d.type === 'bot') return;                              // a bot keeps the agent it came with
     const taken = humanAgents(d), n = CG.AGENTS.length;
     let i = CG.AGENTS.findIndex((a) => a.id === d.agent);
     for (let k = 0; k < n; k++) {
@@ -436,7 +522,7 @@ CG.UI = (() => {
             <div class="lhead"><b>P${i + 1}</b><button class="btn small x" data-act="leave" data-uid="${esc(d.id)}" title="Leave">✕</button></div>
             <div class="body">${figure(a.id)}</div>
             <div class="lname">${d.type === 'bot' ? '🤖 ' : ''}${a.name}</div>
-            ${`<div class="arrows"><button class="btn small" data-act="lob-prev" data-uid="${esc(d.id)}">◀</button><button class="btn small" data-act="lob-next" data-uid="${esc(d.id)}">▶</button></div>`}
+            ${d.type === 'bot' ? '<div class="arrows"></div>' : `<div class="arrows"><button class="btn small" data-act="lob-prev" data-uid="${esc(d.id)}">◀</button><button class="btn small" data-act="lob-next" data-uid="${esc(d.id)}">▶</button></div>`}
             <small>${esc(d.type === 'pad' ? LABEL.pad(d.index) : LABEL[d.type])}</small></div>`
         : `<div class="lfig empty"><b>P${i + 1}</b><span>Press FIRE to join</span></div>`;
     }
@@ -478,7 +564,7 @@ CG.UI = (() => {
     const person = (d, i) => ({ device: { type: kb.length === 1 && kb[0] === d ? 'kbAll' : d.type, index: d.index }, agent: d.agent, name: i === 0 ? myName() : 'P' + (i + 1) });
     const bots = joined.filter((d) => d.type === 'bot');
     const bot = (n) => ({ device: { type: 'bot' }, agent: (bots[n] && bots[n].agent) || CG.Modes.botAgent(), name: 'BOT ' + (n + 1), bot: true });
-    if (pvp()) play(CG.Modes.teams(mode, humans.map(person), bot));
+    if (pvp()) openVersus(CG.Modes.teams(mode, humans.map(person), bot), () => show('lobby'));
     else play(humans.map(person).concat(bots.map((d, n) => bot(n))));
   }
   const KEY_JOIN = {
@@ -627,6 +713,7 @@ CG.UI = (() => {
   // ---------------------------------------------------------------- settings
   function renderSettings() {
     $('set-name').textContent = myName();
+    document.querySelectorAll('[data-act="lobby-style"]').forEach((b) => b.classList.toggle('on', b.dataset.uid === lobbyStyle));
     $('sound-btn').textContent = CG.Sfx.on ? 'ON' : 'OFF';
     const o = CG.Touch.opts;
     document.querySelectorAll('[data-act="touch-style"]').forEach((b) => b.classList.toggle('on', b.dataset.uid === o.style));
@@ -684,11 +771,14 @@ CG.UI = (() => {
     'squad-bot': (col) => { botPick = +col; renderStage(); },
     'squad-bot-as': (id) => addSquadBot(id),
     'squad-bot-cancel': () => { botPick = -1; renderStage(); },
-    'bot-swap': (i) => swapSquadBot(i),
     'squad-unbot': removeSquadBot,
     'mode-open': () => { renderModes(); $('mode-pop').classList.remove('hidden'); },
     'mode-close': () => $('mode-pop').classList.add('hidden'),
     'mode-pick': pickMode,
+    'lobby-style': (v) => { lobbyStyle = v; store.set(LOBBY, v); renderSettings(); },
+    'vs-switch': vsSwitch,
+    'vs-ready': () => { if (vs) play(vs.players, vs.settings); },
+    'vs-leave': () => { if (vs && vs.back) vs.back(); else home(); },
     cust: setCustom,
     'invite-open': () => { renderInvites(); $('invite-pop').classList.remove('hidden'); },
     'invite-close': () => $('invite-pop').classList.add('hidden'),
@@ -760,6 +850,7 @@ CG.UI = (() => {
     if (e.target.tagName === 'INPUT') { if (e.code === 'Enter' && visible('username')) ACTIONS['un-save'](); return; }
     if (visible('lobby')) { lobbyKey(e); return; }
     if (visible('select')) { selectKey(e); return; }
+    if (visible('versus')) { if (e.code === 'Enter') ACTIONS['vs-ready'](); if (e.code === 'Escape') ACTIONS['vs-leave'](); return; }
     if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
       if (visible('pause')) resume(); else if (running()) pause();
     }
@@ -774,6 +865,7 @@ CG.UI = (() => {
     },
     onGameStart(s) { scene = s; },
     localDevice() { return { type: 'any' }; },
+    storyCleared(n) { if (n > storyCleared()) store.set(STORY, String(n)); },
     gameOver, matchEnded, refreshFriends, netChanged, loginMessage, localBest, localName, myAgent, myName, show, toast, play, playOnline, takeLocalBots,
   };
 })();

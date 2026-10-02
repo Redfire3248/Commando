@@ -574,10 +574,19 @@ def build_powerups():
         manifest['scale'][key] = round(width / img.width, 4)
         manifest.setdefault('pixel', []).append(key)
 
+def blocky(img, target):
+    """The user asked for these slices at high resolution: every pixel becomes an exact square block (whole-number
+    nearest-neighbour enlargement to about `target` px tall) — no smoothing, no new detail, still crisp pixel art."""
+    k = max(1, round(target / img.height))
+    return img if k == 1 else img.resize((img.width * k, img.height * k), Image.NEAREST)
+
+
 # idle.png: ONE ROW PER AGENT, in this order. In each row the first 3 sprites are the breathing loop, the rest
 # (up to 7) a short special move the menus play now and then. Rows after these are ignored (room for later art).
 IDLE_ORDER = ['razor', 'nova', 'kite', 'brick', 'volt', 'ghost', 'hammer', 'viper', 'atlas', 'jax', 'duke']
 IDLE_LOOP = 3
+# rows of the current idle.png that came back looking like someone else: these agents keep their standing frame
+IDLE_SKIP = {'razor', 'kite', 'brick', 'hammer'}
 
 
 def build_idle():
@@ -588,7 +597,7 @@ def build_idle():
     print('  idle: sprites per row', [len(r) for r in rows], '(expected 11 rows of up to 10)')
     out = {}
     for aid, fr in zip(IDLE_ORDER, rows):
-        if len(fr) < 2:
+        if len(fr) < 2 or aid in IDLE_SKIP:
             continue
         # one strip per agent: every frame in an equal cell, feet on the same line (pixels copied untouched)
         fw = max(f[0].shape[1] for f in fr)
@@ -598,7 +607,9 @@ def build_idle():
             img = Image.fromarray(crop)
             sheet.paste(img, (i * fw + (fw - img.width) // 2, fh - img.height))
         key = 'idle_' + aid
-        out[aid] = {'path': save(sheet, key), 'fw': fw, 'fh': fh, 'n': len(fr), 'loop': min(IDLE_LOOP, len(fr))}
+        k = max(1, round(512 / fh))
+        sheet = blocky(sheet, fh * k)
+        out[aid] = {'path': save(sheet, key), 'fw': fw * k, 'fh': fh * k, 'n': len(fr), 'loop': min(IDLE_LOOP, len(fr))}
     manifest['idle'] = out
 
 
@@ -623,7 +634,7 @@ def build_ui_icons():
     out = {}
     for i, name in enumerate(UI_ICONS):
         if i in cells:
-            out[name] = save(Image.fromarray(cells[i][0]), 'ui_' + name)
+            out[name] = save(blocky(Image.fromarray(cells[i][0]), 512), 'ui_' + name)
     print('  ui_icons:', len(out), 'icons')
     manifest['ui'] = out
 
