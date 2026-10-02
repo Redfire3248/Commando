@@ -685,6 +685,21 @@ def build_idle():
                 if (piece[..., 3] > 30).sum() < 200:
                     continue
                 fr.append((piece, xs[c] - int(c * cw), 0))
+            if ncols == 4 and fr:
+                # breathing sheets: only the chest moves, so every frame is lined up on the feet (centred, bottom-
+                # aligned) — the image tool drifts each pose a few pixels sideways, which would make it wobble
+                trimmed = []
+                for piece, _, _ in fr:
+                    al = piece[..., 3] > 30
+                    ys_, xs_ = np.nonzero(al)
+                    feet = al[ys_.max() - max(4, int(piece.shape[0] * 0.04)):ys_.max() + 1]
+                    fx = np.nonzero(feet.any(0))[0]
+                    mid = (fx.min() + fx.max()) / 2 if len(fx) else (xs_.min() + xs_.max()) / 2
+                    trimmed.append((piece[ys_.min():ys_.max() + 1, xs_.min():xs_.max() + 1], mid - xs_.min()))
+                half = int(max(max(m_, t.shape[1] - m_) for t, m_ in trimmed)) + 1
+                tall = max(t.shape[0] for t, _ in trimmed)
+                fr = [(t, int(half - m_) - int(cw // 2 - half), tall - t.shape[0]) for t, m_ in trimmed]
+                cw = half * 2
             print('  idle/' + name + ' ' + aid + ':', len(fr), 'frames')
             if fr:
                 cells_of[aid] = (fr, int(cw), int(ch))
