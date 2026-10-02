@@ -170,6 +170,35 @@ def solid_square(crop):
     return crop[rows.min():rows.max() + 1, cols.min():cols.max() + 1]
 
 
+def clean_tile(crop, rows=True):
+    """A ground tile cut from a sheet where the tiles touch: the cut can carry a strip of the neighbouring tile and a
+    light border line along its edges, which show as seams when tiles are laid side by side. Edge columns (and rows)
+    whose colour is far from the tile's own middle are cut off — at most a fifth of the tile on each side. Pixels
+    inside are left untouched."""
+    t = solid_square(crop)
+    rgb = t[..., :3].astype(float)
+
+    mid = np.median(rgb[int(rgb.shape[0] * 0.25):int(rgb.shape[0] * 0.75), int(rgb.shape[1] * 0.25):int(rgb.shape[1] * 0.75)].reshape(-1, 3), axis=0)
+    off = np.abs(rgb - mid).mean(2) > 38          # pixels far from the tile's own colour
+
+    def keep(frac, n):                             # frac: share of "far" pixels in each column / row
+        lo, hi = 0, n
+        while lo < n * 0.2 and frac[lo] > 0.45:
+            lo += 1
+        while hi > n * 0.8 and frac[hi - 1] > 0.45:
+            hi -= 1
+        return lo, hi
+    x0, x1 = keep(off.mean(0), t.shape[1])
+    y0, y1 = keep(off.mean(1), t.shape[0])
+    if not rows:                                   # top pieces keep their top edge (stripes, grass, snow)
+        y0 = 0
+    t = t[y0:y1, x0:x1]
+    # then a thin even margin off every side that can touch another tile (slivers the colour test can't see)
+    mx = round(t.shape[1] * (0.1 if rows else 0.06))
+    my = round(t.shape[0] * 0.05) if rows else 0
+    return t[my:t.shape[0] - (my or round(t.shape[0] * 0.03)), mx:t.shape[1] - mx]
+
+
 def build_enemies(a):
     cells = cut_cells(a)
     missing = [k for k in list(range(0, 40)) + [t for t, _ in TILES] if k not in cells]
@@ -197,7 +226,7 @@ def build_enemies(a):
                 manifest['scale'][key] = round(width / img.width, 4)
     for idx, key in TILES:
         if idx in cells:
-            manifest['images'][key] = save(Image.fromarray(solid_square(cells[idx][0])), key)
+            manifest['images'][key] = save(Image.fromarray(clean_tile(cells[idx][0], rows=key.startswith('g_in'))), key)
     print('  enemies, machines, effects, jungle tiles:', len(cells), 'sprites')
 
 
@@ -233,7 +262,7 @@ def build_terrain2(a):
                 print('  terrain2: cell', idx, '(' + name + ', ' + theme + ') is not a full square — skipped')
                 continue
             key = tile_key(name, theme)
-            manifest['images'][key] = save(Image.fromarray(solid_square(crop)), key)
+            manifest['images'][key] = save(Image.fromarray(clean_tile(crop, rows=name.startswith('g_in'))), key)
     for idx, theme in ((10, 'base'), (30, 'snow')):
         if idx in cells:
             manifest['images']['ledge_' + theme] = save(Image.fromarray(cells[idx][0]), 'ledge_' + theme)
