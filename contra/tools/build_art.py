@@ -574,9 +574,10 @@ def build_powerups():
         manifest['scale'][key] = round(width / img.width, 4)
         manifest.setdefault('pixel', []).append(key)
 
-# idle.png: every agent's idle (breathing) loop, 4 frames each, two agents per row, in this order
-IDLE_ORDER = ['razor', 'nova', 'kite', 'brick', 'volt', 'jax', 'duke', 'ghost', 'hammer', 'viper', 'atlas']
-IDLE_FRAMES = 4
+# idle.png: ONE ROW PER AGENT, in this order. In each row the first 3 sprites are the breathing loop, the rest
+# (up to 7) a short special move the menus play now and then. Rows after these are ignored (room for later art).
+IDLE_ORDER = ['razor', 'nova', 'kite', 'brick', 'volt', 'ghost', 'hammer', 'viper', 'atlas', 'jax', 'duke']
+IDLE_LOOP = 3
 
 
 def build_idle():
@@ -584,11 +585,9 @@ def build_idle():
     if a is None:
         return
     rows = sprite_rows(a)
-    print('  idle: sprites per row', [len(r) for r in rows], '(expected 8 8 8 8 8 4)')
-    sprites = [sp for r in rows for sp in r]
+    print('  idle: sprites per row', [len(r) for r in rows], '(expected 11 rows of up to 10)')
     out = {}
-    for k, aid in enumerate(IDLE_ORDER):
-        fr = sprites[k * IDLE_FRAMES:(k + 1) * IDLE_FRAMES]
+    for aid, fr in zip(IDLE_ORDER, rows):
         if len(fr) < 2:
             continue
         # one strip per agent: every frame in an equal cell, feet on the same line (pixels copied untouched)
@@ -599,7 +598,7 @@ def build_idle():
             img = Image.fromarray(crop)
             sheet.paste(img, (i * fw + (fw - img.width) // 2, fh - img.height))
         key = 'idle_' + aid
-        out[aid] = {'path': save(sheet, key), 'fw': fw, 'fh': fh, 'n': len(fr)}
+        out[aid] = {'path': save(sheet, key), 'fw': fw, 'fh': fh, 'n': len(fr), 'loop': min(IDLE_LOOP, len(fr))}
     manifest['idle'] = out
 
 

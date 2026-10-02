@@ -37,9 +37,25 @@ CG.UI = (() => {
   // the whole agent for the menus: their idle loop (idle.png) when it is in, else the standing frame
   const figure = (id) => {
     const I = CG.DATA.art && CG.DATA.art.idle && CG.DATA.art.idle[id];
-    if (I) return `<div class="idle" style="aspect-ratio:${I.fw} / ${I.fh}"><img src="${I.path}" alt="" style="width:${I.n * 100}%;animation-timing-function:steps(${I.n});animation-duration:${I.n * 0.2}s"></div>`;
+    if (I) return `<div class="idle" data-n="${I.n}" data-loop="${I.loop || I.n}" style="aspect-ratio:${I.fw} / ${I.fh}"><img src="${I.path}" alt="" style="width:${I.n * 100}%"></div>`;
     return body(id) ? `<img src="${body(id)}" alt="">` : '';
   };
+  // Plays every idle figure on screen: the breathing frames over and over, and every 7-13 s (different for each
+  // figure) the special move once through, then back to breathing.
+  setInterval(() => {
+    const now = Date.now();
+    document.querySelectorAll('.idle').forEach((el) => {
+      const n = +el.dataset.n, loop = +el.dataset.loop, img = el.firstElementChild;
+      if (!img || !n) return;
+      let f = +(el.dataset.f || 0), next = +(el.dataset.next || 0);
+      if (!next) { next = now + 4000 + Math.random() * 7000; el.dataset.next = next; }
+      if (f >= loop) f = f + 1 < n ? f + 1 : 0;                                         // in the special move
+      else if (now > next && n > loop) { f = loop; el.dataset.next = now + 7000 + Math.random() * 6000; }
+      else f = (f + 1) % loop;
+      el.dataset.f = f;
+      img.style.transform = 'translateX(' + (-100 * f / n) + '%)';
+    });
+  }, 170);
   // an icon from ui_icons.png, or the fallback text
   const ico = (name, alt) => {
     const U = CG.DATA.art && CG.DATA.art.ui;
