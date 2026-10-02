@@ -111,7 +111,7 @@ CG.Cosmetics = (() => {
   // a painted banner from banners.png when it is in, else the CSS one
   const bannerCss = (id) => {
     const art = CG.DATA.art && CG.DATA.art.images && CG.DATA.art.images['banner_' + id];
-    return art ? 'url("' + art + '") center / cover no-repeat' : (BANNERS[id] || BANNERS.steel).css;
+    return art ? "url('" + art + "') center / cover no-repeat" : (BANNERS[id] || BANNERS.steel).css;
   };
   const titleName = (id) => (TITLES[id] || TITLES.recruit).name;
   const titleColor = (id) => (TITLES[id] || TITLES.recruit).color;

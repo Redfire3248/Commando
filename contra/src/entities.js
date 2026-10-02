@@ -65,11 +65,12 @@
     get alive() { return !this.dead && !this.out; }
 
     update(dt, inp) {
+      this.lastInp = inp;
       if (this.out) { this.tag.setVisible(false); this.bar.clear(); return; }
       const ms = dt * 1000, C = this.C, b = this.body, sc = this.scene;
       const wasCd = this.abilityCd;
       for (const k of ['invT', 'barrierT', 'fireCd', 'dropT', 'abilityCd', 'stormT', 'domeT', 'dashT', 'adrenT', 'overT', 'mdashT', 'mdashCd', 'cloakT', 'magnetT', 'bootsT', 'aimT']) this[k] = Math.max(0, this[k] - ms);
-      if (this.hack.dash) this.mdashCd = 0;
+      if (this.hack.dash) { this.mdashCd = 0; if (this.agent.dashAbility) { this.abilityCd = 0; this.abilityAt = 0; } }
       if (this.freeAbility) this.abilityCd = 0;
       if (wasCd > 0 && this.abilityCd <= 0) sc.abilityReady(this);
       if (this.dead) { this.tag.setVisible(false); this.bar.clear(); return; }
@@ -125,7 +126,7 @@
           CG.Sfx.play('jump');
         }
       }
-      if (inp.abilityPressed) this.useAbility();
+      if (inp.abilityPressed || (inp.dashPressed && this.agent.dashAbility)) this.useAbility();
 
       // 8-way aim: up alone = straight up, up/down + a direction = diagonals, down in the air = straight down
       let ax = dir, ay = 0;
@@ -165,18 +166,25 @@
     }
 
     useAbility() {
+      const ab = this.agent.ability, sc = this.scene, full = ab.cd * (this.perkCd || 1);
+      if (!(this.abilityCd >= 0)) this.abilityCd = full;                    // never a broken (NaN) cooldown
       if (this.abilityCd > 0 || !this.alive) return false;
-      const ab = this.agent.ability, sc = this.scene;
-      this.abilityCd = ab.cd * (this.perkCd || 1);
+      // a second lock on the real clock: whatever happens to the game's time (pauses, lag, a hidden tab), the ability
+      // can't come back sooner than half its cooldown (the shortest it can legitimately be, after KITE's kill refund)
+      if (!this.freeAbility && Date.now() - (this.abilityAt || 0) < full * 0.5) return false;
+      this.abilityAt = Date.now();
+      this.abilityCd = full;
       CG.Sfx.play('ability');
       sc.callout(this, ab.name.toUpperCase());
       switch (this.agent.id) {
         case 'razor': this.stormT = ab.dur; break;
         case 'brick': this.domeT = ab.dur; sc.domeFx(this); break;
         case 'kite': {
-          // the way you are aiming: forward, up, the diagonals — and down too while in the air
-          let vx = this.aimX, vy = this.aimY;
-          if (vy > 0 && this.onGround) { vx = this.facing; vy = 0; }
+          // the held keys decide: forward, up, the diagonals — and down too while in the air; nothing held = forward
+          const inp = this.lastInp || {}, kx = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
+          let vx = kx, vy = inp.up ? -1 : inp.down && !this.onGround ? 1 : 0;
+          if (kx) this.facing = kx;
+          if (!vx && !vy) vx = this.facing;
           const len = Math.hypot(vx, vy) || 1;
           this.dashVec = { x: vx / len, y: vy / len };
           this.dashT = 180; this.invT = Math.max(this.invT, 450); this.dashHit = new Set();

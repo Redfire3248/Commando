@@ -126,7 +126,7 @@ CG.Admin = (() => {
       if (s.isClient) return '<p class="admin-tip">Online, only the host can use hacks.</p>';
       const HACKS = [['aim', '🎯 AUTO AIM', 'Shots lock on to the nearest target'], ['strafe', '↔ STRAFE', 'Keep facing forward while shooting and moving'],
         ['speed', '⚡ SPEED', 'Run 60% faster'], ['jump', '🦘 SUPER JUMP', 'Jump 45% higher'], ['oneshot', '💀 ONE SHOT', 'Every bullet kills'],
-        ['dash', '» INFINITE DASH', 'Tac Dash has no cooldown']];
+        ['dash', '» INFINITE DASH', 'KITE dashes with no cooldown']];
       let h = `<div class="admin-row"><b>Whole game</b><button class="btn small ${s.physics.world.gravity.y < CG.CONFIG.GRAVITY ? 'on' : ''}" data-adm="lowgrav">🌙 LOW GRAVITY</button></div>`;
       s.players.forEach((p, i) => {
         if (p.remote) return;
@@ -229,7 +229,7 @@ CG.Admin = (() => {
     rapid: (s, d) => { const p = s.players[d.i]; p.rapid = !p.rapid; },
     spread: (s, d) => { const p = s.players[d.i]; p.spread = !p.spread; },
     shield: (s, d) => { s.players[d.i].barrierT = CG.CONFIG.PLAYER.barrierMs; },
-    ability: (s, d) => { const p = s.players[d.i]; if (!p.remote) { p.abilityCd = 0; p.useAbility(); } },
+    ability: (s, d) => { const p = s.players[d.i]; if (!p.remote) { p.abilityCd = 0; p.abilityAt = 0; p.useAbility(); } },
     revive: (s, d) => { const p = s.players[d.i]; if (p.out && !p.remote) p.respawn(); },
     spawn: (s, d) => {
       const T = CG.CONFIG.TILE, L = CG.DATA.level, W = CG.CONFIG.W;

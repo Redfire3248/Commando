@@ -237,7 +237,16 @@ CG.DATA.art = {
   "fireball": "assets/atlas/fireball.png",
   "e_disc": "assets/atlas/e_disc.png",
   "hz_nozzle": "assets/atlas/hz_nozzle.png",
-  "hz_crusher": "assets/atlas/hz_crusher.png"
+  "hz_crusher": "assets/atlas/hz_crusher.png",
+  "banner_steel": "assets/atlas/banner_steel.png",
+  "banner_jungle": "assets/atlas/banner_jungle.png",
+  "banner_inferno": "assets/atlas/banner_inferno.png",
+  "banner_arctic": "assets/atlas/banner_arctic.png",
+  "banner_neon": "assets/atlas/banner_neon.png",
+  "banner_carbon": "assets/atlas/banner_carbon.png",
+  "banner_bloodmoon": "assets/atlas/banner_bloodmoon.png",
+  "banner_gold": "assets/atlas/banner_gold.png",
+  "banner_legend": "assets/atlas/banner_legend.png"
  },
  "sheets": {
   "commandos": {

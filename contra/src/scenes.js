@@ -474,7 +474,7 @@
       for (const p of this.players) {
         if (p.remote) continue;
         p.respawn();
-        p.abilityCd = 0; p.mdashCd = 0;
+        p.abilityCd = 0; p.abilityAt = 0; p.mdashCd = 0;
       }
       this.say('ROUND ' + this.round, 1100);
     }
