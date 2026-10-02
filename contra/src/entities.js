@@ -160,11 +160,12 @@
           break;
         case 'nova':
           for (const p of sc.players) {
+            if (sc.pvp && p !== this) continue;                // a duel: Mend only heals yourself
             if (p.remote || Math.abs(p.body.center.x - this.body.center.x) > ab.range) continue;
             if (p.out) { p.respawn(); continue; }                                    // back in the fight
             if (p.alive) { p.heal(ab.heal); p.invT = Math.max(p.invT, 1500); }
           }
-          if (sc.net) sc.net.shout('heal', { x: Math.round(this.body.center.x), y: Math.round(this.body.bottom), range: ab.range, n: ab.heal, revive: 1 });
+          if (sc.net && !sc.pvp) sc.net.shout('heal', { x: Math.round(this.body.center.x), y: Math.round(this.body.bottom), range: ab.range, n: ab.heal, revive: 1 });
           sc.mendFx(this);
           break;
         case 'volt': sc.chainArc(this, ab.targets, ab.damage, ab.stun); break;
@@ -259,6 +260,11 @@
       sc.boom(fromX, v.y - 50, 14);
       sc.tweens.add({ targets: v, x: fromX - this.facing * 150, y: v.y - 90, angle: -this.facing * 60, duration: 420, ease: 'Quad.out' });
       sc.tweens.add({ targets: v, alpha: 0, delay: 650, duration: 350 });
+      if (sc.pvp) {                                       // a duel: no lives to lose, back in after a moment
+        sc.pvpDeath(this);
+        sc.time.delayedCall(1500, () => { if (!sc.over) this.respawn(); });
+        return;
+      }
       const respawn = sc.teamLives > 0;
       if (respawn) {
         sc.teamLives--;
@@ -273,12 +279,18 @@
 
     respawn() {
       const sc = this.scene, T = CG.CONFIG.TILE;
-      const col = CG.Level.safeCol((sc.cameras.main.scrollX + 260 + this.idx * 90) / T);
+      const col = sc.pvp ? Math.floor(sc.duelSpawn(this.idx) / T) : CG.Level.safeCol((sc.cameras.main.scrollX + 260 + this.idx * 90) / T);
+      this.lastHitBy = null;
       this.dead = false; this.out = false; this.invT = this.C.respawnInvMs; this.fireCd = 0; this.hp = this.maxHp;
       this.setProne(false);
       this.body.enable = true;
       this.body.reset(col * T + T / 2, -40);
       this.visual.setAngle(0).setAlpha(1).setVisible(true);
+    }
+
+    // Chain Arc can jump to the other player in a duel: a stand-in that looks like an enemy to the arc code
+    duelTarget() {
+      return { active: true, isPlayerTarget: true, player: this, x: this.body.center.x, body: this.body, T: {} };
     }
 
     // an online teammate died / came back in their own game: show it here

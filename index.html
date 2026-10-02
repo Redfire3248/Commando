@@ -75,7 +75,11 @@
 <div id="lobby" class="overlay hidden">
   <div class="card wide">
     <h2>WHO IS PLAYING?</h2>
-    <p class="sub center">Everyone press their FIRE button to join · B adds a bot</p>
+    <div class="seg mode-seg center-row">
+      <button class="btn small on" data-act="mode" data-uid="squad">🛡 SQUAD vs ARMY</button>
+      <button class="btn small" data-act="mode" data-uid="duel">⚔ 1v1 DUEL</button>
+    </div>
+    <p class="sub center" id="lobby-sub">Everyone press their FIRE button to join · B adds a bot</p>
     <div id="lobby-slots" class="slots"></div>
     <p class="hint" id="lobby-hint">
       Keyboard 1: <b>F</b> (W A S D, G jump, H ability) · Keyboard 2: <b>K</b> (arrows, L jump, O ability) ·
@@ -115,6 +119,10 @@
     <div class="row center-row">
       <button data-act="party-start" id="party-start" class="btn primary">START MATCH</button>
       <button data-act="party-queue" id="party-queue" class="btn primary">FIND PLAYERS</button>
+    </div>
+    <div class="row center-row">
+      <button data-act="party-duel" id="party-duel" class="btn">⚔ DUEL YOUR FRIEND</button>
+      <button data-act="party-duel-queue" id="party-duel-queue" class="btn">⚔ FIND A DUEL</button>
     </div>
     <div id="party-msg" class="msg"></div>
     <h3>Invite friends</h3>

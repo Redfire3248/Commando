@@ -168,3 +168,27 @@ CG.Level = {
 CG.Level.noPits();
 CG.Level.parkour();
 CG.Level.check();
+
+// 1v1 DUEL arenas: one screen wide (the camera never moves), mirror-image ledges and cover, no enemies.
+// First to CG.DUEL_KILLS kills wins. Power-ups drop from the sky now and then.
+CG.DUEL_KILLS = 5;
+CG.DATA.arenas = [
+  {
+    name: 'ARENA · JUNGLE RUINS', theme: 'jungle', w: 30, h: 17, groundRow: 14, arena: true,
+    ground: [[0, 30]], ledges: [[2, 11, 4], [24, 11, 4], [11, 8, 8], [5, 5, 4], [21, 5, 4]],
+    coverCols: [8, 20], coins: [], enemies: [], capsules: [], spawnCols: [2, 27],
+    boss: { type: 'none', wallCol: 30, say: '' },
+  },
+  {
+    name: 'ARENA · STEEL YARD', theme: 'base', w: 30, h: 17, groundRow: 14, arena: true,
+    ground: [[0, 30]], ledges: [[4, 11, 5], [21, 11, 5], [12, 6, 6], [1, 8, 3], [26, 8, 3]],
+    coverCols: [10, 18], coins: [], enemies: [], capsules: [], spawnCols: [2, 27],
+    boss: { type: 'none', wallCol: 30, say: '' },
+  },
+  {
+    name: 'ARENA · FROZEN PASS', theme: 'snow', w: 30, h: 17, groundRow: 14, arena: true,
+    ground: [[0, 30]], ledges: [[6, 11, 3], [21, 11, 3], [10, 8, 3], [17, 8, 3], [13, 5, 4]],
+    coverCols: [3, 14, 25], coins: [], enemies: [], capsules: [], spawnCols: [1, 28],
+    boss: { type: 'none', wallCol: 30, say: '' },
+  },
+];

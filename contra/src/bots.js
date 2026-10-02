@@ -7,6 +7,14 @@ CG.Bot = (() => {
   function target(sc, p) {
     const cam = sc.cameras.main, c = p.body.center;
     let best = null, bd = Infinity;
+    if (sc.pvp) {                                      // a duel: the other player
+      for (const q of sc.players) {
+        if (q === p || !q.alive) continue;
+        const d = Math.hypot(q.body.center.x - c.x, q.body.center.y - c.y);
+        if (d < bd) { bd = d; best = { body: q.body, T: { ai: 'player' } }; }
+      }
+      return best ? { e: best, d: bd } : null;
+    }
     for (const e of sc.enemies.getChildren()) {
       if (!e.active || e.T.ai === 'flyer' && !e.extra) continue;
       if (e.x < cam.scrollX - 20 || e.x > cam.scrollX + CG.CONFIG.W + 20) continue;
@@ -36,6 +44,7 @@ CG.Bot = (() => {
     const c = p.body.center, cam = sc.cameras.main;
     mem.t = (mem.t || 0) + 1;
 
+    if (sc.pvp) return duel(sc, p, mem, s);
     // where to be: a little behind the furthest-ahead person (or pushing on if nobody else is alive)
     const people = sc.players.filter((q) => q.alive && !q.bot);
     const lead = people.length ? Math.max(...people.map((q) => q.body.center.x)) : cam.scrollX + CG.CONFIG.W * 0.75;
@@ -89,6 +98,32 @@ CG.Bot = (() => {
       else if (ab === 'kite') s.ability = t && t.d < 380 && Math.abs(t.e.body.center.y - c.y) < 60;
       else s.ability = enemiesNear >= 3 || (t && t.e.T.boss);
     }
+    return s;
+  }
+
+  // duel: keep a fighting distance from the other player, hop onto ledges, shoot, dash out of fire
+  function duel(sc, p, mem, s) {
+    const t = target(sc, p), c = p.body.center;
+    if (!t) return s;
+    const ec = t.e.body.center, dx = ec.x - c.x, dy = ec.y - c.y;
+    const want = 380 + Math.sin(mem.t / 50 + p.idx) * 150;
+    let dir = Math.abs(dx) > want + 60 ? Math.sign(dx) : Math.abs(dx) < want - 120 ? -Math.sign(dx) : 0;
+    const oct = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
+    s.shoot = true;
+    if (oct === -2) { s.up = true; dir = 0; }
+    else {
+      const face = Math.abs(oct) <= 1 ? 1 : -1;
+      if (oct === -1 || oct === -3) s.up = true;
+      if ((oct === 1 || oct === 3) && !p.onGround) s.down = true;
+      if (!dir && face !== p.facing) dir = face;
+      if ((s.up || s.down) && !dir) dir = face;
+    }
+    if (dir > 0) s.right = true;
+    if (dir < 0) s.left = true;
+    if (p.onGround && (dy < -120 || mem.t % 90 === 0 || (dir > 0 ? p.body.blocked.right : dir < 0 ? p.body.blocked.left : false))) s.jump = true;
+    else if (!p.onGround && p.body.velocity.y > 0 && dy < -60 && mem.t % 20 === 0) s.jump = true;       // double jump up after them
+    if (danger(sc, p) && p.mdashCd <= 0) s.dash = true;
+    if (p.abilityCd <= 0) s.ability = t.d < 520 || (p.agent.id === 'nova' && p.hp < p.maxHp - 1);
     return s;
   }
 

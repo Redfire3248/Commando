@@ -26,7 +26,7 @@ CG.Online = {
       id: p.id, owner: p.owner, name: p.name, agent: p.agent, bot: !!p.bot,
       device: p.owner !== N.uid ? { type: 'remote' } : p.bot ? { type: 'bot' } : local,
     }));
-    CG.UI.playOnline({ players, online: { mid, host: this.host } });
+    CG.UI.playOnline({ players, online: { mid, host: this.host }, mode: info.mode || 'squad' });
   },
 
   // called by the Game scene when it starts (also after each stage)
@@ -166,7 +166,7 @@ CG.Online = {
     sc.ebombs.children.iterate((x) => { if (x && x.active) m.push([r(x.x), r(x.y), r(x.body.velocity.x), r(x.body.velocity.y)]); });
     sc.pickups.children.iterate((x) => { if (x && x.active) k.push([x.netId, x.kind, r(x.x), r(x.y)]); });
     return { st: sc.cfg.stage, sc: sc.score, lv: sc.teamLives, cx: r(sc.camX), bo: sc.bossOn ? 1 : 0, cl: sc.cleared ? 1 : 0, ov: sc.over ? 1 : 0, e, b, m, k,
-      cb: [...sc.brokenCovers] };
+      cb: [...sc.brokenCovers], kd: sc.kills || null, win: sc.duelWinner || null };
   },
 
   // events from the other players' games
@@ -176,6 +176,8 @@ CG.Online = {
     if (ev.t === 'hit') {
       const e = sc.enemies.getChildren().find((x) => x.active && x.netId === ev.id);
       if (e) e.damage(ev.n || 1);
+    } else if (ev.t === 'kill') {
+      if (sc.pvp) sc.countKill(ev.killer);
     } else if (ev.t === 'cover') {
       const cv = sc.coverList && sc.coverList[ev.id];
       if (cv) sc.hitCover(cv, ev.n || 1, true);
@@ -195,6 +197,11 @@ CG.Online = {
   broadcast(m) {
     const sc = this.scene, N = CG.Net;
     if (!sc || !m || m.from === N.uid || Date.now() - (m.at || 0) > 8000) return;
+    if (m.t === 'phit') {                                // a duel: someone's ability hit my soldier
+      const p = sc.players.find((q) => q.netId === m.id && q.owner === N.uid);
+      if (p && p.alive) { p.lastHitBy = sc.players.find((q) => q.netId === m.by) || null; p.hit(m.n || 1); }
+      return;
+    }
     if (m.t === 'heal') {
       for (const p of sc.players) {
         if (p.owner !== N.uid || !(m.all || Math.abs(p.body.center.x - m.x) < m.range)) continue;
@@ -216,6 +223,11 @@ CG.Online = {
       return;
     }
     sc.score = s.sc;
+    if (sc.pvp && s.kd) {
+      sc.kills = s.kd;
+      if (s.win && !sc.over) sc.duelOver(s.win);
+      return this.applyDuelBits(s);
+    }
     sc.teamLives = s.lv;
     sc.netCamX = s.cx;
     if (s.bo && !sc.bossOn) { sc.bossOn = true; sc.say(CG.DATA.level.boss.say, 1800); }
@@ -258,6 +270,23 @@ CG.Online = {
 
     // pick-ups
     const ks = new Set();
+    for (const [id, kind, x, y] of s.k) {
+      ks.add(id);
+      let k = this.pickups[id];
+      if (!k) { k = sc.dropPickup(x, y, kind); k.netId = id; k.body.allowGravity = false; k.body.moves = false; this.pickups[id] = k; }
+      if (k.active) k.setPosition(x, y);
+    }
+    for (const id in this.pickups) {
+      if (ks.has(+id)) continue;
+      const k = this.pickups[id];
+      delete this.pickups[id];
+      if (k.active) k.destroy();
+    }
+  },
+
+  // a duel snapshot only needs the pick-ups and enemy-free bits
+  applyDuelBits(s) {
+    const sc = this.scene, ks = new Set();
     for (const [id, kind, x, y] of s.k) {
       ks.add(id);
       let k = this.pickups[id];

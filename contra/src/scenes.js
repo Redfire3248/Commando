@@ -126,7 +126,9 @@
     }
 
     create() {
-      const { W, H, TILE: T } = CG.CONFIG, C = CG.CONFIG.PLAYER, all = CG.DATA.levels;
+      const { W, H, TILE: T } = CG.CONFIG, C = CG.CONFIG.PLAYER;
+      this.pvp = this.cfg.mode === 'duel';                                     // 1v1: players against each other
+      const all = this.pvp ? CG.DATA.arenas : CG.DATA.levels;
       const L = CG.DATA.level = all[(this.cfg.stage - 1) % all.length];        // stages repeat, harder each time
       this.diff = this.cfg.stage - 1;
       this.score = this.cfg.score;
@@ -153,7 +155,14 @@
       this.pickups = this.physics.add.group();
 
       const gy = L.groundRow * T;
-      this.players = this.cfg.players.map((cp, i) => new CG.Player(this, i, 2.5 * T + i * 70, gy, cp));
+      this.players = this.cfg.players.map((cp, i) => new CG.Player(this, i, this.pvp ? this.duelSpawn(i) : 2.5 * T + i * 70, gy, cp));
+      if (this.pvp) {
+        this.players.forEach((p, i) => { p.facing = i % 2 ? -1 : 1; });
+        this.kills = {};
+        this.players.forEach((p) => { this.kills[p.netId] = 0; });
+        this.bossOn = true;                     // nothing to scroll to
+        this.dropT = 6000;
+      }
       // one pool of lives for the whole team: 3 for one player, 2 more for each extra player
       this.teamLives = this.cfg.teamLives !== null && this.cfg.teamLives !== undefined ? this.cfg.teamLives : C.lives + 2 * (this.players.length - 1);
       this.adminUsed = !!this.cfg.adminUsed;
@@ -175,7 +184,9 @@
       const spawns = L.enemies.map(([t, c, r]) => ({ t, x: (c + 0.5) * T, y: t === 'drone' ? 4.5 * T : (r || L.groundRow) * T }));
       L.capsules.forEach(([c, kind]) => spawns.push({ t: 'flyer', x: (c + 0.5) * T, y: 4 * T, extra: kind }));
       const bx = L.boss.wallCol * T;
-      if (L.boss.type === 'fortress') {
+      if (L.boss.type === 'none') {
+        // a duel arena: no boss
+      } else if (L.boss.type === 'fortress') {
         L.boss.cannonRows.forEach((r) => spawns.push({ t: 'cannon', x: bx - 8, y: r * T }));
         spawns.push({ t: 'core', x: bx - 40, y: gy });
       } else if (L.boss.type === 'tank') {
@@ -190,6 +201,7 @@
 
       this.buildHud();
       this.buildAbilitySlots();
+      if (this.pvp) this.buildDuelHud();
       // coins hanging along the high route: each one is 5 coins for this account (yours alone online)
       this.coinsEarned = this.cfg.coinsEarned || 0;
       this.coinPickups = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -249,10 +261,57 @@
       this.livesText = fixed(this.add.text(W - 40, 126, '', ts(34, '#ffffff')).setOrigin(1, 0.5).setShadow(0, 2, '#000', 6));
       this.livesIcon = fixed(this.add.image(W - 130, 126, has('life') ? 'life' : 'pk_life'));
       this.livesIcon.setScale(Math.min(1, 40 / this.livesIcon.height));
-      this.add.text(W - 160, 126, 'TEAM', ts(18, '#ffd39a')).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100);
+      this.teamLabel = this.add.text(W - 160, 126, 'TEAM', ts(18, '#ffd39a')).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100);
       this.adminTag = fixed(this.add.text(W - 40, 162, 'ADMIN · SCORE NOT SAVED', ts(16, '#ff8080')).setOrigin(1, 0.5)).setVisible(this.adminUsed);
       this.coinIcon = fixed(this.add.image(W - 130, 200, 'pk_coin').setScale(0.6));
       this.coinText = fixed(this.add.text(W - 40, 200, '', ts(26, '#ffd23c')).setOrigin(1, 0.5).setShadow(0, 2, '#000', 6));
+    }
+
+    // ---------------------------------------------------------------- 1v1 duel
+    duelSpawn(i) {
+      const cols = CG.DATA.level.spawnCols || [2, 27];
+      return (cols[i % cols.length] + 0.5) * CG.CONFIG.TILE;
+    }
+    buildDuelHud() {
+      const { W } = CG.CONFIG, [a, b] = this.players;
+      this.duelText = this.add.text(W / 2, 40, '', ts(52, '#ffffff')).setOrigin(0.5, 0).setScrollFactor(0).setDepth(102).setShadow(0, 4, '#000', 10);
+      this.duelNames = this.add.text(W / 2, 104, '', ts(22, '#cfd9cc')).setOrigin(0.5, 0).setScrollFactor(0).setDepth(102).setShadow(0, 2, '#000', 6);
+      this.duelNames.setText((a ? a.name : '?') + '   ·   FIRST TO ' + CG.DUEL_KILLS + '   ·   ' + (b ? b.name : '?'));
+      this.livesText.setVisible(false); this.livesIcon.setVisible(false); this.teamLabel.setVisible(false); this.coinText.setVisible(false); this.coinIcon.setVisible(false);
+    }
+    updateDuelHud() {
+      const [a, b] = this.players;
+      this.duelText.setText((this.kills[a.netId] || 0) + '  :  ' + (b ? this.kills[b.netId] || 0 : 0));
+    }
+    // a player in a duel went down: whoever hurt them last scores (the host / this device keeps the count)
+    pvpDeath(victim) {
+      const killer = victim.lastHitBy && victim.lastHitBy !== victim ? victim.lastHitBy : this.players.find((q) => q !== victim);
+      if (this.isClient) { this.net.send('kill', { victim: victim.netId, killer: killer ? killer.netId : null }); return; }
+      this.countKill(killer ? killer.netId : null);
+    }
+    countKill(killerId) {
+      if (this.over || !killerId) return;
+      this.kills[killerId] = (this.kills[killerId] || 0) + 1;
+      const k = this.players.find((q) => q.netId === killerId);
+      if (k) this.say(k.name + ' SCORES', 900);
+      if (this.kills[killerId] >= CG.DUEL_KILLS) { this.duelWinner = killerId; this.duelOver(killerId); }
+    }
+    duelOver(winnerId) {
+      if (this.over) return;
+      this.over = true;
+      const w = this.players.find((q) => q.netId === winnerId);
+      this.say((w ? w.name : '?') + ' WINS', 5000);
+      CG.Sfx.play('clear');
+      const me = this.players.find((q) => !q.bot && !q.remote);
+      const won = !!(w && me && w === me);
+      this.time.delayedCall(2200, () => CG.UI.gameOver(0, 1, { duel: true, winner: w ? w.name : '?', won, online: !!this.net, admin: this.adminUsed, coins: won ? 25 : 5 }));
+    }
+    // damage another player: a teammate's game decides for its own player online
+    damagePlayer(victim, n, by) {
+      if (!victim || !victim.alive || victim === by) return;
+      if (victim.remote) { if (this.net) this.net.shout('phit', { id: victim.netId, n, by: by ? by.netId : null }); return; }
+      victim.lastHitBy = by;
+      victim.hit(n);
     }
 
     // The big ability slot at the bottom of the screen, one per person playing on this device: the icon, a
@@ -308,6 +367,7 @@
 
     updateHud() {
       this.updateAbilitySlots();
+      if (this.pvp) this.updateDuelHud();
       const heart = this.textures.exists('hud_heart');
       this.hud.forEach((h, i) => {
         const p = this.players[i];
@@ -394,8 +454,9 @@
         }
         zone(this.ledges, c * T, top, w * T, Math.max(20, bottom - top));
       });
-      // the fortress wall
+      // the fortress wall (duel arenas have none)
       const wc = L.boss.wallCol;
+      if (wc >= L.w) return;
       zone(this.solids, wc * T, 0, (L.w - wc) * T, gy);
       for (let c = wc; c < wc + 4; c++) for (let r = 0; r < L.groundRow; r++) tile(c * T, r * T, has(k('wall')) ? k('wall') : 'boss_wall');
     }
@@ -467,6 +528,22 @@
             if (o !== e && o.active && Phaser.Math.Distance.Between(bul.x, bul.y, o.body.center.x, o.body.center.y) < 95) o.damage(1);
           }
         }
+      });
+      // a duel: bullets hurt the other player (your own game decides when you are hit)
+      ph.add.overlap(bodies, this.bullets, (a, b) => {
+        if (!this.pvp) return;
+        const [z, bul] = pick(a, b, (o) => !!o.owner), victim = z.owner;
+        if (!bul.active || bul.shooter === victim || !victim.alive) return;
+        this.kill(bul);
+        if (victim.remote) return;
+        this.sparks.explode(4, bul.x, bul.y);
+        if (this.underDome(victim, true)) {
+          const back = this.fire(victim, bul.x, bul.y, Math.atan2(-bul.body.velocity.y, -bul.body.velocity.x));
+          if (back) back.setTint(0x8ac8ff);
+          return;
+        }
+        victim.lastHitBy = bul.shooter;
+        victim.hit(bul.dmg || 1);
       });
       ph.add.overlap(bodies, this.ebullets, (a, b) => {
         const [z, bul] = pick(a, b, (o) => !!o.owner);
@@ -684,7 +761,7 @@
       this.time.delayedCall(3300, () => {
         this.scene.restart({
           players: this.cfg.players, stage: this.cfg.stage + 1, score: this.score + 3000,
-          teamLives: this.teamLives, adminUsed: this.adminUsed, online: this.cfg.online, coinsEarned: this.coinsEarned,
+          teamLives: this.teamLives, adminUsed: this.adminUsed, online: this.cfg.online, coinsEarned: this.coinsEarned, mode: this.cfg.mode,
         });
       });
     }
@@ -722,6 +799,7 @@
     // is this player inside a teammate's Aegis dome? Returns the dome's owner (or null)
     underDome(p, self) {
       for (const q of this.players) {
+        if (this.pvp && q !== p) continue;
         if (q.domeT > 0 && q.alive && (self || q !== p) && Math.abs(q.body.center.x - p.body.center.x) < q.agent.ability.range
           && Math.abs(q.body.bottom - p.body.bottom) < 140) return q;
       }
@@ -751,6 +829,9 @@
       }
       for (const cv of this.coverList) {
         if (!cv.broken && Phaser.Math.Distance.Between(x, y, cv.zone.x, cv.zone.y) < ab.radius + cv.zone.width / 2) this.hitCover(cv, ab.damage * 2);
+      }
+      if (this.pvp) for (const q of this.players) {
+        if (q !== g.owner && q.alive && Phaser.Math.Distance.Between(x, y, q.body.center.x, q.body.center.y) < ab.radius) this.damagePlayer(q, 3, g.owner);
       }
     }
     // ---------------------------------------------------------------- breakable cover
@@ -845,11 +926,23 @@
           if (!e.active && !p.dashRefund) { p.dashRefund = true; p.abilityCd *= 0.5; }
         }
       }
+      if (this.pvp) {
+        for (const q of this.players) {
+          if (q === p || !q.alive || p.dashHit.has(q)) continue;
+          const b = q.body;
+          if (Math.abs(b.center.x - c.x) < b.halfWidth + 40 && Math.abs(b.center.y - c.y) < b.halfHeight + 50) {
+            p.dashHit.add(q);
+            this.fxSprite('fx_slash', b.center.x, b.center.y, 0.6);
+            this.damagePlayer(q, 2, p);
+          }
+        }
+      }
     }
     // Chain Arc: lightning from the player to the nearest enemy on screen, then on to the next nearest
     chainArc(p, n, dmg, stun) {
       const cam = this.cameras.main, W = CG.CONFIG.W;
       const pool = this.enemies.getChildren().filter((e) => e.active && e.x > cam.scrollX - 20 && e.x < cam.scrollX + W + 20);
+      if (this.pvp) this.players.forEach((q) => { if (q !== p && q.alive) pool.push(q.duelTarget()); });
       let from = { x: p.body.center.x, y: p.body.center.y }, hits = [];
       for (let i = 0; i < n && pool.length; i++) {
         pool.sort((a, b) => Phaser.Math.Distance.Between(from.x, from.y, a.body.center.x, a.body.center.y)
@@ -866,6 +959,7 @@
       hits.forEach((e, i) => this.time.delayedCall(i * 60, () => {
         if (!e.active) return;
         this.fxSprite('fx_spark', e.body.center.x, e.body.center.y, 0.7);
+        if (e.isPlayerTarget) { this.damagePlayer(e.player, 2, p); return; }
         if (stun && !e.T.boss) e.stunT = stun;
         e.damage(dmg);
       }));
@@ -896,7 +990,18 @@
 
       // the camera follows whoever is furthest ahead, and never goes back
       const alive = this.players.filter((p) => !p.dead && !p.out && (!p.remote || p.netSeen));
-      if (this.isClient) {
+      if (this.pvp) {
+        this.camX = 0;
+        if (!this.isClient && !this.over) {
+          this.dropT -= delta;
+          if (this.dropT <= 0) {
+            this.dropT = 9000;
+            const kinds = ['heal', 'heal', 'rapid', 'spread', 'pierce', 'blast', 'double', 'ice', 'barrier'];
+            const k = this.dropPickup(Phaser.Math.Between(6, 24) * T, 40, kinds[Phaser.Math.Between(0, kinds.length - 1)]);
+            if (k) k.body.setVelocity(0, 0);
+          }
+        }
+      } else if (this.isClient) {
         if (this.netCamX !== undefined) this.camX += (this.netCamX - this.camX) * (1 - Math.exp(-8 * dt));
       } else if (alive.length) {
         const target = Math.min(Math.max(...alive.map((p) => p.body.center.x)) - W * 0.42, this.bossCamX);

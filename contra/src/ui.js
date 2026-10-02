@@ -142,10 +142,11 @@ CG.UI = (() => {
     CG.Touch.show(touch);
     if (touch && CG.Touch.enabled && !document.fullscreenElement) landscape();
   }
+  let mode = 'squad';                        // local games: 'squad' (co-op against the army) or 'duel' (1v1)
   function play(players) {
     if (!booted) return;
     lastPlayers = players;
-    startScene({ players });
+    startScene({ players, mode });
   }
   function playOnline(cfg) {
     if (!booted) return;
@@ -178,10 +179,15 @@ CG.UI = (() => {
     if (!admin) N().submitScore(score);
     const coins = admin ? 0 : CG.Shop.coinsFor(score) + (opts.coins || 0);      // score coins + coins picked up
     if (coins && N().online) N().addCoins(coins).catch(() => {});
+    // a duel with one person on this device: VICTORY / DEFEAT; two people on one device: who won
+    const peopleHere = lastPlayers ? lastPlayers.filter((q) => !q.bot).length : 1;
+    $('over-title').textContent = !opts.duel ? 'GAME OVER' : peopleHere === 1 ? (opts.won ? 'VICTORY' : 'DEFEAT') : opts.winner + ' WINS';
+    $('over-score').parentElement.classList.toggle('hidden', !!opts.duel);
     $('over-score').textContent = score;
     $('over-coins').classList.toggle('hidden', !coins || !N().online);
     $('over-coins').querySelector('b').textContent = coins;
-    $('over-best').textContent = admin ? 'Admin panel used: nothing saved' : opts.online ? 'Online match' : score > best ? 'New best!' : 'Best ' + best;
+    $('over-best').textContent = admin ? 'Admin panel used: nothing saved' : opts.duel ? 'First to ' + CG.DUEL_KILLS + ' kills' : opts.online ? 'Online match' : score > best ? 'New best!' : 'Best ' + best;
+    $('over-retry').textContent = opts.duel ? 'REMATCH' : 'TRY AGAIN';
     $('over-retry').classList.toggle('hidden', !lastPlayers);
     CG.Touch.show(false);
     show('over');
@@ -218,8 +224,12 @@ CG.UI = (() => {
     }
     $('lobby-slots').innerHTML = html;
     const humans = joined.filter((d) => d.type !== 'bot').length;
-    $('lobby-start').disabled = humans === 0;
-    $('lobby-start').textContent = humans ? 'CHOOSE AGENTS ▸' : 'WAITING FOR PLAYERS';
+    document.querySelectorAll('[data-act="mode"]').forEach((b) => b.classList.toggle('on', b.dataset.uid === mode));
+    $('lobby-sub').textContent = mode === 'duel' ? 'Two players fight each other: first to ' + CG.DUEL_KILLS + ' kills. Alone? You get a bot to fight.'
+      : 'Everyone press their FIRE button to join · B adds a bot';
+    const tooMany = mode === 'duel' && joined.length > 2;
+    $('lobby-start').disabled = humans === 0 || tooMany;
+    $('lobby-start').textContent = tooMany ? 'A DUEL IS TWO PLAYERS' : humans ? 'CHOOSE AGENTS ▸' : 'WAITING FOR PLAYERS';
     $('lobby-touch').classList.toggle('hidden', !CG.Touch.enabled || joined.some((d) => d.id === 'touch'));
     $('lobby-bot').disabled = joined.length >= MAX;
   }
@@ -244,6 +254,10 @@ CG.UI = (() => {
   }
   function toSelect() {
     if (!joined.some((d) => d.type !== 'bot')) return;
+    if (mode === 'duel') {
+      if (joined.length > 2) return;
+      if (joined.length === 1) { botN++; joined.push({ id: 'bot' + botN, type: 'bot' }); }      // alone: fight a bot
+    }
     const devices = joined.map((d) => ({ id: d.id, type: d.type, index: d.index }));
     // a lone keyboard player gets both key layouts and the mouse
     const kb = devices.filter((d) => d.type === 'kbA' || d.type === 'kbB');
@@ -422,6 +436,10 @@ CG.UI = (() => {
     $('party-start').classList.toggle('hidden', !lead || queued);
     $('party-queue').classList.toggle('hidden', !lead);
     $('party-queue').textContent = queued ? 'CANCEL SEARCH' : 'FIND PLAYERS';
+    const humansIn = Object.keys(p.members || {}).length;
+    $('party-duel').classList.toggle('hidden', !lead || queued || humansIn !== 2);
+    $('party-duel-queue').classList.toggle('hidden', !lead || humansIn !== 1 || (queued && p.queueMode !== 'duel'));
+    $('party-duel-queue').textContent = queued && p.queueMode === 'duel' ? 'CANCEL DUEL SEARCH' : '⚔ FIND A DUEL';
     $('party-status').textContent = queued ? 'Looking for other players… (starts on its own after 30 s)'
       : lead ? 'Invite friends, then start — or find other players to team up with' : 'Waiting for the leader to start';
     const fr = Object.keys(net.friends).filter((f) => !(p.members || {})[f])
@@ -575,6 +593,9 @@ CG.UI = (() => {
     'party-agent': (id) => { store.set(AGENT, id); N().setAgent(id); renderParty(); },
     'party-invite': (uid) => run(() => N().invite(uid), 'Invite sent', visible('party') ? 'party-msg' : 'fr-msg'),
     'party-start': () => run(() => N().startMatch(), '', 'party-msg'),
+    'party-duel': () => run(() => N().startMatch(null, 'duel'), '', 'party-msg'),
+    'party-duel-queue': () => run(() => (N().party && N().party.state === 'queue' ? CG.Queue.cancel() : CG.Queue.join('duel')), '', 'party-msg'),
+    mode: (m) => { mode = m; renderLobby(); },
     'party-queue': () => run(() => (N().party && N().party.state === 'queue' ? CG.Queue.cancel() : CG.Queue.join()), '', 'party-msg'),
     'party-leave': () => run(() => N().leaveParty().then(() => home()), ''),
     'party-bot': () => {

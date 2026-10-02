@@ -346,8 +346,9 @@ CG.Net = {
   },
 
   // the leader starts a match for the party (and any parties the queue matched it with)
-  async startMatch(pids) {
+  async startMatch(pids, mode) {
     pids = pids || [this.partyId];
+    mode = mode || 'squad';
     const players = [];
     let botN = 0;
     for (const pid of pids) {
@@ -356,10 +357,11 @@ CG.Net = {
       Object.keys(p.members || {}).sort((a, b) => (p.members[a].at || 0) - (p.members[b].at || 0)).forEach((uid) => {
         players.push({ id: uid, owner: uid, name: p.members[uid].name, agent: p.members[uid].agent || 'razor' });
       });
-      (p.bots || []).forEach((agent) => { botN++; players.push({ id: 'bot' + botN, owner: this.uid, name: 'BOT ' + botN, agent, bot: true }); });
+      if (mode !== 'duel') (p.bots || []).forEach((agent) => { botN++; players.push({ id: 'bot' + botN, owner: this.uid, name: 'BOT ' + botN, agent, bot: true }); });
     }
+    if (mode === 'duel' && players.length !== 2) throw new Error('A duel needs exactly two players');
     const ref = this.db.ref('matches').push();
-    await ref.child('info').set({ host: this.uid, players: players.slice(0, this.MAX), parties: pids, at: firebase.database.ServerValue.TIMESTAMP });
+    await ref.child('info').set({ host: this.uid, mode, players: players.slice(0, this.MAX), parties: pids, at: firebase.database.ServerValue.TIMESTAMP });
     const up = {};
     pids.forEach((pid) => { up['parties/' + pid + '/state'] = 'match'; up['parties/' + pid + '/match'] = ref.key; up['queue/' + pid] = null; });
     await this.db.ref().update(up);
@@ -381,11 +383,15 @@ CG.Net = {
 CG.Queue = {
   ref: null, since: 0, timer: null,
 
-  async join() {
+  // mode 'squad' teams up parties against the army; 'duel' pairs two single players against each other
+  async join(mode) {
     const N = CG.Net;
+    mode = mode || 'squad';
     if (!N.isLeader) throw new Error('Only the party leader can queue');
-    await N.db.ref('queue/' + N.partyId).set({ size: N.partySize(), leader: N.uid, at: firebase.database.ServerValue.TIMESTAMP });
-    await N.db.ref('parties/' + N.partyId + '/state').set('queue');
+    if (mode === 'duel' && N.partySize() !== 1) throw new Error('Leave the squad (or remove its bots) to find a duel');
+    this.mode = mode;
+    await N.db.ref('queue/' + N.partyId).set({ size: N.partySize(), leader: N.uid, mode, at: firebase.database.ServerValue.TIMESTAMP });
+    await N.db.ref('parties/' + N.partyId).update({ state: 'queue', queueMode: mode });
     this.watch();
   },
 
@@ -401,8 +407,15 @@ CG.Queue = {
   async check(q) {
     const N = CG.Net, mine = N.partyId;
     if (!mine || !q[mine] || this.busy) return;
-    const order = Object.keys(q).sort((a, b) => (q[a].at || 0) - (q[b].at || 0));
+    const myMode = q[mine].mode || 'squad';
+    const order = Object.keys(q).filter((pid) => (q[pid].mode || 'squad') === myMode).sort((a, b) => (q[a].at || 0) - (q[b].at || 0));
     if (order[0] !== mine) return;                   // an older party gathers the team
+    if (myMode === 'duel') {                         // the two longest-waiting duellists fight
+      if (order.length < 2) return;
+      this.busy = true;
+      try { await N.startMatch(order.slice(0, 2), 'duel'); } finally { this.busy = false; this.stop(); }
+      return;
+    }
     let size = 0;
     const pick = [];
     for (const pid of order) if (size + (q[pid].size || 1) <= N.MAX) { pick.push(pid); size += q[pid].size || 1; }
