@@ -880,6 +880,9 @@ img { -webkit-user-drag: none; user-drag: none; }
 /* the home-screen name tag: only the name, plain (banner + title live on View Profile; no glow) */
 .fig .tag { cursor: pointer; background: none; border: 0; clip-path: none; padding: 0 4px; box-shadow: none; filter: none; }
 .fig .tag b { text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000; }
+/* sits well above the head (user: move it upwards) */
+.fig .tag { margin-bottom: clamp(18px, 4vh, 44px); }
+.fig.me .tag { margin-bottom: clamp(22px, 5vh, 56px); }
 .fig .tag:hover { filter: brightness(1.2); }
 .cslot b[data-act] { cursor: pointer; }
 .over-rank { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px; background: rgba(0, 0, 0, .35); border: 1px solid var(--line); animation: riseIn .5s ease-out; }
