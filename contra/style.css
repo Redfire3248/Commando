@@ -877,7 +877,9 @@ img { -webkit-user-drag: none; user-drag: none; }
 .rank-chip small { color: var(--dim); font-size: 11px; letter-spacing: .08em; }
 #menu-rank { display: inline-flex; }
 .fig .tag small .rank-ico, .cslot small .rank-ico { margin-right: 4px; vertical-align: -2px; }
-.fig .tag { cursor: pointer; background: linear-gradient(rgba(0, 0, 0, .45), rgba(0, 0, 0, .65)), var(--bn, rgba(0, 0, 0, .6)); }
+/* the home-screen name tag: only the name, plain (banner + title live on View Profile; no glow) */
+.fig .tag { cursor: pointer; background: none; border: 0; clip-path: none; padding: 0 4px; box-shadow: none; filter: none; }
+.fig .tag b { text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000; }
 .fig .tag:hover { filter: brightness(1.2); }
 .cslot b[data-act] { cursor: pointer; }
 .over-rank { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px; background: rgba(0, 0, 0, .35); border: 1px solid var(--line); animation: riseIn .5s ease-out; }
@@ -900,7 +902,7 @@ img { -webkit-user-drag: none; user-drag: none; }
 .profile-card { width: min(640px, 94vw); max-height: 92vh; overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 14px; box-sizing: border-box;
   background: linear-gradient(180deg, var(--panel2), var(--panel)); box-shadow: inset 0 3px 0 var(--acc); clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px); animation: riseIn .3s ease-out; }
 .pf-banner { position: relative; display: flex; align-items: flex-end; gap: 14px; min-height: 210px; padding: 14px 18px 12px; box-sizing: border-box; overflow: hidden;
-  background: linear-gradient(90deg, rgba(0, 0, 0, .1), rgba(0, 0, 0, .55)), var(--bn); }
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, .4)), var(--bn); }
 .pf-fig { height: 200px; flex: none; display: flex; align-items: flex-end; }
 .pf-fig > img { height: 100%; width: auto; image-rendering: pixelated; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, .6)); }
 .pf-fig .idle { height: 100%; }
@@ -996,3 +998,28 @@ body:not(.playing) #game { filter: blur(3px) brightness(.92); transform: scale(1
 .lb-row .pos { width: 28px; font: 400 18px var(--head); color: var(--acc2); text-align: right; }
 .lb-row b { font-size: 16px; } .lb-row .grow { flex: 1; } .lb-row small { color: var(--dim); min-width: 64px; text-align: right; }
 .lb-row .ttl { display: inline; margin-left: 6px; }
+
+/* ---------- the starter choice ---------- */
+.overlay.starter-screen { flex-direction: column; align-items: center; justify-content: center; gap: 2vh; background: radial-gradient(ellipse at center, rgba(5, 8, 10, .35), rgba(3, 5, 6, .85)); }
+.starter-head { text-align: center; max-width: 720px; }
+.starter-cards { display: flex; gap: 3vw; justify-content: center; flex-wrap: wrap; }
+.starter-card { width: min(340px, 42vw); display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px; box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(8, 10, 13, .92) 55%); border: 2px solid var(--c);
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px); animation: riseIn .5s ease-out both; transition: transform .15s; }
+.starter-card:nth-child(2) { animation-delay: .1s; }
+.starter-card:hover { transform: translateY(-6px); }
+.starter-card .st-fig { height: min(36vh, 300px); display: flex; align-items: flex-end; justify-content: center; }
+.starter-card .st-fig .idle { height: 100%; }
+.starter-card .st-fig > img { height: 100%; width: auto; image-rendering: pixelated; }
+.starter-card:hover .st-fig .idle { filter: drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff); }
+.starter-card .st-name { font: 400 40px var(--head); color: var(--c); line-height: 1; }
+.starter-card .st-role { letter-spacing: .3em; font-size: 12px; color: var(--dim); font-weight: 700; }
+.starter-card .stat-rows { width: 100%; }
+.starter-card .st-ab { display: flex; gap: 10px; align-items: center; text-align: left; font-size: 13px; }
+.starter-card .st-ab img { width: 44px; height: 44px; image-rendering: pixelated; }
+.starter-card .st-ab p { margin: 2px 0 0; color: #cfd9cc; }
+.starter-card .big-btn { width: 100%; }
+@media (max-height: 560px) {
+  .starter-card { padding: 8px; gap: 4px; } .starter-card .st-fig { height: 28vh; } .starter-card .st-name { font-size: 24px; }
+  .starter-card .st-ab p { display: none; } .starter-head .sub { font-size: 11px; }
+}

@@ -166,6 +166,14 @@ CG.Profile = {
     this.saveLocal(p);
     return Promise.resolve();
   },
+  // the one free agent of a new account
+  chooseStarter(id) {
+    if (CG.Net.online) return CG.Net.chooseStarter(id);
+    const p = this.local();
+    p.starter = id; p.owned = p.owned || {}; p.owned['agent_' + id] = true;
+    this.saveLocal(p);
+    return Promise.resolve();
+  },
   setLook(kind, id) {
     if (CG.Net.online) return CG.Net.setLook(kind, id);
     const p = this.local(); p[kind] = id; this.saveLocal(p);

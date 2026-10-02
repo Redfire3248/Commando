@@ -4,14 +4,6 @@
 //   effect  what the item does in game (see apply())
 CG.Shop = {
   DEFAULTS: {
-    agent_hammer: { name: 'HAMMER', kind: 'agent', agent: 'hammer', price: 1500, order: 15 },
-    agent_viper:  { name: 'VIPER', kind: 'agent', agent: 'viper', price: 1600, order: 16 },
-    agent_ghost:  { name: 'GHOST', kind: 'agent', agent: 'ghost', price: 1800, order: 17 },
-    agent_atlas:  { name: 'ATLAS', kind: 'agent', agent: 'atlas', price: 2200, order: 18 },
-    agent_kite:  { name: 'KITE', kind: 'agent', agent: 'kite', price: 1200, order: 11 },
-    agent_nova:  { name: 'NOVA', kind: 'agent', agent: 'nova', price: 1500, order: 12 },
-    agent_brick: { name: 'BRICK', kind: 'agent', agent: 'brick', price: 1500, order: 13 },
-    agent_volt:  { name: 'VOLT', kind: 'agent', agent: 'volt', price: 2000, order: 14 },
     heart:  { name: 'Iron Heart', desc: '+1 heart for every agent.', price: 600, kind: 'perk', effect: 'hp', icon: '❤', order: 1 },
     recharge: { name: 'Quick Recharge', desc: 'Abilities recharge 20% faster.', price: 800, kind: 'perk', effect: 'cd', icon: '⚡', order: 2 },
     boots:  { name: 'Light Boots', desc: 'Run 8% faster.', price: 500, kind: 'perk', effect: 'speed', icon: '👟', order: 3 },
@@ -20,9 +12,14 @@ CG.Shop = {
     gold:   { name: 'Golden Rounds', desc: 'Your bullets glow gold.', price: 300, kind: 'cosmetic', effect: 'gold', icon: '✨', order: 6 },
     elite:  { name: 'Elite Tag', desc: 'A gold star next to your name in game.', price: 250, kind: 'cosmetic', effect: 'star', icon: '★', order: 7 },
   },
-  // Agents: three are free, the rest are bought here (kind 'agent'). Bots may use any agent.
-  FREE_AGENTS: ['razor', 'jax', 'duke'],
+  // Agents: a new account picks ONE starter, JAX or DUKE (STARTERS); every other agent — the other starter too — is
+  // bought here (kind 'agent'). Bots may use any agent.
+  FREE_AGENTS: [],
+  STARTERS: ['jax', 'duke'],
   AGENT_ITEMS: {
+    agent_jax:   { name: 'JAX', kind: 'agent', agent: 'jax', price: 800, order: 8 },
+    agent_duke:  { name: 'DUKE', kind: 'agent', agent: 'duke', price: 800, order: 9 },
+    agent_razor: { name: 'RAZOR', kind: 'agent', agent: 'razor', price: 1000, order: 10 },
     agent_hammer: { name: 'HAMMER', kind: 'agent', agent: 'hammer', price: 1500, order: 15 },
     agent_viper:  { name: 'VIPER', kind: 'agent', agent: 'viper', price: 1600, order: 16 },
     agent_ghost:  { name: 'GHOST', kind: 'agent', agent: 'ghost', price: 1800, order: 17 },
@@ -53,6 +50,11 @@ CG.Shop = {
     return !it || this.owned(it.id);           // an agent with no shop item is free
   },
   owned(id) { const p = CG.Profile.get(); return !!(p && p.owned && p.owned[id]); },
+  // has this account picked its starter yet? (older accounts that already own an agent count as done)
+  hasStarter() {
+    const p = CG.Profile.get();
+    return !!(p.starter || (p.owned && Object.keys(p.owned).some((k) => k.indexOf('agent_') === 0)));
+  },
   // the effects this player has paid for
   effects() {
     const out = {};

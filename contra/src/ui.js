@@ -7,7 +7,7 @@
 // Offline play is only offered when the online service is not set up or cannot be reached.
 CG.UI = (() => {
   const $ = (id) => document.getElementById(id);
-  const PANELS = ['login', 'username', 'menu', 'lobby', 'select', 'versus', 'shop', 'settings', 'friends', 'leaderboard', 'pause', 'over'];
+  const PANELS = ['login', 'username', 'starter', 'menu', 'lobby', 'select', 'versus', 'shop', 'settings', 'friends', 'leaderboard', 'pause', 'over'];
   const BEST = 'commando.best', NAME = 'commando.name', AGENT = 'commando.agent';
   let lastPlayers = null, scene = null, booted = false, offline = false, current = null;
 
@@ -24,7 +24,7 @@ CG.UI = (() => {
   const myName = () => (CG.Net.profile ? CG.Net.profile.username || CG.Net.profile.name : localName());
   const myAgent = () => {
     const id = store.get(AGENT, '');
-    return CG.AGENT[id] && CG.Shop.hasAgent(id) ? id : (CG.AGENTS.find((a) => CG.Shop.hasAgent(a.id)) || CG.AGENTS[0]).id;
+    return CG.AGENT[id] && CG.Shop.hasAgent(id) ? id : (CG.AGENTS.find((a) => CG.Shop.hasAgent(a.id)) || CG.AGENT.jax).id;
   };
   const priceOf = (id) => { const it = CG.Shop.agentItem(id); return it ? it.price : 0; };
   const coins = () => CG.Profile.coins();                  // the account's, or this device's for a guest
@@ -119,10 +119,11 @@ CG.UI = (() => {
   function canPlayOffline() { const s = N().state; return s === 'off' || s === 'error'; }
   function home() {
     const net = N();
-    if (offline) { show('menu'); return; }                                     // a guest: this device only
-    if (net.state === 'off') { offline = true; show('menu'); return; }          // online service not set up
+    if (offline) { if (!CG.Shop.hasStarter()) { openStarter(); return; } show('menu'); return; }   // a guest: this device only
+    if (net.state === 'off') { offline = true; home(); return; }          // online service not set up
     if (!net.online) { show('login'); renderLogin(); return; }
     if (net.needsUsername) { show('username'); return; }
+    if (!CG.Shop.hasStarter()) { openStarter(); return; }                      // a new account: one free agent
     show('menu');
   }
   function renderLogin() {
@@ -228,7 +229,7 @@ CG.UI = (() => {
           return `<div class="cslot ${x.me ? 'me' : ''}" style="--c:${a.color}">
             ${x.leader && humansIn() > 1 ? `<span class="crown">${ico('crown', '👑')}</span>` : ''}${removeBot(x)}
             <div class="cs-art" ${clickFig(x)}>${figure(a.id)}</div>
-            <b data-act="member" data-uid="${x.key}">${esc(x.name)}</b><small>${CG.Ranks.icon(x.rr, 14)}${x.bot ? ico('bot', '') : ''}${a.name}${x.me ? ' · ' + a.role.toUpperCase() : ''}</small>
+            <b data-act="member" data-uid="${x.key}">${esc(x.name)}</b>
             ${x.me ? `<button class="btn small" data-act="locker">${ico('locker')}LOCKER</button>` : ''}
           </div>`;
         }).join('')}</div>`);
@@ -238,8 +239,7 @@ CG.UI = (() => {
         if (!x) return `<div class="fig empty ${botPick === col ? 'picking' : ''}"><div class="slot-in">${emptyInner(col)}</div><div class="pad"></div></div>`;
         const a = CG.AGENT[x.agent] || CG.AGENTS[0];
         return `<div class="fig ${x.me ? 'me' : ''} ${x.bot ? 'bot' : ''}" style="--c:${a.color}">
-          <div class="tag" data-act="member" data-uid="${x.key}" style="${x.banner ? '--bn:' + CG.Cosmetics.bannerCss(x.banner) : ''}">${crown(x)}<b>${esc(x.name)}</b>
-            ${CG.Cosmetics.titleHtml(x.title)}<small>${CG.Ranks.icon(x.rr, 14)}${x.bot ? ico('bot', '') : ''}${a.name}</small></div>
+          <div class="tag" data-act="member" data-uid="${x.key}">${crown(x)}<b>${esc(x.name)}</b></div>
           <div class="body ${col > mid ? 'flip' : ''}" ${clickFig(x)}>${figure(a.id)}</div>
           ${x.me ? '<div class="pad ring" data-act="locker"><svg viewBox="0 0 100 30" preserveAspectRatio="none"><ellipse cx="50" cy="15" rx="48" ry="13"/></svg></div>' : '<div class="pad"></div>'}
         </div>`;
@@ -372,7 +372,20 @@ CG.UI = (() => {
     if (!e.target.closest('#member-pop') && !e.target.closest('[data-act="member"]')) closeMember();
   }, true);
 
-  // ---------------------------------------------------------------- the rank leaderboard
+  // ---------------------------------------------------------------- a new account's one free agent
+  function openStarter() {
+    $('starter-cards').innerHTML = CG.Shop.STARTERS.map((id) => {
+      const a = CG.AGENT[id], ab = a.ability;
+      return `<div class="starter-card" style="--c:${a.color}">
+        <div class="st-fig">${figure(id)}</div>
+        <div class="st-name">${a.name}</div><div class="st-role">${a.role.toUpperCase()}</div>
+        <div class="stat-rows"><span>HEALTH</span>${bar(a.hp / 8)}<b>${a.hp}</b><span>SPEED</span>${bar((a.speed - 0.8) / 0.4)}<b>${Math.round(a.speed * 100)}%</b></div>
+        <div class="st-ab">${abIcon(id) ? `<img src="${abIcon(id)}" alt="">` : ''}<div><b>${ab.name}</b><p>${ab.desc}</p></div></div>
+        <button class="btn primary big-btn" data-act="starter-pick" data-uid="${id}">CHOOSE ${a.name}</button>
+      </div>`;
+    }).join('');
+    show('starter');
+  }
   async function renderLeaderboard() {
     const myR = CG.Ranks.of(CG.Profile.rr());
     $('lb-me').innerHTML = `<div class="lb-row me">${CG.Ranks.icon(myR.rr, 30)}<b>${esc(myName())}</b>${CG.Cosmetics.titleHtml(CG.Profile.title())}<span class="grow"></span><b style="color:${myR.tier.color}">${myR.name}</b><small>${myR.rr} RR</small></div>`;
@@ -626,6 +639,9 @@ CG.UI = (() => {
   };
   let joined = [], padPrev = {}, botN = 0;
 
+  // what a person on this device may play: the account holder their own agents; friends playing along on the same
+  // device also the two basic commandos
+  const canUse = (id, owner) => CG.Shop.hasAgent(id) || (!owner && CG.Shop.STARTERS.includes(id));
   const humanAgents = (except) => joined.filter((d) => d !== except && d.type !== 'bot').map((d) => d.agent);
   function join(id, type, index) {
     if (joined.length >= MAX || joined.some((d) => d.id === id)) return;
@@ -634,7 +650,7 @@ CG.UI = (() => {
     else {
       // the first person keeps the locker agent; the others get the next agent nobody has
       const first = !joined.some((q) => q.type !== 'bot');
-      d.agent = first ? myAgent() : (CG.AGENTS.find((a) => CG.Shop.hasAgent(a.id) && !humanAgents().includes(a.id)) || CG.AGENTS[0]).id;
+      d.agent = first ? myAgent() : (CG.AGENTS.find((a) => canUse(a.id, false) && !humanAgents().includes(a.id)) || CG.AGENT[CG.Shop.STARTERS[humanAgents().length % 2]]).id;
     }
     joined.push(d);
     renderLobby();
@@ -648,7 +664,7 @@ CG.UI = (() => {
     for (let k = 0; k < n; k++) {
       i = (i + dir + n) % n;
       const a = CG.AGENTS[i];
-      if (CG.Shop.hasAgent(a.id) && !taken.includes(a.id)) break;
+      if (canUse(a.id, joined.find((q) => q.type !== 'bot') === d) && !taken.includes(a.id)) break;
     }
     d.agent = CG.AGENTS[i].id;
     if (joined.find((q) => q.type !== 'bot') === d) { store.set(AGENT, d.agent); N().setAgent(d.agent); }
@@ -857,7 +873,7 @@ CG.UI = (() => {
             <div class="ac-name">${a.name}</div><div class="ac-role">${a.role}</div>
             <div class="stat-rows"><span>HEALTH</span>${bar(a.hp / 8)}<span>SPEED</span>${bar((a.speed - 0.8) / 0.4)}</div>
             <div class="ac-ab">${abIcon(a.id) ? `<img src="${abIcon(a.id)}" alt="">` : ''}<span><b>${ab.name}</b> — ${ab.desc}</span></div>
-            ${has ? `<div class="owned-tag">${free ? '✔ FREE AGENT' : '✔ UNLOCKED'}</div>`
+            ${has ? `<div class="owned-tag">${CG.Profile.get().starter === a.id ? '✔ YOUR STARTER' : '✔ UNLOCKED'}</div>`
               : `<div class="row"><span class="price"><span class="coin"></span>${price}</span>
                  <button class="btn small primary" data-act="buy-agent" data-uid="${a.id}" ${c < price ? 'disabled' : ''}>UNLOCK</button></div>`}
           </div></div>`;
@@ -940,7 +956,7 @@ CG.UI = (() => {
 
   const ACTIONS = {
     google: () => run(() => N().signInGoogle(), '', 'login-msg'),
-    offline: () => { offline = true; show('menu'); },
+    offline: () => { offline = true; home(); },
     signout: () => run(() => N().signOut().then(() => { offline = false; home(); }), 'Signed out'),
     'un-save': () => run(() => N().claimUsername($('un-input').value).then(() => { toast('Callsign saved'); home(); }), '', 'un-msg'),
     'un-change': () => { $('un-cancel').classList.remove('hidden'); show('username'); },
@@ -956,6 +972,12 @@ CG.UI = (() => {
     'mode-open': () => { renderModes(); $('mode-pop').classList.remove('hidden'); },
     'mode-close': () => $('mode-pop').classList.add('hidden'),
     'mode-pick': pickMode,
+    'starter-pick': (id) => run(() => CG.Profile.chooseStarter(id).then(() => {
+      store.set(AGENT, id); N().setAgent(id);
+      CG.Sfx.play('ability');
+      toast(CG.AGENT[id].name + ' is yours!');
+      show('menu');
+    }), ''),
     leaderboard: () => { show('leaderboard'); renderLeaderboard(); },
     rebind: (a) => { rebinding = rebinding === a ? null : a; renderSettings(); },
     'keys-reset': () => { CG.Keys.reset(); rebinding = null; renderSettings(); toast('Keys reset'); },

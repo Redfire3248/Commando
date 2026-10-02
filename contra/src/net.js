@@ -389,6 +389,17 @@ CG.Net = {
     if (this.partyId) this.db.ref('parties/' + this.partyId + '/members/' + this.uid + '/' + kind).set(id).catch(() => {});
   },
   // someone else's profile card (rank, look, stats)
+  // a new account's one free agent (JAX or DUKE), once
+  async chooseStarter(id) {
+    if (!CG.Shop.STARTERS.includes(id)) throw new Error('Pick JAX or DUKE');
+    const res = await this.db.ref('users/' + this.uid).transaction((u) => {
+      if (!u || u.starter) return undefined;
+      u.starter = id; u.owned = u.owned || {}; u.owned['agent_' + id] = true;
+      return u;
+    });
+    const u = res.snapshot && res.snapshot.val();
+    if (u) { this.profile.starter = u.starter; this.profile.owned = u.owned; }
+  },
   async getProfile(uid) { return (await this.db.ref('users/' + uid).get()).val() || {}; },
   kick(uid) {
     if (!this.partyId || !this.isLeader || uid === this.uid) return Promise.resolve();
