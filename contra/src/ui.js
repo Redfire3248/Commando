@@ -21,7 +21,14 @@ CG.UI = (() => {
     return n;
   }
   const myName = () => (CG.Net.profile ? CG.Net.profile.username || CG.Net.profile.name : localName());
-  const myAgent = () => (CG.AGENT[store.get(AGENT, '')] ? store.get(AGENT, '') : 'razor');
+  const myAgent = () => {
+    const id = store.get(AGENT, '');
+    return CG.AGENT[id] && CG.Shop.hasAgent(id) ? id : (CG.AGENTS.find((a) => CG.Shop.hasAgent(a.id)) || CG.AGENTS[0]).id;
+  };
+  const priceOf = (id) => { const it = CG.Shop.agentItem(id); return it ? it.price : 0; };
+  const coins = () => (N().profile && N().profile.coins) || 0;
+  // a bar out of 5 for the agent screens (health 4-8, speed 90-116%)
+  const bar = (v) => `<span class="bar"><i style="width:${Math.round(Math.max(0.08, Math.min(1, v)) * 100)}%"></i></span>`;
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const visible = (id) => !$(id).classList.contains('hidden');
   const portrait = (id) => (CG.PORTRAITS && CG.PORTRAITS[id]) || '';
@@ -102,18 +109,21 @@ CG.UI = (() => {
   }
   function renderShowcase() {
     if (showIdx < 0) showIdx = Math.max(0, CG.AGENTS.findIndex((a) => a.id === myAgent()));
-    const a = CG.AGENTS[showIdx], ab = a.ability;
+    const a = CG.AGENTS[showIdx], ab = a.ability, own = CG.Shop.hasAgent(a.id), mine = a.id === myAgent();
+    const action = !own
+      ? `<button class="btn small primary" data-act="buy-agent" data-uid="${a.id}" ${coins() < priceOf(a.id) ? 'disabled' : ''}>🔒 UNLOCK · <span class="coin"></span> ${priceOf(a.id)}</button>`
+      : `<button class="btn small ${mine ? 'on' : ''}" data-act="show-fav">${mine ? 'SELECTED' : 'MAKE MY AGENT'}</button>`;
     $('showcase').innerHTML = `
       <button class="btn arrow" data-act="show-prev">◀</button>
-      <div class="hero" style="--c:${a.color}">
+      <div class="hero ${own ? '' : 'locked'}" style="--c:${a.color}">
         ${portrait(a.id) ? `<img src="${portrait(a.id)}" alt="">` : ''}
         <div class="name">${a.name}</div><div class="role">${a.role}</div>
-        <div class="fav">${a.id === myAgent() ? '★ your agent' : ''}</div>
+        <div class="fav">${mine ? '★ your agent' : own ? '' : '🔒 locked'}</div>
       </div>
       <div class="info" style="--c:${a.color}">
-        <div class="stats"><span>${'♥'.repeat(a.hp)}</span><span>speed ${Math.round(a.speed * 100)}%</span></div>
+        <div class="stat-rows"><span>HEALTH</span>${bar(a.hp / 8)}<span>SPEED</span>${bar((a.speed - 0.8) / 0.4)}</div>
         <div class="ab">${abIcon(a.id) ? `<img src="${abIcon(a.id)}" alt="">` : ''}<div><b>${ab.name}</b><br>${ab.desc}</div></div>
-        <button class="btn small ${a.id === myAgent() ? 'on' : ''}" data-act="show-fav">${a.id === myAgent() ? 'SELECTED' : 'MAKE MY AGENT'}</button>
+        ${action}
       </div>
       <button class="btn arrow" data-act="show-next">▶</button>`;
   }
@@ -259,33 +269,57 @@ CG.UI = (() => {
   let picks = [];
   function openSelect(devices) {
     let human = 0;
+    const firstFree = (from) => {
+      for (let k = 0; k < CG.AGENTS.length; k++) {
+        const i = (from + k) % CG.AGENTS.length;
+        if (CG.Shop.hasAgent(CG.AGENTS[i].id)) return i;
+      }
+      return 0;
+    };
     picks = devices.map((d, i) => ({
       device: { type: d.type, index: d.index }, bot: d.type === 'bot', locked: false, agent: null,
-      cursor: d.type === 'bot' ? 0 : (human++ === 0 ? CG.AGENTS.findIndex((a) => a.id === myAgent()) : human % CG.AGENTS.length),
+      cursor: d.type === 'bot' ? 0 : (human++ === 0 ? CG.AGENTS.findIndex((a) => a.id === myAgent()) : firstFree(human * 2)),
       name: d.type === 'bot' ? 'BOT ' + (i + 1) : i === 0 ? myName() : 'P' + (i + 1),
     }));
     renderSelect();
     show('select');
   }
   const taken = (id, except) => picks.some((p) => p !== except && p.locked && p.agent === id);
+  const chooser = () => picks.find((p) => !p.bot && !p.locked);
   function renderSelect() {
-    const focus = picks.find((p) => !p.bot && !p.locked) || picks[0];
-    const looking = CG.AGENTS[focus.cursor];
+    const focus = chooser() || picks[0], looking = CG.AGENTS[focus.cursor], ab = looking.ability;
+    const own = CG.Shop.hasAgent(looking.id), isTaken = taken(looking.id, focus);
+    let action;
+    if (!chooser()) action = '<div class="sel-wait">ALL LOCKED IN — DEPLOYING…</div>';
+    else if (!own) action = `<button class="btn primary big-btn" data-act="buy-agent" data-uid="${looking.id}" ${coins() < priceOf(looking.id) ? 'disabled' : ''}>🔒 UNLOCK FOR <span class="coin"></span> ${priceOf(looking.id)}</button>
+      <div class="sel-note">${coins() < priceOf(looking.id) ? 'You have ' + coins() + ' coins — keep playing to earn more' : 'Buy once, play forever'}</div>`;
+    else if (isTaken) action = `<button class="btn primary big-btn" disabled>TAKEN BY A TEAMMATE</button>`;
+    else action = `<button class="btn primary big-btn" data-act="lock">LOCK IN ${looking.name}</button>
+      <div class="sel-note">${esc(focus.name)} is choosing</div>`;
+    $('sel-main').innerHTML = `
+      <div class="sel-hero ${own ? '' : 'locked'}" style="--c:${looking.color}">
+        ${portrait(looking.id) ? `<img src="${portrait(looking.id)}" alt="">` : ''}
+        ${own ? '' : '<div class="lock-badge">🔒</div>'}
+      </div>
+      <div class="sel-info" style="--c:${looking.color}">
+        <div class="sel-name">${looking.name}</div>
+        <div class="sel-role">${looking.role}</div>
+        <div class="stat-rows"><span>HEALTH</span>${bar(looking.hp / 8)}<b>${looking.hp}</b><span>SPEED</span>${bar((looking.speed - 0.8) / 0.4)}<b>${Math.round(looking.speed * 100)}%</b></div>
+        <div class="sel-ab">${abIcon(looking.id) ? `<img src="${abIcon(looking.id)}" alt="">` : ''}<div><small>ABILITY</small><b>${ab.name}</b><p>${ab.desc}</p></div></div>
+        ${action}
+      </div>`;
     $('agent-cards').innerHTML = CG.AGENTS.map((a, i) => {
       const who = picks.filter((p) => !p.bot && (p.locked ? p.agent === a.id : p.cursor === i));
-      const isTaken = taken(a.id);
-      return `<button class="agent ${isTaken ? 'taken' : ''} ${looking === a ? 'look' : ''}" data-act="pick" data-uid="${a.id}" style="--c:${a.color}">
+      const has = CG.Shop.hasAgent(a.id), gone = taken(a.id, focus);
+      return `<button class="tile ${looking === a ? 'look' : ''} ${has ? '' : 'locked'} ${gone ? 'taken' : ''}" data-act="pick" data-uid="${a.id}" style="--c:${a.color}">
         ${portrait(a.id) ? `<img src="${portrait(a.id)}" alt="">` : ''}
-        <b>${a.name}</b><small>${a.role}</small>
+        <b>${a.name}</b>
+        ${has ? '' : `<span class="price"><span class="coin"></span>${priceOf(a.id)}</span>`}
         <span class="marks">${who.map((p) => `<i style="background:${CG.PLAYER_COLORS[picks.indexOf(p)]}" title="${esc(p.name)}">${p.locked ? '✔' : ''}</i>`).join('')}</span>
       </button>`;
     }).join('');
-    const ab = looking.ability;
-    $('agent-info').innerHTML = `${abIcon(looking.id) ? `<img src="${abIcon(looking.id)}" alt="">` : ''}
-      <div><b style="color:${looking.color}">${looking.name}</b> · ${looking.role} · ${'♥'.repeat(looking.hp)} · speed ${Math.round(looking.speed * 100)}%<br>
-      <span class="ab">${ab.name}</span> — ${ab.desc}</div>`;
-    $('select-slots').innerHTML = picks.map((p, i) => `<div class="pick" style="--c:${CG.PLAYER_COLORS[i]}">
-      <b>${esc(p.name)}</b> ${p.locked ? CG.AGENT[p.agent].name + ' ✔' : p.bot ? 'picks last' : 'choosing…'}</div>`).join('');
+    $('select-slots').innerHTML = picks.map((p, i) => `<div class="pick ${p.locked ? 'done' : ''}" style="--c:${CG.PLAYER_COLORS[i]}">
+      <b>${esc(p.name)}</b><span>${p.locked ? CG.AGENT[p.agent].name : p.bot ? 'bot' : '…'}</span></div>`).join('');
   }
   function moveCursor(p, d) {
     if (!p || p.locked) return;
@@ -295,6 +329,7 @@ CG.UI = (() => {
   function lockIn(p, id) {
     if (!p || p.locked) return;
     id = id || CG.AGENTS[p.cursor].id;
+    if (!CG.Shop.hasAgent(id)) { toast(CG.AGENT[id].name + ' is locked — unlock it first'); return; }
     if (taken(id, p)) { toast(CG.AGENT[id].name + ' is already taken'); return; }
     p.agent = id; p.locked = true;
     p.cursor = CG.AGENTS.findIndex((a) => a.id === id);
@@ -302,7 +337,7 @@ CG.UI = (() => {
     CG.Sfx.play('pickup');
     renderSelect();
     if (picks.every((q) => q.bot || q.locked)) {
-      picks.filter((q) => q.bot).forEach((q) => {                       // bots take what is left
+      picks.filter((q) => q.bot).forEach((q) => {                       // bots take what is left (any agent)
         const free = CG.AGENTS.filter((a) => !taken(a.id, q));
         q.agent = (free[Math.floor(Math.random() * free.length)] || CG.AGENTS[0]).id;
         q.locked = true;
@@ -311,7 +346,7 @@ CG.UI = (() => {
       setTimeout(() => {
         if (!visible('select')) return;
         play(picks.map((q) => ({ device: q.device, agent: q.agent, name: q.name, bot: q.bot })));
-      }, 700);
+      }, 900);
     }
   }
   function unlock(p) { if (p && p.locked && !p.bot) { p.locked = false; renderSelect(); } }
@@ -378,8 +413,11 @@ CG.UI = (() => {
     if (lead && net.partySize() < net.MAX) html += '<button class="btn small" data-act="party-bot">+ ADD BOT</button>';
     $('party-members').innerHTML = html;
     const mine = (p.members[net.uid] && p.members[net.uid].agent) || myAgent();
-    $('party-agents').innerHTML = CG.AGENTS.map((a) => `<button class="mini ${a.id === mine ? 'on' : ''}" data-act="party-agent" data-uid="${a.id}" style="--c:${a.color}" title="${a.ability.name}: ${esc(a.ability.desc)}">
-      ${portrait(a.id) ? `<img src="${portrait(a.id)}" alt="">` : ''}<span>${a.name}</span></button>`).join('');
+    $('party-agents').innerHTML = CG.AGENTS.map((a) => {
+      const has = CG.Shop.hasAgent(a.id);
+      return `<button class="mini ${a.id === mine ? 'on' : ''} ${has ? '' : 'locked'}" data-act="${has ? 'party-agent' : 'shop-agents'}" data-uid="${a.id}" style="--c:${a.color}" title="${has ? a.ability.name + ': ' + esc(a.ability.desc) : 'Locked — unlock it in the shop'}">
+      ${portrait(a.id) ? `<img src="${portrait(a.id)}" alt="">` : ''}<span>${has ? a.name : '🔒 ' + a.name}</span></button>`;
+    }).join('');
     const queued = p.state === 'queue';
     $('party-start').classList.toggle('hidden', !lead || queued);
     $('party-queue').classList.toggle('hidden', !lead);
@@ -396,16 +434,36 @@ CG.UI = (() => {
   }
 
   // ---------------------------------------------------------------- shop
+  let shopTab = 'agents';
   function renderShop() {
-    const net = N(), coins = (net.profile && net.profile.coins) || 0;
-    $('shop-coins').textContent = coins;
-    $('shop-items').innerHTML = CG.Shop.items().map((it) => {
+    const c = coins();
+    $('shop-coins').textContent = c;
+    document.querySelectorAll('#shop .shop-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.uid === shopTab));
+    if (shopTab === 'agents') {
+      $('shop-items').className = 'shop-agents';
+      $('shop-items').innerHTML = CG.AGENTS.map((a) => {
+        const has = CG.Shop.hasAgent(a.id), free = CG.Shop.FREE_AGENTS.includes(a.id), price = priceOf(a.id), ab = a.ability;
+        return `<div class="agent-card ${has ? 'owned' : ''}" style="--c:${a.color}">
+          <div class="ac-art">${portrait(a.id) ? `<img src="${portrait(a.id)}" alt="">` : ''}</div>
+          <div class="ac-body">
+            <div class="ac-name">${a.name}</div><div class="ac-role">${a.role}</div>
+            <div class="stat-rows"><span>HEALTH</span>${bar(a.hp / 8)}<span>SPEED</span>${bar((a.speed - 0.8) / 0.4)}</div>
+            <div class="ac-ab">${abIcon(a.id) ? `<img src="${abIcon(a.id)}" alt="">` : ''}<span><b>${ab.name}</b> — ${ab.desc}</span></div>
+            ${has ? `<div class="owned-tag">${free ? '✔ FREE AGENT' : '✔ UNLOCKED'}</div>`
+              : `<div class="row"><span class="price"><span class="coin"></span>${price}</span>
+                 <button class="btn small primary" data-act="buy-agent" data-uid="${a.id}" ${c < price ? 'disabled' : ''}>UNLOCK</button></div>`}
+          </div></div>`;
+      }).join('');
+      return;
+    }
+    $('shop-items').className = 'shop-grid';
+    $('shop-items').innerHTML = CG.Shop.items().filter((it) => it.kind !== 'agent' && (shopTab === 'perks' ? it.kind !== 'cosmetic' : it.kind === 'cosmetic')).map((it) => {
       const own = CG.Shop.owned(it.id);
       return `<div class="shop-item ${own ? 'owned' : ''}" style="--c:${it.kind === 'cosmetic' ? '#c878ff' : '#ff9a3c'}">
         <div class="top"><div class="icon">${esc(it.icon || '★')}</div><div><b>${esc(it.name)}</b><div class="kind">${esc(it.kind || 'perk')}</div></div></div>
         <p>${esc(it.desc || '')}</p>
         ${own ? '<div class="owned-tag">✔ OWNED</div>' : `<div class="row"><span class="price"><span class="coin"></span>${it.price}</span>
-          <button class="btn small primary" data-act="buy" data-uid="${esc(it.id)}" ${coins < it.price ? 'disabled' : ''}>BUY</button></div>`}
+          <button class="btn small primary" data-act="buy" data-uid="${esc(it.id)}" ${c < it.price ? 'disabled' : ''}>BUY</button></div>`}
       </div>`;
     }).join('');
   }
@@ -474,16 +532,36 @@ CG.UI = (() => {
     'touch-auto': () => { CG.Touch.opts.autofire = !CG.Touch.opts.autofire; CG.Touch.save(); CG.Touch.syncButtons(); renderSettings(); },
     'show-prev': () => { showIdx = (showIdx + CG.AGENTS.length - 1) % CG.AGENTS.length; renderShowcase(); },
     'show-next': () => { showIdx = (showIdx + 1) % CG.AGENTS.length; renderShowcase(); },
-    'show-fav': () => { const id = CG.AGENTS[showIdx].id; store.set(AGENT, id); N().setAgent(id); renderShowcase(); },
+    'show-fav': () => { const id = CG.AGENTS[showIdx].id; if (!CG.Shop.hasAgent(id)) return; store.set(AGENT, id); N().setAgent(id); renderShowcase(); },
+    'shop-tab': (t) => { shopTab = t; renderShop(); },
+    'shop-agents': () => { shopTab = 'agents'; show('shop'); },
+    // unlock an agent from wherever its button is (home, agent select, shop)
+    'buy-agent': (id) => {
+      const it = CG.Shop.agentItem(id);
+      if (!it) return;
+      const where = visible('shop') ? 'shop-msg' : null;
+      run(() => N().buy(it).then(() => {
+        CG.Sfx.play('ability');
+        toast(CG.AGENT[id].name + ' unlocked!');
+        if (visible('select')) renderSelect();
+        if (visible('shop')) renderShop();
+        if (visible('menu')) renderShowcase();
+      }), '', where);
+    },
+    lock: () => lockIn(chooser()),
     landscape,
     start: toSelect,
     leave: (id) => leave(id),
     'add-bot': addBot,
     'join-touch': () => join('touch', 'touch'),
+    // tapping a tile looks at that agent; the big button locks it in (tap the same tile again to lock too)
     pick: (id) => {
-      const p = picks.find((q) => !q.bot && !q.locked && (q.device.type === 'touch' || q.device.type === 'kbAll'))
-        || picks.find((q) => !q.bot && !q.locked);
-      lockIn(p, id);
+      const p = picks.find((q) => !q.bot && !q.locked && (q.device.type === 'touch' || q.device.type === 'kbAll')) || chooser();
+      if (!p) return;
+      const i = CG.AGENTS.findIndex((a) => a.id === id);
+      if (p.cursor === i && CG.Shop.hasAgent(id)) { lockIn(p, id); return; }
+      p.cursor = i;
+      renderSelect();
     },
     friends: () => show('friends'),
     how: () => show('how'),
@@ -518,7 +596,7 @@ CG.UI = (() => {
     if (b && !b.disabled && ACTIONS[b.dataset.act]) ACTIONS[b.dataset.act](b.dataset.uid);
   });
   document.addEventListener('mouseover', (e) => {          // hovering a card shows that agent's details
-    const c = e.target.closest('#agent-cards .agent');
+    const c = e.target.closest('#agent-cards .tile');
     if (!c) return;
     const p = picks.find((q) => !q.bot && !q.locked);
     if (p) { const i = CG.AGENTS.findIndex((a) => a.id === c.dataset.uid); if (i !== p.cursor) { p.cursor = i; renderSelect(); } }

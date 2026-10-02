@@ -87,7 +87,15 @@
       for (const a of CG.AGENTS) {
         if (img('portrait_' + a.id)) CG.PORTRAITS[a.id] = img('portrait_' + a.id);
         else if (art && art.players && this.textures.exists(a.fallback)) {
-          try { CG.PORTRAITS[a.id] = this.textures.getBase64(a.fallback, art.players[a.fallbackWho].anims.stand_fwd[0]); } catch (e) { /* no picture */ }
+          // no painted portrait (the classic commandos): head and shoulders cut from their standing frame
+          try {
+            const fr = this.textures.getFrame(a.fallback, art.players[a.fallbackWho].anims.stand_fwd[0]);
+            const src = fr.source.image, c = document.createElement('canvas'), g = c.getContext('2d');
+            const box = 120, sx = fr.cutX + fr.cutWidth / 2 - box / 2 - 6, sy = fr.cutY + fr.cutHeight * 0.3;
+            c.width = c.height = 240;
+            g.drawImage(src, sx, sy, box, box, 0, 0, 240, 240);
+            CG.PORTRAITS[a.id] = c.toDataURL();
+          } catch (e) { /* no picture */ }
         }
         if (img('ab_' + a.id)) CG.ABICONS[a.id] = img('ab_' + a.id);
         else if (this.textures.exists('ab_' + a.id)) CG.ABICONS[a.id] = this.textures.getBase64('ab_' + a.id);
@@ -285,13 +293,17 @@
         if (sc) img.setScale(sc);
         zone(this.covers, img.x + 4, img.y - img.displayHeight + 6, img.displayWidth - 8, img.displayHeight - 8);
       }
+      // Ledges are solid on every side (you bump your head on them, you can't jump up through them); the hitbox is
+      // as thick as the ledge art. Down + Jump still drops you off one.
       L.ledges.forEach(([c, r, w]) => {
-        const cc = zone(this.ledges, c * T, r * T, w * T, 20).body.checkCollision;
-        cc.down = cc.left = cc.right = false;
+        let top = r * T, bottom = r * T + 20;
         for (let i = 0; i < w; i++) {
           const img = this.add.image((c + i) * T - 4, r * T - 4, k('ledge')).setOrigin(0).setDepth(2);
           if (img.width !== 16 * 4) img.setDisplaySize(T + 8, (T + 8) * img.height / img.width).setY(r * T - 10);   // painted ledge piece
+          top = img.y + 4;
+          bottom = Math.max(bottom, img.y + img.displayHeight * 0.8);
         }
+        zone(this.ledges, c * T, top, w * T, Math.max(20, bottom - top));
       });
       // the fortress wall
       const wc = L.boss.wallCol;
@@ -310,15 +322,12 @@
       const ph = this.physics, bodies = this.players.map((p) => p.phys);
       const isStatic = (o) => o.body instanceof Phaser.Physics.Arcade.StaticBody;
       const mover = (a, b) => (isStatic(a) ? b : a), terrain = (a, b) => (isStatic(a) ? a : b);
-      const canLand = (a, b) => {
-        const m = mover(a, b), body = m.body, top = terrain(a, b).body.position.y;
-        if (m.owner && m.owner.dropT > 0) return false;
-        return body.velocity.y >= 0 && body.prev.y + body.height <= top + 14;
-      };
+      // ledges are solid, except while a player is dropping off one (Down + Jump)
+      const canLand = (a, b) => { const m = mover(a, b); return !(m.owner && m.owner.dropT > 0); };
       const pick = (a, b, test) => (test(a) ? [a, b] : [b, a]);
 
       ph.add.collider(bodies, this.solids);
-      ph.add.collider(bodies, this.ledges, (a, b) => { mover(a, b).owner.ledgeT = this.time.now; }, canLand);
+      ph.add.collider(bodies, this.ledges, (a, b) => { const m = mover(a, b); if (m.body.touching.down || m.body.blocked.down) m.owner.ledgeT = this.time.now; }, canLand);
       ph.add.collider(this.enemies, this.solids);
       ph.add.collider(this.enemies, this.ledges, null, canLand);
       ph.add.collider(this.pickups, this.solids);

@@ -209,6 +209,8 @@ CG.Net = {
       return u;
     });
     if (!res.committed) throw new Error(why || 'Could not buy that');
+    const u = res.snapshot.val();                    // show it straight away (the listener catches up a moment later)
+    if (u) { this.profile.coins = u.coins; this.profile.owned = u.owned; }
   },
 
   // ---------------------------------------------------------------- admin tools (the database rules check the email too)

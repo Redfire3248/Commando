@@ -306,19 +306,19 @@ THE 15 SCENES:
 ## 11 — Fifty cover and floor objects → `cover50.png`
 Simple solid things that sit on the ground. The game uses them as cover: they stop bullets, you can hide behind them or stand on them.
 ```
-GENERATE THIS IMAGE NOW from the description below. There is NO reference image: create everything from scratch.
+Create this image from scratch using only the description below. Do not ask for a reference image; none is needed.
 
-An original retro 16-bit PIXEL ART sprite sheet of fifty simple objects for a side-scrolling action game. Chunky square pixels with hard edges, every object drawn small and scaled up exactly 4 times with nearest-neighbour edges, so every art-pixel is a crisp 4×4 block of one flat colour. Limited palette, flat colours with 2- or 3-step shading, a 1-pixel dark outline around every object. NO anti-aliasing, NO blur, NO gradients, NO glow, NO painterly detail. Strict side view, no perspective, no tilt.
+An original retro 16-bit PIXEL ART sprite sheet of fifty simple objects for a side-scrolling action game. Chunky square pixels with hard edges, a limited colour palette, flat colours with simple shading, a dark outline around each object. No blur, no smooth gradients, no glow. Every object is seen straight from the side.
 
-GRID: one sheet laid out as a strict grid: EXACTLY 10 columns and 5 rows, 50 cells, each cell exactly 256×256 pixels, total image exactly 2560×1280 pixels. EXACTLY one object in every cell, centred left to right. EVERY OBJECT SITS FLAT ON THE GROUND: its bottom edge is a perfectly straight horizontal line resting on the same baseline 8 pixels above the bottom of its cell, with nothing hanging below it. Objects are SIMPLE, CHUNKY, SOLID BLOCKS with clear, readable shapes — no thin poles, no wires, no small loose bits, nothing floating.
+LAYOUT: one wide image laid out as a grid of 10 columns and 5 rows, 50 equal cells, one object centred in each cell, with empty space between neighbours. Every object sits flat on the ground: its bottom edge is a straight horizontal line, and all objects in a row stand on the same invisible floor line near the bottom of their cells. Objects are simple, chunky, solid blocks with clear shapes: no thin poles, no wires, no loose bits, nothing floating.
 
-BACKGROUND: REMOVE THE BACKGROUND COMPLETELY. Fully transparent PNG with a real alpha channel — no background colour, no white, no grey, NO CHECKERBOARD PATTERN, no ground strip, no shadows. No grid lines, no borders, no text, no letters, no numbers, no labels, no watermark.
+BACKGROUND: transparent PNG (real transparency) around the objects. No background colour, no white, no grey, no checkerboard pattern, no floor strip, no shadows. No grid lines, no borders, no text, no numbers, no labels, no watermark.
 
-SIZES: in each row, cells 1 to 4 are LOW cover (about one quarter of the cell tall, as wide as the cell), cells 5 to 8 are MEDIUM cover (about half the cell tall), cells 9 and 10 are TALL cover (about three quarters of the cell tall).
+SIZES: in every row the first 4 objects are LOW (about a quarter of a cell tall and as wide as the cell), objects 5 to 8 are MEDIUM (about half a cell tall), objects 9 and 10 are TALL (about three quarters of a cell tall).
 
-ROW 1 — ANY STAGE: low sandbag wall; low row of ammo crates; low concrete curb; low steel plate barricade; medium sandbag wall; medium wooden crate stack; medium concrete barrier; medium oil drum pair; tall stacked sandbag bunker; tall steel crate stack.
-ROW 2 — JUNGLE: low mossy log; low stone rubble; low bamboo fence; low rock; medium fallen tree trunk; medium mossy boulder; medium stone ruin block; medium wooden barricade; tall ancient stone pillar stump; tall wooden watch hut base.
-ROW 3 — MILITARY BASE: low hazard-striped barrier; low pipe stack; low metal crate; low tyre pile; medium shipping crate; medium fuel drum stack; medium generator box; medium steel blast shield; tall shipping container end; tall concrete bunker block.
-ROW 4 — SNOW: low snowbank; low ice block; low frozen log; low snowy rock; medium snow-covered sandbags; medium ice wall; medium frozen supply crate; medium snowy boulder; tall ice pillar; tall snowy rock wall.
-ROW 5 — DESERT, VOLCANO, CITY: low sandstone block; low broken brick wall; low black lava rock; low rusty car door; medium sandstone ruin; medium broken brick wall; medium cooled lava boulder; medium wrecked car; tall broken concrete wall with rebar stumps; tall rusty steel wall.
+ROW 1, any stage: low sandbag wall; low row of ammo crates; low concrete curb; low steel plate barricade; medium sandbag wall; medium wooden crate stack; medium concrete barrier; medium pair of oil drums; tall stacked sandbag bunker; tall stack of steel crates.
+ROW 2, jungle: low mossy log; low pile of stone rubble; low bamboo fence; low rock; medium fallen tree trunk; medium mossy boulder; medium stone ruin block; medium wooden barricade; tall ancient stone pillar stump; tall wooden hut base.
+ROW 3, military base: low yellow-and-black striped barrier; low stack of pipes; low metal crate; low pile of tyres; medium shipping crate; medium stack of fuel drums; medium generator box; medium steel blast shield; tall shipping container end; tall concrete bunker block.
+ROW 4, snow: low snowbank; low ice block; low frozen log; low snowy rock; medium snow-covered sandbags; medium ice wall; medium frozen supply crate; medium snowy boulder; tall ice pillar; tall snowy rock wall.
+ROW 5, desert, volcano and city: low sandstone block; low broken brick wall; low black lava rock; low rusty car door; medium sandstone ruin; medium broken brick wall; medium lava boulder; medium wrecked car; tall broken concrete wall; tall rusty steel wall.
 ```

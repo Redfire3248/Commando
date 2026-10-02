@@ -4,6 +4,10 @@
 //   effect  what the item does in game (see apply())
 CG.Shop = {
   DEFAULTS: {
+    agent_kite:  { name: 'KITE', kind: 'agent', agent: 'kite', price: 1200, order: 11 },
+    agent_nova:  { name: 'NOVA', kind: 'agent', agent: 'nova', price: 1500, order: 12 },
+    agent_brick: { name: 'BRICK', kind: 'agent', agent: 'brick', price: 1500, order: 13 },
+    agent_volt:  { name: 'VOLT', kind: 'agent', agent: 'volt', price: 2000, order: 14 },
     heart:  { name: 'Iron Heart', desc: '+1 heart for every agent.', price: 600, kind: 'perk', effect: 'hp', icon: '❤', order: 1 },
     recharge: { name: 'Quick Recharge', desc: 'Abilities recharge 20% faster.', price: 800, kind: 'perk', effect: 'cd', icon: '⚡', order: 2 },
     boots:  { name: 'Light Boots', desc: 'Run 8% faster.', price: 500, kind: 'perk', effect: 'speed', icon: '👟', order: 3 },
@@ -12,23 +16,39 @@ CG.Shop = {
     gold:   { name: 'Golden Rounds', desc: 'Your bullets glow gold.', price: 300, kind: 'cosmetic', effect: 'gold', icon: '✨', order: 6 },
     elite:  { name: 'Elite Tag', desc: 'A gold star next to your name in game.', price: 250, kind: 'cosmetic', effect: 'star', icon: '★', order: 7 },
   },
+  // Agents: three are free, the rest are bought here (kind 'agent'). Bots may use any agent.
+  FREE_AGENTS: ['razor', 'jax', 'duke'],
+  AGENT_ITEMS: {
+    agent_kite:  { name: 'KITE', kind: 'agent', agent: 'kite', price: 1200, order: 11 },
+    agent_nova:  { name: 'NOVA', kind: 'agent', agent: 'nova', price: 1500, order: 12 },
+    agent_brick: { name: 'BRICK', kind: 'agent', agent: 'brick', price: 1500, order: 13 },
+    agent_volt:  { name: 'VOLT', kind: 'agent', agent: 'volt', price: 2000, order: 14 },
+  },
   EFFECTS: ['hp', 'cd', 'speed', 'life', 'shield', 'gold', 'star'],
   db: null,                       // shop/items from the database (null = not loaded / empty)
 
-  items() {
+  // the list: the database's (when the admin has saved one) over the built-in one; agents are always there
+  source() {
     const src = this.db && Object.keys(this.db).length ? this.db : this.DEFAULTS;
-    return Object.keys(src).map((id) => Object.assign({ id }, src[id])).filter((it) => it.off !== true)
-      .sort((a, b) => (a.order || 99) - (b.order || 99));
+    return Object.assign({}, this.AGENT_ITEMS, src);
   },
+  items() { return this.allItems().filter((it) => it.off !== true); },
   allItems() {
-    const src = this.db && Object.keys(this.db).length ? this.db : this.DEFAULTS;
+    const src = this.source();
     return Object.keys(src).map((id) => Object.assign({ id }, src[id])).sort((a, b) => (a.order || 99) - (b.order || 99));
+  },
+  agentItem(id) { return this.allItems().find((it) => it.kind === 'agent' && it.agent === id); },
+  // can this device's player use this agent? (free, bought, or no accounts at all)
+  hasAgent(id) {
+    if (!CG.Net.online || this.FREE_AGENTS.includes(id)) return true;
+    const it = this.agentItem(id);
+    return !it || this.owned(it.id);           // an agent with no shop item is free
   },
   owned(id) { const p = CG.Net.profile; return !!(p && p.owned && p.owned[id]); },
   // the effects this player has paid for
   effects() {
     const out = {};
-    for (const it of this.allItems()) if (this.owned(it.id)) out[it.effect] = true;
+    for (const it of this.allItems()) if (it.effect && this.owned(it.id)) out[it.effect] = true;
     return out;
   },
   coinsFor(score) { return Math.floor(score / 40); },

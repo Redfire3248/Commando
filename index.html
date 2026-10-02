@@ -93,15 +93,15 @@
 </div>
 
 <!-- ============ agent select ============ -->
-<div id="select" class="overlay hidden">
-  <div class="card huge">
+<div id="select" class="overlay select-screen hidden">
+  <div class="sel-top">
+    <button data-act="lobby" class="btn ghost small">◀ BACK</button>
     <h2>CHOOSE YOUR AGENT</h2>
-    <p class="sub center" id="select-hint">Left / right to look · FIRE to lock in · or tap a card</p>
-    <div id="agent-cards" class="cards"></div>
-    <div id="agent-info" class="agent-info"></div>
     <div id="select-slots" class="picks"></div>
-    <div class="row center-row"><button data-act="lobby" class="btn ghost">BACK</button></div>
   </div>
+  <div id="sel-main" class="sel-main"></div>
+  <div id="agent-cards" class="sel-tiles"></div>
+  <p class="sub center sel-hint">Left / right to look · FIRE to lock in · tap a card, tap again to lock</p>
 </div>
 
 <!-- ============ online party ============ -->
@@ -133,7 +133,12 @@
       <h2>SHOP</h2>
       <div class="chip coins big"><span class="coin"></span><b id="shop-coins">0</b></div>
     </div>
-    <p class="sub center">Earn coins by playing: every 40 points scored is a coin. Perks work in every match.</p>
+    <div class="seg shop-tabs center-row">
+      <button class="btn small" data-act="shop-tab" data-uid="agents">AGENTS</button>
+      <button class="btn small" data-act="shop-tab" data-uid="perks">PERKS</button>
+      <button class="btn small" data-act="shop-tab" data-uid="cosmetic">COSMETICS</button>
+    </div>
+    <p class="sub center">Earn coins by playing: every 40 points scored is a coin.</p>
     <div id="shop-items" class="shop-grid"></div>
     <div id="shop-msg" class="msg"></div>
     <div class="row center-row"><button data-act="menu" class="btn ghost">BACK</button></div>

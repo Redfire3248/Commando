@@ -88,6 +88,14 @@ CG.Admin = (() => {
       let h = `<p class="admin-tip">${fromDb ? 'These are live: changes reach every player at once.' : 'The shop is using the built-in list. Save once to put it in the database so you can edit it.'}</p>
         <div class="admin-row"><button class="btn small" data-adm="shop-reset">${fromDb ? 'RESET TO DEFAULTS' : 'SAVE THE BUILT-IN LIST'}</button></div>`;
       for (const it of items) {
+        if (it.kind === 'agent') {                      // agents: just the price and whether they are for sale
+          h += `<div class="admin-shop" data-id="${esc(it.id)}">
+            <input data-f="name" value="${esc(it.name)}"><input data-f="price" type="number" min="0" value="${esc(it.price)}">
+            <span><button class="btn small ${it.off ? '' : 'on'}" data-adm="shop-toggle" data-id="${esc(it.id)}">${it.off ? 'HIDDEN' : 'ON SALE'}</button></span>
+            <span class="admin-tip">agent</span><span></span>
+            <span><button class="btn small" data-adm="shop-save" data-id="${esc(it.id)}">SAVE</button></span></div>`;
+          continue;
+        }
         h += `<div class="admin-shop" data-id="${esc(it.id)}">
           <input data-f="name" value="${esc(it.name)}" placeholder="Name"><input data-f="price" type="number" min="0" value="${esc(it.price)}">
           <span><button class="btn small ${it.off ? '' : 'on'}" data-adm="shop-toggle" data-id="${esc(it.id)}">${it.off ? 'HIDDEN' : 'ON SALE'}</button></span>
@@ -165,7 +173,9 @@ CG.Admin = (() => {
   const shopRow = (id) => {
     const row = document.querySelector(`.admin-shop[data-id="${CSS.escape(id)}"]`), it = CG.Shop.allItems().find((x) => x.id === id) || {};
     const v = (f) => row.querySelector(`[data-f="${f}"]`).value;
-    return { name: v('name'), price: Math.max(0, parseInt(v('price'), 10) || 0), icon: v('icon'), effect: v('effect'), desc: v('desc'),
+    const price = Math.max(0, parseInt(v('price'), 10) || 0);
+    if (it.kind === 'agent') return { name: v('name'), price, kind: 'agent', agent: it.agent, order: it.order || 20, off: !!it.off };
+    return { name: v('name'), price, icon: v('icon'), effect: v('effect'), desc: v('desc'),
       kind: ['gold', 'star'].includes(v('effect')) ? 'cosmetic' : 'perk', order: it.order || 50, off: !!it.off };
   };
   // the shop tab writes a full list the first time (so later edits only change one item)
