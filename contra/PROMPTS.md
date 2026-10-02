@@ -409,3 +409,77 @@ ROW 2: (5) PAUSE — two thick vertical bars; (6) STORY — a green jungle palm 
 ROW 3: (9) CROWN — a gold crown with three points; (10) BOT — a small robot head with a visor and an antenna; (11) INVITE — a thick white plus sign; (12) COIN — a gold coin with a star on it.
 ROW 4: (13) TROPHY — a gold cup; (14) LOCKER — a military dog tag on a chain; (15) SHOP — a canvas supply bag with a coin; (16) FRIENDS — two soldier heads in helmets side by side.
 ```
+
+## 16 — High-res idle, ONE AGENT PER IMAGE → `assets/idle/<agent>.png` (5 columns × 2 rows, 10 frames)
+One character per image comes back far sharper than eleven in one image. Paste the COMMON PART, then that
+agent's block at the end. Attach the sheet that agent is on (`agents.png`, `agents2.png` or `commandos.png`).
+Save as `contra/assets/idle/razor.png`, `.../nova.png` … and run `python tools/build_art.py`.
+
+### Common part
+```
+Create this image from scratch as a NEW sprite sheet. The attached sheet only shows what the character looks like and the art style — do not copy any of its frames and do not ask for anything else.
+
+STYLE: detailed 16-bit pixel art like a modern premium pixel game: crisp square pixels with hard edges, a rich but limited palette with 3 to 4 shades per colour, a dark 1-pixel outline, a warm rim light from the upper right, clear readable face (eyes, eyebrows, mouth), visible small details (straps, buckles, pouches, stitching, scuffs on boots). No anti-aliasing, no blur, no gradients, no glow, no painterly brush strokes.
+
+ONE CHARACTER ONLY, DRAWN BIG: the character fills most of each cell's height. The same character, the same size and the same proportions in every frame, standing on the same floor line in each row.
+
+VIEW: FRONT VIEW — facing the viewer straight on, chest and face toward the camera, both eyes visible, like a hero waiting in a game lobby. Not a side view.
+
+THE RIFLE (everyone has the same one): a chunky assault rifle with a black steel body, a short thick barrel, a brown wooden stock and a small glowing-orange energy cell on its side, held across the body or resting on a shoulder.
+
+TRANSPARENT BACKGROUND — VERY IMPORTANT: a PNG with a real alpha channel. NO checkerboard pattern anywhere, no background colour, no floor, no shadow, no grid lines, no borders, no text, no numbers, no names, no watermark.
+
+LAYOUT: exactly 5 columns and 2 rows = 10 frames, read left to right, top row first. One pose per cell with clear empty space around it; poses never touch or cross into a neighbouring cell.
+
+FRAMES:
+Frames 1–3 — BREATHING IDLE LOOP: relaxed lobby stance, weight on one leg. Frame 2: chest rises, shoulders lift one pixel, a slight blink. Frame 3: back to the pose of frame 1. Feet stay planted.
+Frames 4–10 — THE CHARACTER'S EMOTE (described below), a playful, personality-filled lobby animation like the quirky emotes in mobile battle games, smooth from frame to frame, big readable poses, starting from and ending in the exact pose of frame 1. No effects that fill the cell, no muzzle flash, no extra objects bigger than the character.
+
+THE CHARACTER:
+```
+
+### Character blocks (add one after the common part)
+```
+RAZOR — the heavy gunner (attach agents.png). A huge, broad-shouldered man, the biggest of the squad. Shaved head, thick black beard, heavy eyebrows, a confident grin. A bright ORANGE headband tied at the back with two tails. Olive-green tank top, a brass ammunition belt across the chest, fingerless black gloves, tan desert-camouflage trousers with knee pads, black combat boots. Rifle rests on his right shoulder.
+EMOTE: 4 lowers the rifle and plants it butt-down beside him; 5 raises his left arm and flexes a huge bicep; 6 leans in and kisses the bicep; 7 grins at the viewer with a thumbs-up; 8 cracks his neck to one side; 9 swings the rifle back up; 10 back to the idle pose.
+```
+```
+NOVA — the medic (attach agents.png). A tall, athletic woman with dark brown skin and short curly black hair, calm warm eyes, a small smile. A WHITE headband with a red cross. A TEAL tactical vest over a black long-sleeve shirt, a white medkit pouch with a red cross on her belt, grey cargo trousers, black boots. Rifle held low across her body.
+EMOTE: 4 slips one hand to the medkit pouch; 5 pulls out a small syringe; 6 twirls it between her fingers like a pen; 7 taps it twice, eyebrow raised; 8 winks at the viewer; 9 tucks it back into the pouch; 10 back to the idle pose.
+```
+```
+KITE — the scout (attach agents.png). A slim, quick young woman with freckles and a bright RED high ponytail, sharp green eyes, a cheeky expression. A GREEN bandana around her head, a short black bomber jacket with rolled sleeves, a green camouflage crop top, green camouflage trousers, light brown lace-up boots. Rifle held loosely in one hand.
+EMOTE: 4 a huge yawn, one hand over her mouth; 5 stretches both arms high above her head; 6 bounces on her toes; 7 a quick hop, ponytail flying; 8 lands and tightens the knot of her bandana; 9 a playful salute; 10 back to the idle pose.
+```
+```
+BRICK — the tank (attach agents.png). A huge, bulky man in armour, square jaw, short stubble, serious face. A STEEL helmet with the visor pushed up, STEEL-BLUE armour plates on his chest and shoulders, dark grey trousers with knee pads, heavy black boots, a small round steel shield strapped to his left forearm. Rifle held at the ready in his right hand.
+EMOTE: 4 raises his fist; 5 knocks twice on his own helmet (it clangs); 6 a little dizzy wobble, eyes crossed; 7 shakes his head to clear it; 8 bangs the shield against his chest; 9 a firm nod; 10 back to the idle pose.
+```
+```
+VOLT — the electric specialist (attach agents.png). A wiry man with wild spiky WHITE-BLOND hair, brass goggles pushed up on his forehead, a mischievous grin. A long PURPLE coat with the tails hanging behind, a black leather harness across the chest, black trousers, black boots with brass buckles. Rifle held in one hand, barrel pointing up.
+EMOTE: 4 rubs his fingers together; 5 a tiny blue spark jumps between his fingers; 6 static makes his spiky hair stand straight up; 7 a surprised face; 8 pats his hair back down with both hands; 9 pulls the goggles over his eyes and grins; 10 back to the idle pose.
+```
+```
+GHOST — the stealth sniper (attach agents2.png). A slim, quiet woman, mostly hidden: a BLACK hooded cloak, a white half-mask over her mouth and nose, glowing RED goggles. Grey-and-black urban camouflage underneath, black gloves, black boots. Rifle held close to her body.
+EMOTE: 4 tilts her head to one side; 5 raises one finger to her mask in a "shh"; 6 her body turns half see-through; 7 almost invisible, only the red goggles show; 8 she fades back in; 9 pulls the hood a little lower; 10 back to the idle pose.
+```
+```
+HAMMER — the demolition expert (attach agents2.png). The biggest of the squad, bald with a thick brown moustache and a big friendly face. A YELLOW hard hat, an ORANGE hazard vest with reflective silver stripes over a grey work shirt, a tool belt, brown work trousers, heavy brown steel-toe boots. Rifle slung over his back, hands free.
+EMOTE: 4 reaches into his vest; 5 pulls out a huge sandwich; 6 takes a big bite; 7 chews happily, cheeks full; 8 a satisfied pat on his belly; 9 tucks the sandwich away and pushes his hard hat up; 10 back to the idle pose.
+```
+```
+VIPER — the toxic specialist (attach agents2.png). A pale woman with a sharp black bob haircut and one LIME-GREEN streak, smoky eyes, a sly smirk. A gas mask hanging at her neck, an OLIVE jacket with lime-green trim, green toxic canisters clipped to her belt, black trousers, black boots. Rifle held low.
+EMOTE: 4 lifts the gas mask to her face; 5 takes a deep breath through it; 6 a small puff of green gas around the filter; 7 pulls the mask down; 8 a short comic cough, eyes watering; 9 waves the last of the gas away and smirks; 10 back to the idle pose.
+```
+```
+ATLAS — the cyborg (attach agents2.png). A strong man, half machine: his LEFT arm is a grey metal robotic arm with visible joints and pistons, a steel plate over the left half of his face with a small glowing BLUE eye. A white-and-blue armoured suit, dark grey trousers, steel boots. Rifle held in his human right hand.
+EMOTE: 4 the robot arm twitches; 5 it waves on its own; 6 he stares at it, annoyed; 7 it pokes him in the cheek; 8 he slaps it with his human hand; 9 the blue eye light blinks twice; 10 back to the idle pose.
+```
+```
+JAX — the grenadier, one of the two original commandos (attach commandos.png). A muscular man, short dark brown hair, determined face, a little stubble. A BLUE headband with two short tails, a white sleeveless shirt, blue camouflage trousers, black combat boots, fingerless black gloves, grenades clipped to his belt. Rifle held across his chest. Draw him in the same pixel style as the others.
+EMOTE: 4 unclips a grenade; 5 tosses it up in the air; 6 watches it fly; 7 spins around; 8 catches it behind his back; 9 clips it back on his belt with a smug look; 10 back to the idle pose.
+```
+```
+DUKE — the brawler, the other original commando (attach commandos.png). A muscular man with spiky blond hair, a cocky grin. A RED headband, bare chest crossed by one brass ammunition belt, red camouflage trousers, black combat boots, wrist wraps. Rifle resting on his shoulder. Draw him in the same pixel style as the others.
+EMOTE: 4 lowers the rifle; 5 cracks his knuckles; 6 a double-biceps flex; 7 turns the flex toward the viewer; 8 laughs with his head thrown back; 9 swings the rifle back onto his shoulder; 10 back to the idle pose.
+```
