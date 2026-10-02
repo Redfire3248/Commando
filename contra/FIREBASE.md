@@ -44,16 +44,16 @@ Then **Settings → Authorized domains → Add domain** → your website (for ex
 {
   "rules": {
     "users": {
-      ".read": "auth != null && auth.token.email === 'redjai1981@gmail.com'",
+      ".read": "auth != null && (auth.token.email === 'redjai1981@gmail.com' && auth.token.email_verified === true)",
       "$uid": {
         ".read": "auth != null",
-        ".write": "auth != null && (auth.uid === $uid || auth.token.email === 'redjai1981@gmail.com')",
+        ".write": "auth != null && (auth.uid === $uid || (auth.token.email === 'redjai1981@gmail.com' && auth.token.email_verified === true))",
         "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16" },
         "username": { ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_]{3,16}$/)" },
         "best": { ".validate": "newData.isNumber()" },
         "coins": { ".validate": "newData.isNumber() && newData.val() >= 0" },
         "rr": { ".validate": "newData.isNumber() && newData.val() >= 0" },
-        "starter": { ".validate": "(newData.val() === 'jax' || newData.val() === 'duke') && (!data.exists() || data.val() === newData.val() || auth.token.email === 'redjai1981@gmail.com')" }
+        "starter": { ".validate": "(newData.val() === 'jax' || newData.val() === 'duke') && (!data.exists() || data.val() === newData.val() || (auth.token.email === 'redjai1981@gmail.com' && auth.token.email_verified === true))" }
       }
     },
     "usernames": {
@@ -64,16 +64,16 @@ Then **Settings → Authorized domains → Add domain** → your website (for ex
     },
     "shop": {
       ".read": "auth != null",
-      ".write": "auth != null && auth.token.email === 'redjai1981@gmail.com'"
+      ".write": "auth != null && (auth.token.email === 'redjai1981@gmail.com' && auth.token.email_verified === true)"
     },
     "admins": { ".read": "auth != null" },
     "leaderboard": {
       ".read": "auth != null",
-      "$uid": { ".write": "auth != null && (auth.uid === $uid || auth.token.email === 'redjai1981@gmail.com')" }
+      "$uid": { ".write": "auth != null && (auth.uid === $uid || (auth.token.email === 'redjai1981@gmail.com' && auth.token.email_verified === true))" }
     },
     "announce": {
       ".read": "auth != null",
-      ".write": "auth != null && auth.token.email === 'redjai1981@gmail.com'"
+      ".write": "auth != null && (auth.token.email === 'redjai1981@gmail.com' && auth.token.email_verified === true)"
     },
     "codes": {
       "$code": {

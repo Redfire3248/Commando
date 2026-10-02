@@ -20,6 +20,17 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<!-- ============ loading screen: covers the start until the art is in and we know who is signed in ============ -->
+<div id="loading" class="loading">
+  <div class="ld-bg"></div>
+  <div class="ld-box">
+    <img class="ld-icon" src="assets/icons/icon-192.png" alt="">
+    <div class="ld-logo">COMMANDO</div>
+    <div class="ld-bar"><i id="ld-fill"></i></div>
+    <div id="ld-text" class="ld-text">LOADING</div>
+    <div id="ld-tip" class="ld-tip"></div>
+  </div>
+</div>
 <div id="game"></div>
 
 <!-- ============ sign in ============ -->
@@ -28,10 +39,20 @@
     <div class="logo">COMMANDO</div>
     <p class="tag">Seven agents · one squad · no mercy</p>
     <button data-act="google" id="google-btn" class="btn google"><span class="g">G</span> CONTINUE WITH GOOGLE</button>
+    <div class="or-line"><span>OR WITH EMAIL</span></div>
+    <form id="email-form" class="email-form" onsubmit="return false">
+      <input id="em-email" type="email" autocomplete="email" placeholder="Email" maxlength="80">
+      <input id="em-pass" type="password" autocomplete="current-password" placeholder="Password (6+ characters)" maxlength="64">
+      <div class="em-row">
+        <button data-act="email-in" class="btn primary">SIGN IN</button>
+        <button data-act="email-up" class="btn">CREATE ACCOUNT</button>
+      </div>
+      <button data-act="email-reset" class="linkish" type="button">Forgot password?</button>
+    </form>
     <div id="login-msg" class="msg"></div>
     <button data-act="offline" id="offline-btn" class="btn">PLAY AS GUEST</button>
     <button class="btn ghost install-btn hidden" data-act="install">⬇ INSTALL THE APP</button>
-    <p class="fine">Google: your progress, coins and friends are saved to your account, and you can play online and climb the leaderboard.<br>
+    <p class="fine">Google or email: your progress, coins and friends are saved to your account, and you can play online and climb the leaderboard.<br>
       Guest: play with bots — coins, agents and rank are saved on this device only, no online play.</p>
   </div>
 </div>

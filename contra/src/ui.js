@@ -129,6 +129,7 @@ CG.UI = (() => {
   function renderLogin() {
     const s = N().state;
     $('google-btn').disabled = s === 'loading';
+    $('email-form').classList.toggle('hidden', s === 'off');
     $('offline-btn').classList.remove('hidden');
     $('login-msg').textContent = s === 'loading' ? 'Connecting…' : s === 'error' ? 'Could not reach the server: ' + N().error : $('login-msg').dataset.keep || '';
   }
@@ -964,6 +965,9 @@ CG.UI = (() => {
 
   const ACTIONS = {
     google: () => run(() => N().signInGoogle(), '', 'login-msg'),
+    'email-in': () => run(() => N().signInEmail($('em-email').value, $('em-pass').value), '', 'login-msg'),
+    'email-up': () => run(() => N().signUpEmail($('em-email').value, $('em-pass').value), '', 'login-msg'),
+    'email-reset': () => run(() => N().resetPassword($('em-email').value), 'Check your inbox for a link to set a new password.', 'login-msg'),
     offline: () => { offline = true; home(); },
     signout: () => run(() => N().signOut().then(() => { offline = false; home(); }), 'Signed out'),
     'un-save': () => run(() => N().claimUsername($('un-input').value).then(() => { toast('Callsign saved'); home(); }), '', 'un-msg'),
@@ -1103,11 +1107,43 @@ CG.UI = (() => {
   $('b-pause').addEventListener('click', pause);
   document.addEventListener('visibilitychange', () => { if (document.hidden && !(scene && scene.net)) pause(); });
 
+  // ---------------------------------------------------------------- the loading screen
+  // art first (0-85 %), then waiting for the sign-in check so the login card never flashes up for signed-in players
+  const TIPS = ['Headshots do double damage.', 'Only KITE can Tac Dash — hold a direction and dash, even straight up.',
+    'Your squad shares one pool of lives.', 'Cover stops every bullet — and breaks after five hits.',
+    'Coins up high are worth 5 each.', 'Pick your agent once in the LOCKER: it is used in every match.',
+    'Bots play at your rank.', 'Water is instant death. Mind the gaps.'];
+  const loader = { shown: 0, start: Date.now(), done: false };
+  $('ld-tip').textContent = 'TIP · ' + TIPS[Math.floor(Math.random() * TIPS.length)];
+  function loading(v, text) {
+    if (loader.done) return;
+    loader.shown = Math.max(loader.shown, v);
+    $('ld-fill').style.width = Math.round(loader.shown * 100) + '%';
+    $('ld-text').textContent = text || 'LOADING ' + Math.round(loader.shown * 100) + '%';
+  }
+  function finishLoading() {
+    if (loader.done) return;
+    loader.done = true;
+    $('ld-fill').style.width = '100%';
+    const el = $('loading');
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 600);
+  }
+  // signed in or not decided yet? (at most 8 s, then the login screen shows with whatever the server said)
+  function waitForSignIn() {
+    const net = N();
+    if (net.state !== 'loading' || Date.now() - loader.start > 8000) { home(); finishLoading(); return; }
+    loading(0.92, 'SIGNING IN');
+    setTimeout(waitForSignIn, 120);
+  }
+
   return {
     ready() {
       booted = true;
-      home();
+      loading(0.9, 'GETTING READY');
+      waitForSignIn();
     },
+    loading,
     onGameStart(s) { scene = s; },
     localDevice() { return { type: 'any' }; },
     storyCleared(n) { if (n > storyCleared()) store.set(STORY, String(n)); },

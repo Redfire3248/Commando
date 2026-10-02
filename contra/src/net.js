@@ -95,6 +95,39 @@ CG.Net = {
     }
   },
 
+  // email + password accounts (Firebase Authentication -> Email/Password must be on)
+  async signInEmail(email, pass) {
+    if (!this.auth) throw new Error(this.state === 'error' ? 'Could not reach the server: ' + this.error : 'Online features are not set up');
+    try { await this.auth.signInWithEmailAndPassword(email.trim(), pass); } catch (e) { throw new Error(this.emailError(e)); }
+  },
+  async signUpEmail(email, pass) {
+    if (!this.auth) throw new Error('Online features are not set up');
+    let res;
+    try { res = await this.auth.createUserWithEmailAndPassword(email.trim(), pass); } catch (e) { throw new Error(this.emailError(e)); }
+    if (res && res.user && res.user.sendEmailVerification) res.user.sendEmailVerification().catch(() => {});
+  },
+  async resetPassword(email) {
+    if (!this.auth) throw new Error('Online features are not set up');
+    if (!email.trim()) throw new Error('Type your email first');
+    try { await this.auth.sendPasswordResetEmail(email.trim()); } catch (e) { throw new Error(this.emailError(e)); }
+  },
+  emailError(e) {
+    const c = (e && e.code) || '';
+    return ({
+      'auth/invalid-email': 'That email address does not look right.',
+      'auth/missing-password': 'Type a password.',
+      'auth/weak-password': 'The password needs at least 6 characters.',
+      'auth/email-already-in-use': 'That email already has an account. Press SIGN IN (or use Google if you signed up with it).',
+      'auth/user-not-found': 'No account with that email. Press CREATE ACCOUNT.',
+      'auth/wrong-password': 'Wrong password.',
+      'auth/invalid-credential': 'Wrong email or password.',
+      'auth/invalid-login-credentials': 'Wrong email or password.',
+      'auth/too-many-requests': 'Too many tries. Wait a minute and try again.',
+      'auth/operation-not-allowed': 'Email sign-in is not switched on in Firebase yet.',
+      'auth/network-request-failed': 'No connection to the server.',
+    })[c] || (e && e.message) || String(e);
+  },
+
   async signOut() {
     try { await this.leaveParty(); } catch (e) { /* already gone */ }
     if (this.uid) await this.db.ref('users/' + this.uid + '/online').set(false).catch(() => {});
@@ -109,7 +142,7 @@ CG.Net = {
     this.stopWatching();
     const uid = this.uid, ref = this.db.ref('users/' + uid), u = this.user;
     let p = (await ref.get()).val();
-    const gname = (u.displayName || '').split(' ')[0].slice(0, 16);
+    const gname = (u.displayName || '').split(' ')[0].slice(0, 16) || (u.email || '').split('@')[0].replace(/[^A-Za-z0-9_]/g, '').slice(0, 16);
     if (!p || !p.code) {
       p = Object.assign({ name: gname || CG.UI.localName(), best: CG.UI.localBest(), coins: 0 }, p || {}, { code: await this.newCode() });
       if (u.photoURL) p.photo = u.photoURL;

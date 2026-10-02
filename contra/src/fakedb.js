@@ -139,6 +139,10 @@
     setPersistence: () => Promise.resolve(),
     getRedirectResult: () => Promise.resolve(null),
     signInAnonymously: () => Promise.resolve({ user }),
+    signInWithEmailAndPassword: (em, pw) => (/@/.test(em) && pw && pw.length >= 6 ? Promise.resolve({ user }) : Promise.reject({ code: /@/.test(em) ? 'auth/invalid-credential' : 'auth/invalid-email' })),
+    createUserWithEmailAndPassword: (em, pw) => (!/@/.test(em) ? Promise.reject({ code: 'auth/invalid-email' }) : !pw || pw.length < 6 ? Promise.reject({ code: 'auth/weak-password' })
+      : Promise.resolve({ user: Object.assign({ sendEmailVerification: () => Promise.resolve() }, user) })),
+    sendPasswordResetEmail: (em) => (/@/.test(em) ? Promise.resolve() : Promise.reject({ code: 'auth/invalid-email' })),
     signOut: () => Promise.resolve(),
   };
   window.firebase = {
