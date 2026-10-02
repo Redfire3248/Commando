@@ -11,6 +11,7 @@ Anything missing keeps its code-drawn placeholder.  Needs: pip install pillow nu
 """
 import json
 import os
+import time
 
 import numpy as np
 from PIL import Image
@@ -32,7 +33,14 @@ def load(name):
 
 def save(img, key):
     os.makedirs(OUT, exist_ok=True)
-    img.save(os.path.join(OUT, key + '.png'))
+    for attempt in range(6):                      # OneDrive can hold a file for a moment while it syncs
+        try:
+            img.save(os.path.join(OUT, key + '.png'))
+            break
+        except OSError:
+            if attempt == 5:
+                raise
+            time.sleep(0.5)
     return 'assets/atlas/' + key + '.png'
 
 
@@ -930,6 +938,37 @@ def world_key(name, world):
     return base + '_w_' + world + ('_' + n if n else '')
 
 
+def solid_crop(a, name):
+    """Cut a world tile to its solid part so tiles join without gaps: the soft edge (outline / fade, a few pixels)
+    goes on every side, except the fringe on top of a surface tile (grass, snow) and the open end of a cliff tile.
+    Pixels are only cropped, never changed. Returns (crop, surf): surf = the share of the crop above the solid
+    surface line (the game lifts the tile by that much so the surface sits where the feet are)."""
+    solid = a[..., 3] > 200
+    half = solid.shape[1] // 2
+    # a cliff end slopes away on its open side: find its surface on the inner half only
+    probe = solid[:, half:] if name.startswith('g_left') else solid[:, :half] if name.startswith('g_right') else solid
+    rows = probe.mean(1)
+    full = [i for i, v in enumerate(rows) if v > 0.9]
+    if not full:
+        return a, 0.0
+    s, e = full[0], full[-1]
+    band = solid[s:e + 1]
+    cols = band.mean(0)
+    good = [i for i, v in enumerate(cols) if v > 0.9]
+    x0, x1 = (good[0], good[-1]) if good else (0, a.shape[1] - 1)
+    top_tile = name.startswith(('g_top', 'g_left', 'g_right'))
+    if name.startswith('g_left'):
+        x0 = 0                                    # the cliff end keeps its open left side
+    if name.startswith('g_right'):
+        x1 = a.shape[1] - 1
+    if top_tile:
+        # keep the fringe above the surface, but only the rows that hold something
+        y0 = next((i for i in range(s) if solid[i].any()), s)
+        crop = a[y0:e + 1, x0:x1 + 1]
+        return crop, round((s - y0) / crop.shape[0], 4)
+    return a[s:e + 1, x0:x1 + 1], 0.0
+
+
 def fit_scale(img, size):
     side, px = size
     return round(px / (img.width if side == 'w' else img.height), 4)
@@ -949,10 +988,17 @@ def build_worlds():
                 n = 0
                 for c, name in enumerate(WORLD_TILES):
                     i = r * COLS + c
-                    if i not in cells:
+                    # the cliff-end tiles came out tapered like floating islands (holes against the ground under
+                    # them): not used — the surface tiles run right to the edge
+                    if i not in cells or name in ('g_left', 'g_right'):
                         continue
                     key = world_key(name, world)
-                    manifest['images'][key] = save(Image.fromarray(cells[i][0]), key)
+                    crop = cells[i][0]
+                    if not name.startswith('ledge'):
+                        crop, surf = solid_crop(crop, name)
+                        if surf:
+                            manifest.setdefault('surf', {})[key] = surf
+                    manifest['images'][key] = save(Image.fromarray(crop), key)
                     n += 1
                 print('  world', world, 'tiles:', n)
         a = load('bosses.png')

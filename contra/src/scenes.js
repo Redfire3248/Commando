@@ -611,15 +611,23 @@
       ];
       const variant = (name, i) => (has(k(name) + '_' + i) ? k(name) + '_' + i : k(name));
       const nIn = has(k('g_in') + '_2') ? 3 : 2;                    // a world set has three fill tiles
-      const tile = (x, y, key) => this.add.image(x, y, key).setOrigin(0).setDisplaySize(T + 0.5, T + 0.5).setDepth(2);
+      // cliff ends: a story world's own (none so far) — never the theme's next to a world's tiles
+      const own = L.tiles && has('g_top_' + L.tiles);
+      const edge = (n) => (own ? (has(n + '_' + L.tiles) ? n + '_' + L.tiles : null) : has(k(n)) ? k(n) : null);
+      const SURF = (CG.DATA.art && CG.DATA.art.surf) || {};
+      const tile = (x, y, key) => {
+        const f = SURF[key] || 0;                       // grass / snow above the surface line: lift it so feet touch the line
+        const h = T / (1 - f);
+        return this.add.image(x, y - h * f, key).setOrigin(0).setDisplaySize(T + 1, h + 1).setDepth(f ? 2.1 : 2);
+      };
       // under a rock cliff the ground is all dirt (no grass line running through the rock)
       const underRock = new Set();
       (L.blocks || []).forEach(([bc, , bw]) => { for (let i = 0; i < bw; i++) underRock.add(bc + i); });
       L.ground.forEach(([a, b]) => {
         zone(this.solids, a * T, gy, (b - a) * T, H - gy + 300);
         for (let c = a; c < b; c++) {
-          const edge = underRock.has(c) ? variant('g_in', c % 2) : c === a && has(k('g_left')) ? k('g_left') : c === b - 1 && has(k('g_right')) ? k('g_right') : variant('g_top', c % 3);
-          tile(c * T, gy, edge);
+          const key = underRock.has(c) ? variant('g_in', c % 2) : c === a && edge('g_left') ? edge('g_left') : c === b - 1 && edge('g_right') ? edge('g_right') : variant('g_top', c % 3);
+          tile(c * T, gy, key);
           for (let r = L.groundRow + 1; r < L.h; r++) tile(c * T, r * T, variant('g_in', (c + r) % nIn));
         }
       });
@@ -637,8 +645,8 @@
       (L.blocks || []).forEach(([c, r, w]) => {
         zone(this.solids, c * T, r * T, w * T, gy - r * T);
         for (let i = 0; i < w; i++) {
-          const edge = i === 0 && has(k('g_left')) ? k('g_left') : i === w - 1 && has(k('g_right')) ? k('g_right') : variant('g_top', (c + i) % 3);
-          tile((c + i) * T, r * T, edge);
+          const key = i === 0 && edge('g_left') ? edge('g_left') : i === w - 1 && edge('g_right') ? edge('g_right') : variant('g_top', (c + i) % 3);
+          tile((c + i) * T, r * T, key);
           for (let rr = r + 1; rr < L.groundRow; rr++) tile((c + i) * T, rr * T, variant('g_in', (c + i + rr) % nIn));
         }
       });
@@ -1003,6 +1011,20 @@
     fromBehind(bul, facing) {
       const dx = Math.cos(bul.rotation);                 // the way it was fired (it may already be stopped by the hit)
       return Math.abs(dx) > 0.3 && Math.sign(dx) === Math.sign(facing || 1);
+    }
+    // online: "WAITING FOR PLAYERS 1/2" until every game has loaded the stage
+    showNetWait() {
+      const w = this.netWait, { W, H } = CG.CONFIG;
+      if (!this.waitText) {
+        this.waitText = this.add.text(W / 2, H * 0.42, '', { fontFamily: 'Black Ops One, Impact, sans-serif', fontSize: '46px', color: '#ffd23c', align: 'center' })
+          .setOrigin(0.5).setScrollFactor(0).setDepth(60).setShadow(0, 3, '#000', 0);
+        if (this.syncCams) this.syncCams();                // drawn by the HUD camera only
+      }
+      this.waitText.setText('WAITING FOR PLAYERS  ' + w.ready + ' / ' + w.people.length);
+    }
+    netGo() {
+      if (this.waitText) { this.waitText.destroy(); this.waitText = null; }
+      this.say('GO!', 900);
     }
     // a short word that floats up and fades (FLANKED ×2, +1 ...)
     popText(x, y, msg, col) {
@@ -1447,6 +1469,7 @@
     // ---------------------------------------------------------------- frame
     update(time, delta) {
       if (this.over) return;
+      if (this.netWait) { this.showNetWait(); if (this.net) this.net.waitTick(this); return; }     // online: everyone loading
       const dt = Math.min(delta, 50) / 1000, { W, H, TILE: T } = CG.CONFIG, cam = this.cameras.main;
       const ins = this.inp.read();
       this.players.forEach((p, i) => (p.remote ? this.net.applyPlayer(p, dt) : p.update(dt, ins[i])));

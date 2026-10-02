@@ -9,6 +9,9 @@
 //   matches/{mid}/s         the host's snapshot of the stage (JSON)
 //   matches/{mid}/ev        events for the host: an enemy was hit, a player died, a pick-up was taken
 //   matches/{mid}/bc        messages for everyone: a heal, a lightning arc
+//   matches/{mid}/ready/<stage>/{uid}   this person's game has loaded the stage; .../go = the host's start signal
+// Nobody plays until everyone has loaded: each game says it is ready, the host waits for every person in the
+// match (15 s at most, for someone who never makes it) and then sends GO; every game starts on it together.
 // Hits work like this: you see your own bullet hit an enemy, your game tells the host, the host takes the
 // enemy's health. Enemy bullets that reach you hurt you in your own game.
 CG.Online = {
@@ -49,8 +52,37 @@ CG.Online = {
     }
     for (const p of scene.players) if (p.owner === N.uid) this.base.child('p/' + p.netId).onDisconnect().remove();
     this.puppets = {}; this.pickups = {};
+    // the ready check: frozen until GO
+    const people = [...new Set(this.info.players.filter((q) => !q.bot).map((q) => q.owner))];
+    const rref = this.base.child('ready/s' + (scene.cfg.stage || 1));
+    scene.netWait = { people, ready: 0, since: Date.now() };
+    scene.physics.pause();
+    rref.child(N.uid).set(true).catch(() => {});
+    on(rref, 'value', (s) => {
+      const v = s.val() || {};
+      if (!scene.netWait) return;
+      scene.netWait.ready = people.filter((u) => v[u]).length;
+      if (v.go) { this.go(scene); return; }
+      if (this.host && scene.netWait.ready >= people.length) rref.child('go').set(Date.now()).catch(() => {});
+    });
+    this.readyRef = rref;
     scene.events.once('shutdown', () => this.detach());
     return this;
+  },
+
+  // everyone is in (or the host stopped waiting): start the stage on every screen at once
+  go(scene) {
+    if (!scene.netWait) return;
+    scene.netWait = null;
+    scene.physics.resume();
+    this.snapAt = Date.now();
+    scene.netGo();
+  },
+  // the host gives up on someone who never loads after 15 s
+  waitTick(scene) {
+    const w = scene.netWait;
+    if (this.host && w && Date.now() - w.since > 15000 && this.readyRef) this.readyRef.child('go').set(Date.now()).catch(() => {});
+    if (!this.host && w && Date.now() - w.since > 25000) this.ended('host-left');      // the host never started it
   },
 
   detach() {
