@@ -215,7 +215,7 @@ CG.UI = (() => {
           <button class="btn small ghost" data-act="squad-bot-cancel">CANCEL</button>`
       : `${net.online && lead ? `<button class="plus" data-act="invite-open" title="Invite a friend">${ico('invite', '＋')}</button><small>INVITE</small>` : ''}
           ${lead ? `<button class="btn small" data-act="squad-bot" data-uid="${col}">+ BOT</button>` : ''}`);
-    const clickFig = (x) => (x.me ? 'data-act="locker" title="Change agent"' : `data-act="member" data-uid="${x.key}" title="Options"`);
+    const clickFig = (x) => (x.me ? 'data-act="locker"' : `data-act="member" data-uid="${x.key}"`);
     const removeBot = () => '';
     const crown = (x) => (x.leader && humansIn() > 1 ? ico('crown', '👑 ') : '');
     ['a', 'b', 'c'].forEach((k) => $('menu').classList.toggle('lobby-' + k, lobbyStyle === k));
