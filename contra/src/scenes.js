@@ -86,12 +86,15 @@
       const img = (k) => art && art.images && art.images[k];
       for (const a of CG.AGENTS) {
         if (img('portrait_' + a.id)) CG.PORTRAITS[a.id] = img('portrait_' + a.id);
-        else if (art && art.players && this.textures.exists(a.fallback)) {
-          // no painted portrait (the classic commandos): head and shoulders cut from their standing frame
+        else if ((art && art.agents && art.agents[a.id] && !a.classic && this.textures.exists('agents')) || (art && art.players && this.textures.exists(a.fallback))) {
+          // no painted portrait (the classic commandos, the season-4 agents): head and shoulders from a standing frame
           try {
-            const fr = this.textures.getFrame(a.fallback, art.players[a.fallbackWho].anims.stand_fwd[0]);
+            const own = art.agents && art.agents[a.id] && !a.classic;
+            const fr = own ? this.textures.getFrame('agents', art.agents[a.id].anims.stand_fwd[0])
+              : this.textures.getFrame(a.fallback, art.players[a.fallbackWho].anims.stand_fwd[0]);
             const src = fr.source.image, c = document.createElement('canvas'), g = c.getContext('2d');
-            const box = 120, sx = fr.cutX + fr.cutWidth / 2 - box / 2 - 6, sy = fr.cutY + fr.cutHeight * 0.3;
+            // the standing figure's feet are on the frame's ground line; frame its head and shoulders
+            const box = Math.round(fr.cutHeight * 0.3), sx = fr.cutX + fr.cutWidth / 2 - box / 2 + 4, sy = fr.cutY + fr.cutHeight * 0.36;
             c.width = c.height = 240;
             g.drawImage(src, sx, sy, box, box, 0, 0, 240, 240);
             CG.PORTRAITS[a.id] = c.toDataURL();
@@ -212,10 +215,10 @@
       this.physics.add.overlap(this.players.map((p) => p.phys), this.coinPickups, (a, b) => {
         const [z, k] = a.owner ? [a, b] : [b, a];
         if (!k.active || z.owner.remote || z.owner.bot || !z.owner.alive) return;
-        this.coinsEarned += 5;
+        this.coinsEarned += 5 * (this.coinMult || 1);
         this.sparks.explode(8, k.x, k.y);
         CG.Sfx.play('pickup');
-        const t = this.add.text(k.x, k.y - 10, '+5', ts(26, '#ffd23c')).setOrigin(0.5).setDepth(40).setShadow(0, 2, '#000', 4);
+        const t = this.add.text(k.x, k.y - 10, '+' + 5 * (this.coinMult || 1), ts(26, '#ffd23c')).setOrigin(0.5).setDepth(40).setShadow(0, 2, '#000', 4);
         this.tweens.add({ targets: t, y: t.y - 40, alpha: 0, duration: 700, onComplete: () => t.destroy() });
         k.disableBody(true, true);
         this.time.delayedCall(0, () => k.destroy());
@@ -381,7 +384,8 @@
           }
           h.lastHp = p.hp; h.lastMax = p.maxHp;
         }
-        const tags = [p.rapid && 'R', p.spread && 'S', p.pierce && 'P', p.blast && 'X', p.double && 'D', p.ice && 'I', p.overT > 0 && 'OVERDRIVE'].filter(Boolean).join(' ');
+        const tags = [p.rapid && 'R', p.spread && 'S', p.pierce && 'P', p.blast && 'X', p.double && 'D', p.ice && 'I', p.fire && 'F', p.shock && 'Z',
+          p.magnetT > 0 && 'MAG', p.bootsT > 0 && 'BOOTS', p.aimT > 0 && 'AIM', p.cloakT > 0 && 'CLOAK', p.overT > 0 && 'OVERDRIVE'].filter(Boolean).join(' ');
         if (h.pw.text !== tags) h.pw.setText(tags);
         const a = p.out ? 0.3 : 1;
         [h.port, h.name, h.hearts, h.ab].forEach((o) => o && o.setAlpha(a));
@@ -522,6 +526,13 @@
         if (bul.ghost) return;
         e.damage(bul.dmg || 1);
         if (bul.ice && e.active && !e.T.boss) e.stunT = Math.max(e.stunT || 0, 450);
+        if (bul.fire && e.active) {                      // fire rounds: it keeps burning for a moment
+          for (const ms of [500, 1000]) this.time.delayedCall(ms, () => { if (e.active) { this.sparks.explode(3, e.body.center.x, e.body.top); e.damage(1); } });
+        }
+        if (bul.shock && e.active) {                     // shock rounds: a spark jumps to the next enemy
+          const next = this.enemies.getChildren().find((o) => o !== e && o.active && Phaser.Math.Distance.Between(o.x, o.y, e.x, e.y) < 260);
+          if (next) { this.bolt({ x: e.body.center.x, y: e.body.center.y }, { x: next.body.center.x, y: next.body.center.y }); next.damage(1); }
+        }
         if (bul.blast) {                                 // a small explosion that also hits whatever is close by
           this.boom(bul.x, bul.y, 8);
           for (const o of this.enemies.getChildren()) {
@@ -601,6 +612,8 @@
       b.dmg = player && player.hack && player.hack.oneshot ? 99 : player && player.double ? 2 : 1;
       b.blast = !!(player && player.blast); b.ice = !!(player && player.ice);
       if (player && player.pierce) b.pierce = 2;
+      b.fire = !!(player && player.fire); b.shock = !!(player && player.shock);
+      if (player && player.cloakT > 0 && !ghost) { b.dmg *= 3; player.cloakT = 0; b.setTint(0xff6a7a); }      // out of the cloak: triple damage
       if (player && player.perkGold) b.setTint(0xffd27a); else b.clearTint();
       if (player && player.stormT > 0 && this.anims.exists('fx_storm')) {
         const f = this.add.sprite(x, y, 'fx_storm', 0).setOrigin(0, 0.5).setRotation(a).setScale(0.35).setDepth(12);
@@ -656,7 +669,7 @@
     nearestPlayer(x, y) {
       let best = null, bd = Infinity;
       for (const p of this.players) {
-        if (p.dead || p.out) continue;
+        if (p.dead || p.out || p.cloakT > 0) continue;
         const d = Math.abs(p.body.center.x - x) + Math.abs(p.body.center.y - y);
         if (d < bd) { bd = d; best = p; }
       }
@@ -721,6 +734,14 @@
       if (k.kind === 'heal') p.heal(2);
       const PW = { pierce: 'PIERCING ROUNDS', blast: 'EXPLOSIVE ROUNDS', double: 'DOUBLE DAMAGE', ice: 'ICE ROUNDS' };
       if (PW[k.kind]) { p[k.kind] = true; this.say(PW[k.kind], 900); }
+      if (k.kind === 'fire') { p.fire = true; this.say('FIRE ROUNDS', 900); }
+      if (k.kind === 'shock') { p.shock = true; this.say('SHOCK ROUNDS', 900); }
+      if (k.kind === 'magnet') { p.magnetT = 20000; this.say('COIN MAGNET', 900); }
+      if (k.kind === 'boots') { p.bootsT = 20000; this.say('JUMP BOOTS', 900); }
+      if (k.kind === 'autoaim') { p.aimT = 12000; this.say('AUTO AIM', 900); }
+      if (k.kind === 'bigheal') { p.heal(p.maxHp); this.say('FULL HEAL', 900); }
+      if (k.kind === 'armor') { if (!p.armorMax) { p.armorMax = 2; p.maxHp += 2; } p.hp = Math.min(p.maxHp, p.hp + 2); this.say('ARMOUR +2', 900); }
+      if (k.kind === 'dcoins') { this.coinMult = 2; this.say('DOUBLE COINS', 900); }
       if (k.kind === 'overdrive') {                     // the admin's item: 15 s untouchable, five-way piercing spray, fast
         p.overT = 15000; p.stormT = 15000; p.adrenT = 15000;
         this.say('OVERDRIVE', 1200);
@@ -805,11 +826,11 @@
       }
       return null;
     }
-    throwGrenade(p) {
+    throwGrenade(p, toxic) {
       const g = this.grenades.get(p.body.center.x, p.body.top + 20, 'bomb');
       if (!g) return;
-      g.setTexture('bomb').setActive(true).setVisible(true).setDepth(9).setScale(1.4).setTint(0x7fb3ff);
-      g.isFrag = true; g.owner = p;
+      g.setTexture('bomb').setActive(true).setVisible(true).setDepth(9).setScale(1.4).setTint(toxic ? 0x9dff4a : 0x7fb3ff);
+      g.isFrag = true; g.owner = p; g.toxic = !!toxic;
       g.body.enable = true; g.body.allowGravity = true;
       g.body.setSize(18, 18, true);
       g.body.reset(p.body.center.x, p.body.top + 20);
@@ -817,6 +838,7 @@
       g.body.setAngularVelocity(p.facing * 600);
     }
     fragBurst(g) {
+      if (g.toxic) { this.toxicCloud(g); return; }
       const ab = CG.AGENT.jax.ability, x = g.x, y = g.y;
       g.setActive(false).setVisible(false); g.body.stop(); g.body.enable = false;
       this.boom(x, y - 20, 30);
@@ -834,6 +856,82 @@
         if (q !== g.owner && q.alive && Phaser.Math.Distance.Between(x, y, q.body.center.x, q.body.center.y) < ab.radius) this.damagePlayer(q, 3, g.owner);
       }
     }
+    // Viper: a cloud of gas where the canister lands, poisoning everything inside
+    toxicCloud(g) {
+      const ab = CG.AGENT.viper.ability, x = g.x, y = g.y - 40, owner = g.owner;
+      g.setActive(false).setVisible(false); g.body.stop(); g.body.enable = false;
+      CG.Sfx.play('boom');
+      const cloud = this.add.particles(x, y, 'spark', {
+        lifespan: 900, speed: { min: 10, max: 60 }, scale: { start: 5, end: 9 }, alpha: { start: 0.35, end: 0 },
+        tint: [0x7dff4a, 0x4aa832, 0xb8ff7a], frequency: 40, emitZone: { type: 'random', source: new Phaser.Geom.Circle(0, 0, ab.radius * 0.7) },
+      }).setDepth(13);
+      const tick = this.time.addEvent({ delay: 400, repeat: Math.floor(ab.dur / 400) - 1, callback: () => {
+        for (const e of this.enemies.getChildren()) {
+          if (e.active && Phaser.Math.Distance.Between(x, y, e.body.center.x, e.body.center.y) < ab.radius) e.damage(1);
+        }
+        if (this.pvp) for (const q of this.players) {
+          if (q !== owner && q.alive && Phaser.Math.Distance.Between(x, y, q.body.center.x, q.body.center.y) < ab.radius) this.damagePlayer(q, 1, owner);
+        }
+      } });
+      this.time.delayedCall(ab.dur, () => { cloud.stop(); this.time.delayedCall(1000, () => cloud.destroy()); tick.remove(); });
+    }
+    // Hammer: a shockwave along the ground
+    groundPound(p) {
+      const ab = CG.AGENT.hammer.ability, c = p.body.center, bottom = p.body.bottom;
+      this.cameras.main.shake(260, 0.014);
+      CG.Sfx.play('bigboom');
+      this.boom(c.x, bottom - 10, 22);
+      for (const dx of [-160, -80, 80, 160]) this.time.delayedCall(Math.abs(dx), () => this.boom(c.x + dx, bottom - 6, 8));
+      for (const e of this.enemies.getChildren().slice()) {
+        if (!e.active || Math.abs(e.body.center.x - c.x) > ab.radius || Math.abs(e.body.bottom - bottom) > 140) continue;
+        if (!e.T.boss) e.stunT = Math.max(e.stunT || 0, ab.stun);
+        e.damage(ab.damage);
+      }
+      for (const cv of this.coverList || []) if (!cv.broken && Math.abs(cv.zone.x - c.x) < ab.radius) this.hitCover(cv, 4);
+      if (this.pvp) for (const q of this.players) {
+        if (q !== p && q.alive && Math.abs(q.body.center.x - c.x) < ab.radius && Math.abs(q.body.bottom - bottom) < 140) this.damagePlayer(q, 2, p);
+      }
+    }
+    // Atlas: a drone over his head that shoots the nearest target
+    spawnDrone(p, dur) {
+      if (p.drone) p.drone.destroy();
+      const key = this.textures.exists('px_drone') ? 'px_drone' : 'e_flyer';
+      const d = p.drone = this.add.sprite(p.body.center.x, p.body.top - 90, key, 0).setDepth(12).setTint(0x8ad0ff).setFlipX(true);
+      d.cd = 0; d.left = dur; d.t = 0;
+    }
+    updateDrones(dt) {
+      for (const p of this.players) {
+        const d = p.drone;
+        if (!d) continue;
+        d.left -= dt * 1000; d.cd -= dt * 1000; d.t += dt;
+        if (d.left <= 0 || !p.alive) { this.boom(d.x, d.y, 6); d.destroy(); p.drone = null; continue; }
+        d.x += (p.body.center.x - p.facing * 40 - d.x) * Math.min(1, dt * 6);
+        d.y += (p.body.top - 90 + Math.sin(d.t * 4) * 10 - d.y) * Math.min(1, dt * 6);
+        if (d.texture.frameTotal > 2) d.setFrame(Math.floor(d.t * 14) % 2);
+        const t = this.nearestTarget(p);
+        if (t && d.cd <= 0 && !p.remote) {
+          d.cd = 280;
+          const a = Math.atan2(t.y - d.y, t.x - d.x);
+          this.fire(p, d.x + Math.cos(a) * 20, d.y + Math.sin(a) * 20, a);
+          d.setFlipX(t.x > d.x);
+        }
+      }
+    }
+    // coin magnet: coins and pick-ups fly to whoever has it
+    updateMagnets(dt) {
+      for (const p of this.players) {
+        if (!(p.magnetT > 0) || !p.alive || p.remote) continue;
+        const c = p.body.center;
+        const pull = (k) => {
+          if (!k || !k.active) return;
+          const dx = c.x - k.x, dy = c.y - k.y, d = Math.hypot(dx, dy);
+          if (d < 500 && d > 4) { this.tweens.killTweensOf(k); k.x += dx / d * Math.min(d, 900 * dt); k.y += dy / d * Math.min(d, 900 * dt); if (k.body) k.body.reset(k.x, k.y); }
+        };
+        this.coinPickups.children.iterate(pull);
+        if (!this.isClient) this.pickups.children.iterate(pull);
+      }
+    }
+
     // ---------------------------------------------------------------- breakable cover
     hitCover(cv, dmg, fromNet) {
       if (!cv || cv.broken) return;
@@ -878,7 +976,7 @@
         if (d < bd) { bd = d; best = { x, y }; }
       };
       for (const e of this.enemies.getChildren()) if (e.active && e.T.ai !== 'flyer') look(e.body.center.x, e.body.center.y);
-      if (this.pvp) for (const q of this.players) if (q !== p && q.alive) look(q.body.center.x, q.body.center.y);
+      if (this.pvp) for (const q of this.players) if (q !== p && q.alive && !(q.cloakT > 0)) look(q.body.center.x, q.body.center.y);
       return best;
     }
     hurtFx(p) {
@@ -996,7 +1094,7 @@
           this.dropT -= delta;
           if (this.dropT <= 0) {
             this.dropT = 9000;
-            const kinds = ['heal', 'heal', 'rapid', 'spread', 'pierce', 'blast', 'double', 'ice', 'barrier'];
+            const kinds = ['heal', 'heal', 'rapid', 'spread', 'pierce', 'blast', 'double', 'ice', 'barrier', 'fire', 'shock', 'boots', 'armor', 'autoaim'];
             const k = this.dropPickup(Phaser.Math.Between(6, 24) * T, 40, kinds[Phaser.Math.Between(0, kinds.length - 1)]);
             if (k) k.body.setVelocity(0, 0);
           }
@@ -1047,6 +1145,8 @@
 
       this.updateHud();
       this.updateDomes();
+      this.updateDrones(dt);
+      this.updateMagnets(dt);
       this.pickups.children.iterate((k) => {
         if (!k || !k.active || k.floating || !k.body || !k.body.moves || !(k.body.blocked.down || k.body.touching.down)) return;
         k.floating = true;

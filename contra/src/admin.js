@@ -90,7 +90,9 @@ CG.Admin = (() => {
     items(s) {
       if (!s) return needGame();
       const list = [['heal', 'First aid'], ['heal_big', 'Squad medkit'], ['life', 'Squad life'], ['rapid', 'Rapid fire'], ['spread', 'Spread'], ['barrier', 'Shield'],
-        ['pierce', 'Piercing'], ['blast', 'Explosive'], ['double', 'Double damage'], ['ice', 'Ice rounds']];
+        ['pierce', 'Piercing'], ['blast', 'Explosive'], ['double', 'Double damage'], ['ice', 'Ice rounds'], ['fire', 'Fire rounds'],
+        ['shock', 'Shock rounds'], ['magnet', 'Coin magnet'], ['boots', 'Jump boots'], ['autoaim', 'Auto aim'], ['armor', 'Armour +2'],
+        ['dcoins', 'Double coins'], ['bigheal', 'Full heal']];
       const tile = ([k, n], extra) => {
         const key = s.textures.exists('pk_' + k) ? 'pk_' + k : 'pk_life';
         return `<button class="tile btn ${extra || ''}" data-adm="item" data-k="${k}">${img(thumb(key))}<span>${n}</span></button>`;

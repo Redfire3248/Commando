@@ -149,8 +149,8 @@ CG.Level = {
       L.coins = coins;
       L.coverCols = covers;
       // flying capsules with the bullet power-ups, one over each climb
-      const kinds = ['pierce', 'blast', 'double', 'ice'];
-      ledges.filter(([, r]) => r === 5).forEach(([lc], i) => { if (i % 2 === 0) L.capsules.push([lc + 1, kinds[(i / 2 + li) % kinds.length]]); });
+      const kinds = ['pierce', 'blast', 'double', 'ice', 'fire', 'shock', 'magnet', 'boots', 'autoaim', 'armor', 'dcoins', 'bigheal'];
+      ledges.filter(([, r]) => r === 5).forEach(([lc], i) => L.capsules.push([lc + 1, kinds[(i + li * 3) % kinds.length]]));
       L.capsules.sort((a, b) => a[0] - b[0]);
     });
   },

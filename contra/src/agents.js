@@ -34,6 +34,23 @@ CG.AGENTS = [
     id: 'duke', name: 'DUKE', role: 'Brawler', color: '#ff4d4d', hp: 6, speed: 1.04, classic: true, fallback: 'commandos', fallbackWho: 1,
     ability: { name: 'Adrenaline', desc: '6 seconds faster with rapid fire, and one heart back.', cd: 15000, dur: 6000 },
   },
+  // season 4: art from assets/agents2.png
+  {
+    id: 'ghost', name: 'GHOST', role: 'Stealth sniper', color: '#ff4a5a', hp: 4, speed: 1.1, fallback: 'commandos', fallbackWho: 0,
+    ability: { name: 'Cloak', desc: 'Vanish for 5 seconds: enemies lose track of you. Your first shot out of the cloak does triple damage.', cd: 14000, dur: 5000 },
+  },
+  {
+    id: 'hammer', name: 'HAMMER', role: 'Demolition', color: '#ffb020', hp: 8, speed: 0.88, fallback: 'commandos', fallbackWho: 1,
+    ability: { name: 'Ground Pound', desc: 'Slam the ground: a shockwave hurts and stuns everything around you. In the air you dive down first.', cd: 12000, damage: 6, radius: 300, stun: 1000 },
+  },
+  {
+    id: 'viper', name: 'VIPER', role: 'Toxic specialist', color: '#9dff4a', hp: 5, speed: 1.04, fallback: 'commandos_2', fallbackWho: 0,
+    ability: { name: 'Toxic Cloud', desc: 'Throw a gas canister: its cloud poisons every enemy inside for 5 seconds.', cd: 14000, dur: 5000, radius: 170 },
+  },
+  {
+    id: 'atlas', name: 'ATLAS', role: 'Cyborg', color: '#5ab8ff', hp: 6, speed: 0.96, fallback: 'commandos_4', fallbackWho: 0,
+    ability: { name: 'Sentry Drone', desc: 'A drone hovers over you for 8 seconds and shoots the nearest enemy.', cd: 18000, dur: 8000 },
+  },
 ];
 CG.AGENT = {};
 CG.AGENTS.forEach((a) => { CG.AGENT[a.id] = a; });

@@ -264,6 +264,12 @@ AGENT_POSES = [
     ('run_dup', 'B', [0, 1, 2], 'feet', (1, -1)), ('run_ddown', 'B', [3, 4, 5], 'feet', (1, 1)),
     ('prone', 'B', [6], 'feet', (1, 0)), ('ball', 'B', [7, 8], 'mid', None), ('death', 'B', [9], 'mid', None),
 ]
+# agents2.png (10x8): four more agents, two rows each. Its bottom row (Atlas's second row) was cut off at the
+# bottom edge of the image, so from that row only the prone pose is used (AGENT_ONLY); the rest borrow his own
+# first-row frames like any missing row.
+AGENT_IDS2 = ['ghost', 'hammer', 'viper', 'atlas']
+AGENT_ROWS2 = {'ghost': (0, 1), 'hammer': (2, 3), 'viper': (4, 5), 'atlas': (6, 7)}
+AGENT_ONLY = {'atlas': {'B': ['prone']}}
 # stand-ins for a missing row: pose -> (row, sprites)
 AGENT_FALLBACK = {
     'B': {'run_dup': ('A', [0, 1, 2]), 'run_ddown': ('A', [3, 4, 5]), 'prone': ('A', [9]),
@@ -325,15 +331,28 @@ def build_agents():
             srcs += [(frows[0], fcw, main_cw / fcw), (frows[1], fcw, main_cw / fcw)]
             layout['kite'] = (AGENT_ROWS['kite'][0], len(srcs) - 2)
             layout['volt'] = (len(srcs) - 1, AGENT_ROWS['volt'][1])
+    ids = list(AGENT_IDS)
+    if os.path.exists(os.path.join(ROOT, 'assets', 'agents2.png')):
+        a2 = load('agents2.png')
+        rows2 = sprite_rows(a2)
+        print('  agents2: sprites per row', [len(r) for r in rows2])
+        if len(rows2) >= 8 and all(len(r) >= 10 for r in rows2[:8]):
+            cw2 = a2.shape[1] / 10
+            base = len(srcs)
+            srcs += [(r, cw2, main_cw / cw2) for r in rows2[:8]]
+            for aid in AGENT_IDS2:
+                layout[aid] = (base + AGENT_ROWS2[aid][0], base + AGENT_ROWS2[aid][1])
+                ids.append(aid)
     frames, agents = [], {}
     stand_h = rows[0][6][0].shape[0]
-    for aid in AGENT_IDS:
+    for aid in ids:
         ra, rb = layout[aid]
         have = {'A': srcs[ra] if ra is not None else None, 'B': srcs[rb] if rb is not None else None}
         anims, tips, spin = {}, {}, False
+        only = AGENT_ONLY.get(aid, {})
         for name, row, idxs, mode, aim in AGENT_POSES:
             src_row, src_idx = row, idxs
-            if have[row] is None:
+            if have[row] is None or (row in only and name not in only[row]):
                 src_row, src_idx = AGENT_FALLBACK[row][name]
                 if name == 'ball':
                     spin = True                      # no curled-up frames: the game spins a crouching frame instead
@@ -355,12 +374,15 @@ def build_agents():
             anims[name] = [start, len(frames) - 1, round(rel, 4)]
         agents[aid] = {'anims': anims, 'muzzle': {k: tips[v] for k, v in MUZZLE.items()}, 'spin': spin,
                        'partial': None in layout[aid]}
-    cols = 10
+    # 14 frames wide keeps the sheet under 4096 x 4096, the largest image many phones can load
+    cols = 14
     sheet = Image.new('RGBA', (cols * CELL, -(-len(frames) // cols) * CELL), (0, 0, 0, 0))
     for i, (crop, x, y) in enumerate(frames):
         cell = Image.new('RGBA', (CELL, CELL), (0, 0, 0, 0))
         cell.paste(Image.fromarray(crop), (x, y))
         sheet.paste(cell, ((i % cols) * CELL, (i // cols) * CELL))
+    if sheet.width > 4096 or sheet.height > 4096:
+        print('  WARNING: agents sheet is', sheet.size, '- too big for some phones')
     manifest['sheets']['agents'] = {'path': save(sheet, 'agents'), 'fw': CELL, 'fh': CELL}
     manifest['agents'] = agents
     manifest['agentScale'] = round(140 / stand_h, 4)
@@ -527,6 +549,31 @@ def build_cover50():
     manifest['cover50'] = {t: ['cv50_' + str(i) for i in ids if i in cells] for t, ids in COVER_SETS.items()}
     print('  cover50:', len(cells), 'objects')
 
+
+# powerups.png (10x2): pick-up badges and the four new agents' ability icons. (cell, key, width drawn in game)
+POWERUP_ITEMS = [
+    (0, 'pk_pierce', 84), (1, 'pk_blast', 84), (2, 'pk_double', 84), (3, 'pk_ice', 84), (4, 'pk_fire', 84),
+    (5, 'pk_shock', 84), (6, 'pk_magnet', 84), (7, 'pk_slowmo', 84), (8, 'pk_boots', 84), (9, 'pk_bigheal', 84),
+    (10, 'ab_ghost', 64), (11, 'ab_hammer', 64), (12, 'ab_viper', 64), (13, 'ab_atlas', 64), (14, 'pk_autoaim', 84),
+    (15, 'pk_longer', 84), (16, 'pk_armor', 84), (17, 'pk_dcoins', 84), (18, 'pk_danger', 84), (19, 'pk_overdrive', 110),
+]
+
+
+def build_powerups():
+    a = load('powerups.png')
+    if a is None:
+        return
+    rows = sprite_rows(a)
+    sprites = [s for r in rows for s in r]
+    print('  powerups: sprites per row', [len(r) for r in rows])
+    for idx, key, width in POWERUP_ITEMS:
+        if idx >= len(sprites):
+            continue
+        img = Image.fromarray(sprites[idx][0])
+        manifest['images'][key] = save(img, key)
+        manifest['scale'][key] = round(width / img.width, 4)
+        manifest.setdefault('pixel', []).append(key)
+
 if __name__ == '__main__':
     print('Slicing art from', os.path.join(ROOT, 'assets'))
     a = load('commandos.png')
@@ -544,6 +591,7 @@ if __name__ == '__main__':
     build_backgrounds()
     build_backgrounds15()
     build_cover50()
+    build_powerups()
     with open(os.path.join(ROOT, 'src', 'art.gen.js'), 'w', encoding='utf-8') as f:
         f.write('// GENERATED by tools/build_art.py — do not edit by hand.\n')
         f.write('CG.DATA.art = ' + json.dumps(manifest, indent=1) + ';\n')

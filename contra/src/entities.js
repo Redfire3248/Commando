@@ -41,6 +41,7 @@
         abilityCd: 0, stormT: 0, domeT: 0, dashT: 0, adrenT: 0, overT: 0, god: false, freeAbility: false, dashHit: null,
         pierce: false, blast: false, double: false, ice: false,
         mdashT: 0, mdashCd: 0, airDashed: false, hack: {},
+        cloakT: 0, poundPending: false, fire: false, shock: false, magnetT: 0, bootsT: 0, aimT: 0, armor: 0,
       });
     }
 
@@ -64,7 +65,7 @@
       if (this.out) { this.tag.setVisible(false); this.bar.clear(); return; }
       const ms = dt * 1000, C = this.C, b = this.body, sc = this.scene;
       const wasCd = this.abilityCd;
-      for (const k of ['invT', 'barrierT', 'fireCd', 'dropT', 'abilityCd', 'stormT', 'domeT', 'dashT', 'adrenT', 'overT', 'mdashT', 'mdashCd']) this[k] = Math.max(0, this[k] - ms);
+      for (const k of ['invT', 'barrierT', 'fireCd', 'dropT', 'abilityCd', 'stormT', 'domeT', 'dashT', 'adrenT', 'overT', 'mdashT', 'mdashCd', 'cloakT', 'magnetT', 'bootsT', 'aimT']) this[k] = Math.max(0, this[k] - ms);
       if (this.hack.dash) this.mdashCd = 0;
       if (this.freeAbility) this.abilityCd = 0;
       if (wasCd > 0 && this.abilityCd <= 0) sc.abilityReady(this);
@@ -99,7 +100,7 @@
         if (onGround) this.airJumps = 1;
         if (inp.jumpPressed && onGround) {
           if (inp.down && sc.time.now - this.ledgeT < 80) this.dropT = 260;      // drop through a ledge
-          else { b.velocity.y = -C.jump * (this.hack.jump ? 1.45 : 1); this.setProne(false); CG.Sfx.play('jump'); }
+          else { b.velocity.y = -C.jump * (this.hack.jump || this.bootsT > 0 ? 1.45 : 1); this.setProne(false); CG.Sfx.play('jump'); }
         } else if (inp.jumpPressed && this.airJumps > 0) {                       // double jump
           this.airJumps--;
           b.velocity.y = -C.jump * 0.9;
@@ -117,7 +118,8 @@
       if (ay === 0) ax = this.facing;
       const len = Math.hypot(ax, ay);
       this.aimX = ax / len; this.aimY = ay / len;
-      if (this.hack.aim && inp.shoot) {
+      if (this.poundPending && onGround) { this.poundPending = false; sc.groundPound(this); }      // Hammer landed
+      if ((this.hack.aim || this.aimT > 0) && inp.shoot) {
         const t = sc.nearestTarget(this);
         if (t) {
           const dx = t.x - b.center.x, dy = t.y - b.center.y, d = Math.hypot(dx, dy) || 1;
@@ -170,6 +172,13 @@
           break;
         case 'volt': sc.chainArc(this, ab.targets, ab.damage, ab.stun); break;
         case 'jax': sc.throwGrenade(this); break;
+        case 'ghost': this.cloakT = ab.dur; sc.afterimage(this); break;
+        case 'hammer':
+          if (this.onGround) sc.groundPound(this);
+          else { this.poundPending = true; this.body.velocity.y = 2200; }
+          break;
+        case 'viper': sc.throwGrenade(this, true); break;
+        case 'atlas': sc.spawnDrone(this, ab.dur); break;
         case 'duke': this.adrenT = ab.dur; this.heal(1); break;
       }
       sc.events.emit('ability', this);
@@ -212,7 +221,7 @@
       v.setFrame(f).setPosition(b.center.x, b.bottom).setFlipX(this.facing < 0).setAngle(angle);
       v.setScale(this.art.scale * (set[2] || 1));
       const blink = this.invT > 0 && this.dashT <= 0 && this.overT <= 0 && Math.floor(this.invT / 80) % 2 === 0;
-      v.setAlpha(blink ? 0.3 : 1);
+      v.setAlpha(this.cloakT > 0 ? (this.remote ? 0.12 : 0.3) : blink ? 0.3 : 1);       // Ghost's cloak
       // Overdrive: pulsing gold
       if (this.overT > 0) v.setTint(Math.floor(this.overT / 120) % 2 ? 0xffd23c : 0xfff2b0);
       else if (this.wasOver) v.clearTint();
@@ -250,6 +259,8 @@
       if (this.god) { this.hp = this.maxHp; return; }
       this.dead = true; this.hp = 0; this.rapid = false; this.spread = false; this.barrierT = 0; this.stormT = 0; this.domeT = 0; this.dashT = 0; this.adrenT = 0;
       this.pierce = this.blast = this.double = this.ice = false; this.overT = 0;
+      this.fire = this.shock = false; this.magnetT = this.bootsT = this.aimT = this.cloakT = 0; this.armor = 0; this.poundPending = false;
+      if (this.armorMax) { this.maxHp -= this.armorMax; this.armorMax = 0; }
       CG.Sfx.play('die');
       b.stop(); b.enable = false;
       this.shield.setVisible(false);

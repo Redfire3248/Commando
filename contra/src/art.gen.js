@@ -190,7 +190,26 @@ CG.DATA.art = {
   "cv50_46": "assets/atlas/cv50_46.png",
   "cv50_47": "assets/atlas/cv50_47.png",
   "cv50_48": "assets/atlas/cv50_48.png",
-  "cv50_49": "assets/atlas/cv50_49.png"
+  "cv50_49": "assets/atlas/cv50_49.png",
+  "pk_pierce": "assets/atlas/pk_pierce.png",
+  "pk_blast": "assets/atlas/pk_blast.png",
+  "pk_double": "assets/atlas/pk_double.png",
+  "pk_ice": "assets/atlas/pk_ice.png",
+  "pk_fire": "assets/atlas/pk_fire.png",
+  "pk_shock": "assets/atlas/pk_shock.png",
+  "pk_magnet": "assets/atlas/pk_magnet.png",
+  "pk_slowmo": "assets/atlas/pk_slowmo.png",
+  "pk_boots": "assets/atlas/pk_boots.png",
+  "pk_bigheal": "assets/atlas/pk_bigheal.png",
+  "ab_ghost": "assets/atlas/ab_ghost.png",
+  "ab_hammer": "assets/atlas/ab_hammer.png",
+  "ab_viper": "assets/atlas/ab_viper.png",
+  "ab_atlas": "assets/atlas/ab_atlas.png",
+  "pk_autoaim": "assets/atlas/pk_autoaim.png",
+  "pk_longer": "assets/atlas/pk_longer.png",
+  "pk_armor": "assets/atlas/pk_armor.png",
+  "pk_dcoins": "assets/atlas/pk_dcoins.png",
+  "pk_danger": "assets/atlas/pk_danger.png"
  },
  "sheets": {
   "commandos": {
@@ -429,7 +448,26 @@ CG.DATA.art = {
   "cv50_46": 1.0,
   "cv50_47": 1.0,
   "cv50_48": 1.0,
-  "cv50_49": 1.0
+  "cv50_49": 1.0,
+  "pk_pierce": 0.4828,
+  "pk_blast": 0.5,
+  "pk_double": 0.4941,
+  "pk_ice": 0.506,
+  "pk_fire": 0.497,
+  "pk_shock": 0.4855,
+  "pk_magnet": 0.497,
+  "pk_slowmo": 0.5,
+  "pk_boots": 0.4855,
+  "pk_bigheal": 0.497,
+  "ab_ghost": 0.3787,
+  "ab_hammer": 0.3855,
+  "ab_viper": 0.3855,
+  "ab_atlas": 0.3879,
+  "pk_autoaim": 0.2617,
+  "pk_longer": 0.5185,
+  "pk_armor": 0.5122,
+  "pk_dcoins": 0.5185,
+  "pk_danger": 0.3889
  },
  "players": [
   {
@@ -994,6 +1032,318 @@ CG.DATA.art = {
    },
    "spin": false,
    "partial": false
+  },
+  "ghost": {
+   "anims": {
+    "run_fwd": [
+     100,
+     105,
+     0.8944
+    ],
+    "stand_fwd": [
+     106,
+     106,
+     0.8944
+    ],
+    "stand_up": [
+     107,
+     107,
+     0.8944
+    ],
+    "stand_dup": [
+     108,
+     108,
+     0.8944
+    ],
+    "stand_ddown": [
+     109,
+     109,
+     0.8944
+    ],
+    "run_dup": [
+     110,
+     112,
+     0.8944
+    ],
+    "run_ddown": [
+     113,
+     115,
+     0.8944
+    ],
+    "prone": [
+     116,
+     116,
+     0.8944
+    ],
+    "ball": [
+     117,
+     118,
+     0.8944
+    ],
+    "death": [
+     119,
+     119,
+     0.8944
+    ]
+   },
+   "muzzle": {
+    "fwd": [
+     40,
+     -73
+    ],
+    "up": [
+     8,
+     -134
+    ],
+    "dup": [
+     64,
+     -109
+    ],
+    "ddown": [
+     39,
+     -11
+    ],
+    "prone": [
+     64,
+     -20
+    ]
+   },
+   "spin": false,
+   "partial": false
+  },
+  "hammer": {
+   "anims": {
+    "run_fwd": [
+     120,
+     125,
+     0.8944
+    ],
+    "stand_fwd": [
+     126,
+     126,
+     0.8944
+    ],
+    "stand_up": [
+     127,
+     127,
+     0.8944
+    ],
+    "stand_dup": [
+     128,
+     128,
+     0.8944
+    ],
+    "stand_ddown": [
+     129,
+     129,
+     0.8944
+    ],
+    "run_dup": [
+     130,
+     132,
+     0.8944
+    ],
+    "run_ddown": [
+     133,
+     135,
+     0.8944
+    ],
+    "prone": [
+     136,
+     136,
+     0.8944
+    ],
+    "ball": [
+     137,
+     138,
+     0.8944
+    ],
+    "death": [
+     139,
+     139,
+     0.8944
+    ]
+   },
+   "muzzle": {
+    "fwd": [
+     40,
+     -72
+    ],
+    "up": [
+     5,
+     -122
+    ],
+    "dup": [
+     58,
+     -112
+    ],
+    "ddown": [
+     33,
+     -6
+    ],
+    "prone": [
+     62,
+     -21
+    ]
+   },
+   "spin": false,
+   "partial": false
+  },
+  "viper": {
+   "anims": {
+    "run_fwd": [
+     140,
+     145,
+     0.8944
+    ],
+    "stand_fwd": [
+     146,
+     146,
+     0.8944
+    ],
+    "stand_up": [
+     147,
+     147,
+     0.8944
+    ],
+    "stand_dup": [
+     148,
+     148,
+     0.8944
+    ],
+    "stand_ddown": [
+     149,
+     149,
+     0.8944
+    ],
+    "run_dup": [
+     150,
+     152,
+     0.8944
+    ],
+    "run_ddown": [
+     153,
+     155,
+     0.8944
+    ],
+    "prone": [
+     156,
+     156,
+     0.8944
+    ],
+    "ball": [
+     157,
+     158,
+     0.8944
+    ],
+    "death": [
+     159,
+     159,
+     0.8944
+    ]
+   },
+   "muzzle": {
+    "fwd": [
+     40,
+     -69
+    ],
+    "up": [
+     8,
+     -122
+    ],
+    "dup": [
+     58,
+     -100
+    ],
+    "ddown": [
+     27,
+     -8
+    ],
+    "prone": [
+     64,
+     -19
+    ]
+   },
+   "spin": false,
+   "partial": false
+  },
+  "atlas": {
+   "anims": {
+    "run_fwd": [
+     160,
+     165,
+     0.8944
+    ],
+    "stand_fwd": [
+     166,
+     166,
+     0.8944
+    ],
+    "stand_up": [
+     167,
+     167,
+     0.8944
+    ],
+    "stand_dup": [
+     168,
+     168,
+     0.8944
+    ],
+    "stand_ddown": [
+     169,
+     169,
+     0.8944
+    ],
+    "run_dup": [
+     170,
+     172,
+     0.8944
+    ],
+    "run_ddown": [
+     173,
+     175,
+     0.8944
+    ],
+    "prone": [
+     176,
+     176,
+     0.8944
+    ],
+    "ball": [
+     177,
+     177,
+     0.8944
+    ],
+    "death": [
+     178,
+     178,
+     0.8944
+    ]
+   },
+   "muzzle": {
+    "fwd": [
+     40,
+     -67
+    ],
+    "up": [
+     11,
+     -114
+    ],
+    "dup": [
+     68,
+     -72
+    ],
+    "ddown": [
+     39,
+     -8
+    ],
+    "prone": [
+     57,
+     -24
+    ]
+   },
+   "spin": true,
+   "partial": false
   }
  },
  "agentScale": 1.0687,
@@ -1132,7 +1482,26 @@ CG.DATA.art = {
   "cv50_46",
   "cv50_47",
   "cv50_48",
-  "cv50_49"
+  "cv50_49",
+  "pk_pierce",
+  "pk_blast",
+  "pk_double",
+  "pk_ice",
+  "pk_fire",
+  "pk_shock",
+  "pk_magnet",
+  "pk_slowmo",
+  "pk_boots",
+  "pk_bigheal",
+  "ab_ghost",
+  "ab_hammer",
+  "ab_viper",
+  "ab_atlas",
+  "pk_autoaim",
+  "pk_longer",
+  "pk_armor",
+  "pk_dcoins",
+  "pk_danger"
  ],
  "backgrounds": {
   "jungle": {

@@ -4,6 +4,10 @@
 //   effect  what the item does in game (see apply())
 CG.Shop = {
   DEFAULTS: {
+    agent_hammer: { name: 'HAMMER', kind: 'agent', agent: 'hammer', price: 1500, order: 15 },
+    agent_viper:  { name: 'VIPER', kind: 'agent', agent: 'viper', price: 1600, order: 16 },
+    agent_ghost:  { name: 'GHOST', kind: 'agent', agent: 'ghost', price: 1800, order: 17 },
+    agent_atlas:  { name: 'ATLAS', kind: 'agent', agent: 'atlas', price: 2200, order: 18 },
     agent_kite:  { name: 'KITE', kind: 'agent', agent: 'kite', price: 1200, order: 11 },
     agent_nova:  { name: 'NOVA', kind: 'agent', agent: 'nova', price: 1500, order: 12 },
     agent_brick: { name: 'BRICK', kind: 'agent', agent: 'brick', price: 1500, order: 13 },
@@ -19,6 +23,10 @@ CG.Shop = {
   // Agents: three are free, the rest are bought here (kind 'agent'). Bots may use any agent.
   FREE_AGENTS: ['razor', 'jax', 'duke'],
   AGENT_ITEMS: {
+    agent_hammer: { name: 'HAMMER', kind: 'agent', agent: 'hammer', price: 1500, order: 15 },
+    agent_viper:  { name: 'VIPER', kind: 'agent', agent: 'viper', price: 1600, order: 16 },
+    agent_ghost:  { name: 'GHOST', kind: 'agent', agent: 'ghost', price: 1800, order: 17 },
+    agent_atlas:  { name: 'ATLAS', kind: 'agent', agent: 'atlas', price: 2200, order: 18 },
     agent_kite:  { name: 'KITE', kind: 'agent', agent: 'kite', price: 1200, order: 11 },
     agent_nova:  { name: 'NOVA', kind: 'agent', agent: 'nova', price: 1500, order: 12 },
     agent_brick: { name: 'BRICK', kind: 'agent', agent: 'brick', price: 1500, order: 13 },

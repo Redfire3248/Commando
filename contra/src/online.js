@@ -115,6 +115,7 @@ CG.Online = {
       x: r(b.center.x), y: r(b.bottom), vx: r(b.velocity.x), vy: r(b.velocity.y), f: p.facing, ax: +p.aimX.toFixed(2), ay: +p.aimY.toFixed(2),
       pr: p.prone ? 1 : 0, g: p.onGround ? 1 : 0, hp: p.hp, mx: p.maxHp, d: p.dead ? 1 : 0, o: p.out ? 1 : 0,
       sh: p.shots || 0, sp: (p.spread || p.stormT > 0) ? 1 : 0, st: p.stormT > 0 ? 1 : 0, dm: p.domeT > 0 ? 1 : 0, ds: p.dashT > 0 ? 1 : 0,
+      ck: p.cloakT > 0 ? 1 : 0,
     };
   },
 
@@ -135,6 +136,7 @@ CG.Online = {
     if (s.ds && !p.wasDash) sc.dashFx(p);
     p.wasDash = !!s.ds;
     p.stormT = s.st ? 1000 : 0;
+    p.cloakT = s.ck ? 1000 : 0;
     // ease toward the reported position (plus a little of its velocity, as the report is already a moment old)
     const tx = s.x + s.vx * 0.05, ty = s.y + s.vy * 0.05;
     const k = 1 - Math.exp(-14 * dt);
