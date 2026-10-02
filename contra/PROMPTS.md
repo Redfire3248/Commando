@@ -627,3 +627,33 @@ THE CHARACTERS, ONE PER ROW:
 ROW 1 — JAX — the grenadier, one of the two original commandos. A muscular man, short dark brown hair, determined face, a little stubble. A BLUE headband with two short tails, a white sleeveless shirt, blue camouflage trousers, black combat boots, fingerless black gloves, grenades clipped to his belt.
 ROW 2 — DUKE — the brawler, the other original commando. A muscular man with spiky blond hair, a cocky grin. A RED headband, bare chest crossed by one brass ammunition belt, red camouflage trousers, black combat boots, wrist wraps.
 ```
+
+## 20 — The last code-drawn pieces → `assets/missing.png` (4 columns × 3 rows)
+Attach `assets/agents.png` and `assets/campaign.png` so the style matches. Replaces the tiny code-drawn tank and gunship bosses, the grenadier and drone enemies, the falling bomb, the level coin and JAX / DUKE's ability icons.
+```
+Create this image from scratch. Do not ask for a reference image — everything you need is described below (the attached sheets only show the art style to match).
+
+A sprite sheet for a jungle run-and-gun game in detailed 16-bit PIXEL ART: square pixels with hard edges, a dark one-pixel outline, three or four flat shades per colour, light from the top left, side view, the same style and size feel as the attached soldier sprites. No anti-aliasing, no blur, no gradients, no glow, no text, no letters, no numbers, no shadows on the ground.
+
+REMOVE THE BACKGROUND COMPLETELY: a PNG with real transparency. No background colour, no white, no grey, NO checkerboard pattern, no ground, no grid lines, no borders, no frames around the sprites.
+
+LAYOUT: 4 columns and 3 rows of equal square cells (512 x 512 pixels each, 2048 x 1536 in total). One sprite in the middle of each cell, standing on the same invisible floor line near the bottom of its cell, with clear empty space around it — nothing touches the cell edges or a neighbouring sprite.
+
+ROW 1 — bosses and a bomb:
+(1) ARMORED TANK BOSS, hull only, seen from the side, FACING LEFT: a heavy olive-and-rust military tank with caterpillar tracks, riveted armour plates, a short round turret base WITHOUT a gun barrel (the game adds the barrel), a red warning light. Fill most of the cell width.
+(2) ATTACK GUNSHIP, FACING LEFT, frame 1: a dark green military helicopter with a glass cockpit, a rocket pod under the stub wing, the main rotor as a thin blur line tilted forward.
+(3) the SAME GUNSHIP, frame 2: identical, only the rotor blur and tail rotor in a different position so the two frames loop.
+(4) FALLING BOMB: a small round black bomb with a red stripe and short tail fins, pointing down. Small in its cell.
+
+ROW 2 — enemies, FACING LEFT:
+(5) GRENADIER enemy soldier, standing: tan uniform, brown helmet, a bandolier of grenades across the chest, holding a grenade at the hip.
+(6) the SAME GRENADIER, throwing: arm raised behind the head, grenade in hand, leaning forward.
+(7) ENEMY DRONE, frame 1: a small hovering grey military quadcopter with a red camera eye and a little gun underneath, propellers as blur lines.
+(8) the SAME DRONE, frame 2: identical, propeller blurs in a different position.
+
+ROW 3 — pick-up and icons (front view, centred, each about half the cell):
+(9) COIN: a chunky gold coin with a star stamped on it, a white shine pixel at the top left.
+(10) FRAG GRENADE icon: a green military frag grenade with its pin and lever, a small orange spark flying off the fuse.
+(11) ADRENALINE icon: a red syringe crossed by a bold yellow lightning bolt.
+(12) SENTRY DRONE (friendly): a small hovering blue-and-white quadcopter with a cyan eye and a twin gun underneath, propellers as blur lines.
+```
