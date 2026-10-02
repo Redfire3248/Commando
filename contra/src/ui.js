@@ -180,7 +180,7 @@ CG.UI = (() => {
     // tab icons (ui_icons.png) once it is in
     const U = CG.DATA.art && CG.DATA.art.ui;
     if (U) document.querySelectorAll('.topnav button').forEach((b) => {
-      const name = { locker: 'locker', shop: 'shop', friends: 'friends', menu: 'story' }[b.dataset.act];
+      const name = { locker: 'locker', shop: 'shop', friends: 'friends', menu: 'story', leaderboard: 'ranks' }[b.dataset.act];
       if (name && U[name] && !b.querySelector('.ico')) b.insertAdjacentHTML('afterbegin', ico(name));
     });
   }
@@ -362,7 +362,7 @@ CG.UI = (() => {
           <div class="pf-rank">${CG.Ranks.icon(r.rr, 46)}<div><b style="color:${r.tier.color}">${r.name}</b>
             <div class="pf-bar"><i style="width:${r.div ? r.inDiv : 100}%;background:${r.tier.color}"></i></div><small>${r.div ? r.inDiv + ' / 100 RR' : (r.rr - CG.Ranks.LEGEND_AT) + ' RR'}</small></div></div></div>
       </div>
-      ${st ? `<div class="pf-stats">${stat('MATCHES', st.matches || 0)}${stat('WINS', st.wins || 0)}${stat('KILLS', st.kills || 0)}${stat('HEADSHOTS', st.heads || 0)}${stat('STAGES', st.stages || 0)}${stat('BEST WAVE', st.wave || 0)}</div>`
+      ${st ? `<div class="pf-stats">${stat('MATCHES', st.matches || 0)}${stat('WINS', st.wins || 0)}${stat('KILLS', st.kills || 0)}${stat('FOCUS HITS', st.heads || 0)}${stat('STAGES', st.stages || 0)}${stat('BEST WAVE', st.wave || 0)}</div>`
         : `<p class="pf-note">${x.bot ? 'A computer player. Its rank sets how well it plays.' : 'No matches yet.'}</p>`}
       <div class="pf-btns">${x.me ? `<button class="btn" data-act="locker-look">CHANGE BANNER / TITLE</button><button class="btn" data-act="settings">SETTINGS</button>` : ''}
         <button class="btn primary" data-act="profile-close">CLOSE</button></div>`;
@@ -420,12 +420,12 @@ CG.UI = (() => {
       </div>
       <div class="mode-tile ffa ${/^ffa/.test(M.key(mode)) ? 'selected' : ''}" style="--bg:url(assets/atlas/bg15_12.png)">
         <div class="mt-art"></div>
-        <div class="mt-body"><b>${ico('duels')}FREE-FOR-ALL</b><p>Everyone against everyone. Back in after a death. First to ${CG.Modes.FFA_KILLS} kills. Headshots do double.</p>
+        <div class="mt-body"><b>${ico('ffa', ico('duels'))}FREE-FOR-ALL</b><p>Everyone against everyone. Back in after a death. First to ${CG.Modes.FFA_KILLS} kills. Stay on one target: every third hit in a row does double.</p>
           <div class="mt-sizes two">${[4, 6].map((n) => `<button class="btn ${sel('ffa' + n) ? 'primary' : ''}" data-act="mode-pick" data-uid="ffa${n}">${n} PLAYERS</button>`).join('')}</div></div>
       </div>
       <div class="mode-tile horde ${sel('horde')}" style="--bg:url(assets/atlas/bg15_11.png)">
         <div class="mt-art"></div>
-        <div class="mt-body"><b>${ico('story')}HORDE</b><p>Hold the arena together. Waves come from both sides, a giant every fifth wave. How far can your squad get?</p>
+        <div class="mt-body"><b>${ico('horde', ico('story'))}HORDE</b><p>Hold the arena together. Waves come from both sides, a giant every fifth wave. How far can your squad get?</p>
           <button class="btn primary" data-act="mode-pick" data-uid="horde">${sel('horde') ? '✔ SELECTED' : 'SELECT'}</button></div>
       </div>
       <div class="mode-tile custom ${sel('custom')}" style="--bg:url(assets/atlas/bg15_9.png)">
@@ -441,7 +441,7 @@ CG.UI = (() => {
           </div>
           <button class="btn primary" data-act="mode-pick" data-uid="custom">${sel('custom') ? '✔ UPDATE' : 'SELECT'}</button></div>
       </div>
-      <button class="btn mode-local" data-act="mode-local">${ico('friends')}LOCAL CO-OP · 1–5 players on this device</button>`;
+      <button class="btn mode-local" data-act="mode-local">${ico('coop', ico('friends'))}LOCAL CO-OP · 1–5 players on this device</button>`;
   }
   function pickMode(k) {
     mode = k === 'custom' ? Object.assign({}, custom) : CG.Modes.fromKey(k);
@@ -627,7 +627,7 @@ CG.UI = (() => {
     $('over-rank').innerHTML = ranked
       ? `${CG.Ranks.chip(after, { rr: true, px: 34 })}<b class="${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '+' : ''}${delta} RR</b>
          ${ra.idx > rb.idx ? '<div class="promo">RANK UP!</div>' : ra.idx < rb.idx ? '<div class="demo">RANK DOWN</div>' : ''}
-         ${kind === 'horde' ? `<small>Wave ${opts.wave || 0}</small>` : ''}${opts.heads ? `<small>${opts.heads} headshots</small>` : ''}`
+         ${kind === 'horde' ? `<small>Wave ${opts.wave || 0}</small>` : ''}${opts.heads ? `<small>${opts.heads} focus hits</small>` : ''}`
       : `<small>Unranked ${kind === 'custom' ? '(custom game)' : '(more than one player on this device)'}</small>`;
     $('over-retry').classList.toggle('hidden', !lastPlayers);
     CG.Touch.show(false);
@@ -759,6 +759,7 @@ CG.UI = (() => {
   let lookAt = 0, lockerTab = 'agents';
   function setLockerTab(t) {
     lockerTab = t;
+    $('select').classList.toggle('looks', t !== 'agents');          // banners / titles: preview with the tiles right under it
     document.querySelectorAll('[data-act="locker-tab"]').forEach((b) => b.classList.toggle('on', b.dataset.uid === t));
     renderLocker();
   }
@@ -772,7 +773,7 @@ CG.UI = (() => {
       <div class="pf-banner" style="--bn:${CG.Cosmetics.bannerCss(CG.Profile.banner())}"><div class="pf-fig">${figure(a.id)}</div>
         <div class="pf-id"><div class="pf-name">${esc(myName())}</div><div class="pf-title" style="color:${CG.Cosmetics.titleColor(CG.Profile.title())}">${esc(CG.Cosmetics.titleName(CG.Profile.title()))}</div>
         <div class="pf-rank">${CG.Ranks.chip(CG.Profile.rr(), { rr: true, px: 30 })}</div></div></div>
-      <p class="sel-note">Banners and titles show on your profile and over your agent on the squad screen. More in the SHOP — some are earned.</p></div>`;
+      <p class="sel-note">Your banner and title show on your profile (VIEW PROFILE) and on the leaderboard. More in the SHOP — some are earned.</p></div>`;
     $('agent-cards').innerHTML = ids.map((id) => kind === 'banner'
       ? `<button class="tile look-tile ${id === cur ? 'look' : ''}" data-act="equip-look" data-uid="${id}"><span class="swatch" style="--bn:${CG.Cosmetics.bannerCss(id)}"></span><b>${list[id].name}</b><span class="marks">${id === cur ? '<i style="background:var(--acc)">✔</i>' : ''}</span></button>`
       : `<button class="tile look-tile title-tile ${id === cur ? 'look' : ''}" data-act="equip-look" data-uid="${id}"><b style="color:${list[id].color}">${list[id].name}</b><span class="marks">${id === cur ? '<i style="background:var(--acc)">✔</i>' : ''}</span></button>`).join('');
@@ -1116,7 +1117,7 @@ CG.UI = (() => {
 
   // ---------------------------------------------------------------- the loading screen
   // art first (0-85 %), then waiting for the sign-in check so the login card never flashes up for signed-in players
-  const TIPS = ['Headshots do double damage.', 'Only KITE can Tac Dash — hold a direction and dash, even straight up.',
+  const TIPS = ['Focus fire: stay on one target — every third hit in a row does double damage.', 'KITE dashes in any direction — hold W and dash to go straight up.',
     'Your squad shares one pool of lives.', 'Cover stops every bullet — and breaks after five hits.',
     'Coins up high are worth 5 each.', 'Pick your agent once in the LOCKER: it is used in every match.',
     'Bots play at your rank.', 'Water is instant death. Mind the gaps.'];

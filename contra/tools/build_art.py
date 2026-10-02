@@ -913,13 +913,15 @@ def build_banners():
     print('  banners:', n)
 
 
-# Worlds (prompts 21-28): every story world has its own tiles + water -> assets/worlds/<world>.png, 4 x 3 cells
-# (a gap around every tile), and the four fortress worlds their own wall / cannon / core (prompts 29-32) ->
-# assets/worlds/<world>_boss.png, 3 x 2. Keys get the suffix _w_<world>; the game falls back to the theme's art.
-WORLDS = ['jungle', 'base1', 'falls', 'base2', 'snow', 'energy', 'hangar', 'alien']
-WORLD_TILES = ['g_top', 'g_top_1', 'g_top_2', 'g_left', 'g_right', 'g_in', 'g_in_1', 'g_in_2', 'ledge', 'bridge', 'water', 'water_deep']
+# Worlds: every story world has its own tiles + water. worlds1.png / worlds2.png (prompts 21-22): 8 x 4, one row per
+# world: top A, top B, left end, right end, fill A, fill B, ledge, water. bosses.png (prompt 23): 6 x 4, one row per
+# fortress world: wall, cannon, barrel, core, core damaged, core destroyed. Keys get the suffix _w_<world>; the game
+# falls back to the theme's art for anything missing (deep water = the world's water, darker).
+WORLD_SHEETS = [('worlds1.png', ['jungle', 'base1', 'falls', 'base2']), ('worlds2.png', ['snow', 'energy', 'hangar', 'alien'])]
+WORLD_TILES = ['g_top', 'g_top_1', 'g_left', 'g_right', 'g_in', 'g_in_1', 'ledge', 'water']
+BOSS_WORLDS = ['jungle', 'base1', 'base2', 'hangar']
 WORLD_BOSS = ['boss_wall', 'boss_cannon', 'boss_barrel', 'boss_core', 'boss_core_dmg', 'boss_core_dead']
-BOSS_HEIGHT = {'boss_cannon': 84, 'boss_barrel': 30, 'boss_core': 170, 'boss_core_dmg': 170, 'boss_core_dead': 120}
+BOSS_SIZE = {'boss_cannon': ('h', 120), 'boss_barrel': ('w', 150), 'boss_core': ('h', 190), 'boss_core_dmg': ('h', 190), 'boss_core_dead': ('h', 130)}
 
 
 def world_key(name, world):
@@ -928,41 +930,117 @@ def world_key(name, world):
     return base + '_w_' + world + ('_' + n if n else '')
 
 
+def fit_scale(img, size):
+    side, px = size
+    return round(px / (img.width if side == 'w' else img.height), 4)
+
+
 def build_worlds():
     global COLS, ROWS
     keep = (COLS, ROWS)
     try:
-        for world in WORLDS:
-            a = load(os.path.join('worlds', world + '.png'))
-            if a is not None:
-                COLS, ROWS = 4, 3
-                cells = cut_cells(a, grow=2)
+        for fname, worlds in WORLD_SHEETS:
+            a = load(fname)
+            if a is None:
+                continue
+            COLS, ROWS = 8, 4
+            cells = cut_cells(a, grow=2)
+            for r, world in enumerate(worlds):
                 n = 0
-                for i, name in enumerate(WORLD_TILES):
+                for c, name in enumerate(WORLD_TILES):
+                    i = r * COLS + c
                     if i not in cells:
                         continue
-                    crop = cells[i][0]
-                    square = not name.startswith(('ledge', 'bridge'))
-                    img = Image.fromarray(clean_tile(crop, rows=name.startswith('g_in') or name == 'water_deep') if square else crop)
                     key = world_key(name, world)
-                    manifest['images'][key] = save(img, key)
+                    manifest['images'][key] = save(Image.fromarray(cells[i][0]), key)
                     n += 1
                 print('  world', world, 'tiles:', n)
-            a = load(os.path.join('worlds', world + '_boss.png'))
-            if a is not None:
-                COLS, ROWS = 3, 2
-                cells = cut_cells(a, grow=2)
-                for i, name in enumerate(WORLD_BOSS):
+        a = load('bosses.png')
+        if a is not None:
+            COLS, ROWS = 6, 4
+            cells = cut_cells(a, grow=2)
+            for r, world in enumerate(BOSS_WORLDS):
+                for c, name in enumerate(WORLD_BOSS):
+                    i = r * COLS + c
                     if i not in cells:
                         continue
                     img = Image.fromarray(cells[i][0])
                     key = name + '_w_' + world
                     manifest['images'][key] = save(img, key)
-                    if name in BOSS_HEIGHT:
-                        manifest['scale'][key] = round(BOSS_HEIGHT[name] / img.height, 4)
-                print('  world', world, 'boss pieces:', len(cells))
+                    if name in BOSS_SIZE:
+                        manifest['scale'][key] = fit_scale(img, BOSS_SIZE[name])
+            print('  boss pieces:', len(cells))
     finally:
         COLS, ROWS = keep
+
+
+# abilities.png (prompt 24): 4 x 4, one matching set — every agent's ability icon (they win over agents_ui.png's),
+# then the RANKS tab, the free-for-all / horde / local co-op mode icons and the Overdrive power-up.
+ABILITY_ICONS = ['ab_razor', 'ab_nova', 'ab_kite', 'ab_brick', 'ab_volt', 'ab_jax', 'ab_duke', 'ab_ghost',
+                 'ab_hammer', 'ab_viper', 'ab_atlas', 'ui:ranks', 'ui:ffa', 'ui:horde', 'ui:coop', 'pk_overdrive']
+
+
+def build_abilities():
+    a = load('abilities.png')
+    if a is None:
+        return
+    global COLS, ROWS
+    keep = (COLS, ROWS)
+    COLS, ROWS = 4, 4
+    try:
+        cells = cut_cells(a, grow=6)
+    finally:
+        COLS, ROWS = keep
+    ui = manifest.setdefault('ui', {})
+    for i, key in enumerate(ABILITY_ICONS):
+        if i not in cells:
+            continue
+        img = Image.fromarray(cells[i][0])
+        if key.startswith('ui:'):
+            ui[key[3:]] = save(img, 'ui_' + key[3:])
+            continue
+        manifest['images'][key] = save(img, key)
+        if key == 'pk_overdrive':
+            manifest['scale'][key] = round(84 / img.width, 4)          # drawn as wide as the other power-up badges
+    print('  ability icons:', len(cells))
+
+
+# missing.png (prompt 20): 4 x 3 — tank, gunship x2, bomb / grenadier x2, drone x2 / coin, frag icon, adrenaline icon,
+# sentry. Replaces the code-drawn pieces of the same keys; two-frame enemies become sheets (frames bottom-aligned).
+MISSING = {0: ('boss_tank', ('w', 330)), 3: ('bomb', ('h', 30)), 8: ('pk_coin', ('h', 40)), 9: ('ab_jax', None),
+           10: ('ab_duke', None), 11: ('px_sentry', ('w', 96))}
+MISSING_SHEETS = [('boss_heli', [1, 2], ('w', 300)), ('px_gren', [4, 5], ('h', 132)), ('px_drone', [6, 7], ('w', 90))]
+
+
+def build_missing():
+    a = load('missing.png')
+    if a is None:
+        return
+    global COLS, ROWS
+    keep = (COLS, ROWS)
+    COLS, ROWS = 4, 3
+    try:
+        cells = cut_cells(a, grow=2)
+    finally:
+        COLS, ROWS = keep
+    for i, (key, size) in MISSING.items():
+        if i not in cells:
+            continue
+        img = Image.fromarray(cells[i][0])
+        manifest['images'][key] = save(img, key)
+        if size:
+            manifest['scale'][key] = fit_scale(img, size)
+    for key, idx, size in MISSING_SHEETS:
+        if not all(i in cells for i in idx):
+            continue
+        frames = [Image.fromarray(cells[i][0]) for i in idx]
+        fw, fh = max(f.width for f in frames), max(f.height for f in frames)
+        sheet = Image.new('RGBA', (fw * len(frames), fh), (0, 0, 0, 0))
+        for n, f in enumerate(frames):
+            sheet.paste(f, (n * fw + (fw - f.width) // 2, fh - f.height))      # centred, standing on the bottom
+        manifest['sheets'][key] = {'path': save(sheet, key), 'fw': fw, 'fh': fh}
+        manifest['scale'][key] = round(size[1] / (fw if size[0] == 'w' else fh), 4)
+    print('  missing pieces:', len(cells))
 
 
 if __name__ == '__main__':
@@ -989,6 +1067,8 @@ if __name__ == '__main__':
     build_campaign()
     build_banners()
     build_worlds()
+    build_missing()            # after agents_ui: its JAX / DUKE icons win until abilities.png is in
+    build_abilities()          # last: the matching ability icons win over every older one
     with open(os.path.join(ROOT, 'src', 'art.gen.js'), 'w', encoding='utf-8') as f:
         f.write('// GENERATED by tools/build_art.py — do not edit by hand.\n')
         f.write('CG.DATA.art = ' + json.dumps(manifest, indent=1) + ';\n')

@@ -658,308 +658,96 @@ ROW 3 — pick-up and icons (front view, centred, each about half the cell):
 (12) SENTRY DRONE (friendly): a small hovering blue-and-white quadcopter with a cyan eye and a twin gun underneath, propellers as blur lines.
 ```
 
-## 21-28 — A tile set for every story world → `assets/worlds/<world>.png` (4 × 3)
-One image per world. Save each as `contra/assets/worlds/<file>.png` and attach `assets/terrain2.png` and `assets/agents.png` for the style. Each world has its own look (no two worlds share a set). Missing worlds keep the old tiles.
-### 21 — JUNGLE tiles → `assets/worlds/jungle.png`
+## 21 — World tiles, worlds 1-4 → `assets/worlds1.png` (8 × 4, one row per world) — IN
+Attach `assets/terrain2.png` and `assets/agents.png`. Sliced by `build_worlds()` → `g_top_w_<world>`, `g_top_w_<world>_1`, `g_left_…`, `g_right_…`, `g_in_…`, `g_in_…_1`, `ledge_…`, `water_…`.
 ```
 Create this image from scratch. Do not ask for a reference image — everything you need is described below (the attached sheets only show the art style to match).
 
-A TILE SET for one world of a side-view jungle run-and-gun game, in detailed 16-bit PIXEL ART: square pixels with hard edges, a dark one-pixel outline only where a tile meets the air, three or four flat shades per colour, light from the top left. No anti-aliasing, no blur, no gradients, no glow, no text, no letters, no numbers.
-
-THE WORLD: a tropical jungle at the edge of a river.
+TILE SETS for four worlds of a side-view jungle run-and-gun game, in detailed 16-bit PIXEL ART: square pixels with hard edges, a dark one-pixel outline only where a tile meets the air, three or four flat shades per colour, light from the top left. No anti-aliasing, no blur, no gradients, no glow, no text, no letters, no numbers.
 
 REMOVE THE BACKGROUND COMPLETELY: a PNG with real transparency. No background colour, no white, no grey, NO checkerboard pattern, no grid lines, no borders, no frames.
 
-LAYOUT: 4 columns and 3 rows of equal cells (512 x 512 pixels each, 2048 x 1536 in total). Each tile is a separate SQUARE about 400 x 400 pixels in the middle of its cell, with a clear transparent gap around it — tiles never touch each other. Every square tile fills its whole square (nothing sticks out of it) and is SEAMLESS: its left edge continues perfectly into its right edge, so the tiles can be laid side by side in a row without any visible line or border.
+LAYOUT: 8 columns and 4 rows of equal cells (256 x 256 pixels each, 2048 x 1024 in total). ONE ROW PER WORLD. Each tile sits in the middle of its cell with a clear transparent gap around it — tiles never touch each other. Square tiles are about 210 x 210 pixels, fill their whole square, and are SEAMLESS: the left edge continues perfectly into the right edge, so they can be laid side by side without any visible line.
 
-ROW 1:
-(1) GROUND TOP A — the walkable surface: thick bright green grass and small ferns on top, a band of dark brown soil with roots underneath. The surface runs along the top of the square, the rest is the ground under it.
-(2) GROUND TOP B — the same surface, slightly different details, same height and colours so it swaps with A seamlessly.
-(3) GROUND TOP C — another variant of the same surface.
-(4) GROUND TOP, LEFT END — the same surface where the ground ends on the left: the left side shows the cliff edge of the ground.
-ROW 2:
-(5) GROUND TOP, RIGHT END — the same, mirrored: the ground ends on the right.
-(6) GROUND FILL A — what is underneath, with no surface on top: dark brown soil packed with small stones, roots and a buried skull or two. Seamless on ALL four sides (left-right AND top-bottom).
-(7) GROUND FILL B — a variant of the fill, seamless with A on all sides.
-(8) GROUND FILL C — another variant (a crack or a buried detail), seamless with A and B.
-ROW 3:
-(9) FLOATING LEDGE — a mossy wooden log plank with rope lashings, seen from the side, as wide as the square but only about a quarter as tall, sitting at the top of its square (the rest of the square stays transparent). Its left and right ends join seamlessly when several are laid in a row.
-(10) BRIDGE PIECE — a rope-and-plank jungle bridge segment (planks with rope rails), the same width and height as the ledge, also seamless left to right.
-(11) WATER SURFACE — a calm green-blue jungle river surface with small ripples and a lily pad, the top edge is the surface line, seamless left to right.
-(12) DEEP WATER — deep murky green river water, seamless on all four sides.
+THE 8 COLUMNS (the same in every row):
+(1) GROUND TOP A — the walkable surface along the top of the square, the ground under it.
+(2) GROUND TOP B — the same surface with slightly different details, swaps with A seamlessly.
+(3) GROUND TOP, LEFT END — the same surface where the ground ends on the left (the left side shows the cliff edge).
+(4) GROUND TOP, RIGHT END — the same, mirrored: the ground ends on the right.
+(5) GROUND FILL A — what is underneath, no surface on top, seamless on ALL four sides.
+(6) GROUND FILL B — a variant of the fill, seamless with A on all sides.
+(7) FLOATING LEDGE — a platform seen from the side, as wide as a square tile but only a quarter as tall, its ends join seamlessly when laid in a row.
+(8) WATER SURFACE — the liquid of this world, the surface line along the top, seamless left to right and top to bottom.
+
+ROW 1 — JUNGLE: top = thick bright green grass and small ferns over dark brown soil with roots; fill = dark brown soil with small stones and roots; ledge = a mossy wooden log plank with rope lashings; water = calm green-blue river with ripples.
+ROW 2 — BASE 1 (outer walls of an enemy bunker): top = grey steel floor plate with yellow-and-black hazard stripes and rivets; fill = grey reinforced concrete blocks with cracks and bolt plates; ledge = a steel catwalk grating with a thin handrail; water = dark industrial water with an oily rainbow sheen.
+ROW 3 — WATERFALL (a mossy cliff beside a huge waterfall): top = wet grey-green stone under thick moss and tiny white flowers; fill = layered wet slate-grey stone with dripping streaks and moss in the cracks; ledge = a flat mossy stone slab; water = fast bright-blue river with white foam streaks.
+ROW 4 — BASE 2 (deep inside the base, a dark armoured corridor): top = dark navy-blue armour plating with small red warning lights along the top edge; fill = dark navy steel panels with thick cables, pipes and vents; ledge = a red-painted steel I-beam; water = bubbling toxic green coolant.
 ```
-### 22 — BASE 1 tiles → `assets/worlds/base1.png`
+
+## 22 — World tiles, worlds 5-8 → `assets/worlds2.png` (8 × 4) — IN
+The same prompt as 21 with these four rows:
+```
+ROW 1 — SNOW FIELD (a frozen mountain field): top = a thick soft layer of snow with a rounded edge and ice crystals; fill = frozen blue-grey rock with ice veins and frost; ledge = a slab of clear blue ice with small icicles under it; water = icy dark-blue water with floating chunks of ice.
+ROW 2 — ENERGY ZONE (a power plant full of fire jets): top = dark iron floor grating with orange-hot vent slots and scorched edges; fill = heat-stained dark metal with copper pipes and pressure gauges; ledge = a copper pipe platform on brackets; water = molten orange lava with dark crust plates.
+ROW 3 — HANGAR (a huge aircraft hangar): top = dark grey hangar floor with a painted yellow guide line; fill = grey corrugated wall panels with rivets and oil stains; ledge = yellow steel scaffolding; water = a pit of shiny black oil.
+ROW 4 — ALIEN'S LAIR (inside a living alien hive): top = purple-red fleshy ground with bony ridges and small teeth along the edge; fill = dark-red organic tissue with purple veins and bony lumps; ledge = a curved bone rib; water = bubbling bright-green alien acid.
+```
+
+## 23 — Fortress bosses → `assets/bosses.png` (6 × 4, one row per fortress world) — IN
+Attach `assets/enemies_tiles.png`. Rows JUNGLE, BASE 1, BASE 2, HANGAR; columns wall block, cannon mount, barrel (pointing left), core, core damaged, core destroyed → `boss_*_w_<world>`.
 ```
 Create this image from scratch. Do not ask for a reference image — everything you need is described below (the attached sheets only show the art style to match).
 
-A TILE SET for one world of a side-view jungle run-and-gun game, in detailed 16-bit PIXEL ART: square pixels with hard edges, a dark one-pixel outline only where a tile meets the air, three or four flat shades per colour, light from the top left. No anti-aliasing, no blur, no gradients, no glow, no text, no letters, no numbers.
-
-THE WORLD: the outer walls of an enemy military bunker.
+The parts of four fortress bosses for a side-view jungle run-and-gun game, in detailed 16-bit PIXEL ART: square pixels with hard edges, a dark one-pixel outline, three or four flat shades per colour, light from the top left, seen from the side. No anti-aliasing, no blur, no gradients, no glow, no text, no letters, no numbers.
 
 REMOVE THE BACKGROUND COMPLETELY: a PNG with real transparency. No background colour, no white, no grey, NO checkerboard pattern, no grid lines, no borders, no frames.
 
-LAYOUT: 4 columns and 3 rows of equal cells (512 x 512 pixels each, 2048 x 1536 in total). Each tile is a separate SQUARE about 400 x 400 pixels in the middle of its cell, with a clear transparent gap around it — tiles never touch each other. Every square tile fills its whole square (nothing sticks out of it) and is SEAMLESS: its left edge continues perfectly into its right edge, so the tiles can be laid side by side in a row without any visible line or border.
+LAYOUT: 6 columns and 4 rows of equal cells (256 x 256 pixels each, 1536 x 1024 in total). ONE ROW PER BOSS. Each part sits in the middle of its cell with a clear transparent gap around it — parts never touch each other or the cell edges.
 
-ROW 1:
-(1) GROUND TOP A — the walkable surface: grey steel floor plate with yellow-and-black hazard stripes along the top edge and rivets. The surface runs along the top of the square, the rest is the ground under it.
-(2) GROUND TOP B — the same surface, slightly different details, same height and colours so it swaps with A seamlessly.
-(3) GROUND TOP C — another variant of the same surface.
-(4) GROUND TOP, LEFT END — the same surface where the ground ends on the left: the left side shows the cliff edge of the ground.
-ROW 2:
-(5) GROUND TOP, RIGHT END — the same, mirrored: the ground ends on the right.
-(6) GROUND FILL A — what is underneath, with no surface on top: thick grey reinforced concrete blocks with cracks and bolt plates. Seamless on ALL four sides (left-right AND top-bottom).
-(7) GROUND FILL B — a variant of the fill, seamless with A on all sides.
-(8) GROUND FILL C — another variant (a crack or a buried detail), seamless with A and B.
-ROW 3:
-(9) FLOATING LEDGE — a steel catwalk grating with a thin handrail, seen from the side, as wide as the square but only about a quarter as tall, sitting at the top of its square (the rest of the square stays transparent). Its left and right ends join seamlessly when several are laid in a row.
-(10) BRIDGE PIECE — a riveted steel girder bridge segment, the same width and height as the ledge, also seamless left to right.
-(11) WATER SURFACE — dark industrial water with an oily rainbow sheen, the top edge is the surface line, seamless left to right.
-(12) DEEP WATER — deep black-blue industrial water, seamless on all four sides.
-```
-### 23 — WATERFALL tiles → `assets/worlds/falls.png`
-```
-Create this image from scratch. Do not ask for a reference image — everything you need is described below (the attached sheets only show the art style to match).
-
-A TILE SET for one world of a side-view jungle run-and-gun game, in detailed 16-bit PIXEL ART: square pixels with hard edges, a dark one-pixel outline only where a tile meets the air, three or four flat shades per colour, light from the top left. No anti-aliasing, no blur, no gradients, no glow, no text, no letters, no numbers.
-
-THE WORLD: a steep mossy cliff beside a huge waterfall.
-
-REMOVE THE BACKGROUND COMPLETELY: a PNG with real transparency. No background colour, no white, no grey, NO checkerboard pattern, no grid lines, no borders, no frames.
-
-LAYOUT: 4 columns and 3 rows of equal cells (512 x 512 pixels each, 2048 x 1536 in total). Each tile is a separate SQUARE about 400 x 400 pixels in the middle of its cell, with a clear transparent gap around it — tiles never touch each other. Every square tile fills its whole square (nothing sticks out of it) and is SEAMLESS: its left edge continues perfectly into its right edge, so the tiles can be laid side by side in a row without any visible line or border.
-
-ROW 1:
-(1) GROUND TOP A — the walkable surface: wet grey-green stone covered in thick moss and tiny white flowers on top. The surface runs along the top of the square, the rest is the ground under it.
-(2) GROUND TOP B — the same surface, slightly different details, same height and colours so it swaps with A seamlessly.
-(3) GROUND TOP C — another variant of the same surface.
-(4) GROUND TOP, LEFT END — the same surface where the ground ends on the left: the left side shows the cliff edge of the ground.
-ROW 2:
-(5) GROUND TOP, RIGHT END — the same, mirrored: the ground ends on the right.
-(6) GROUND FILL A — what is underneath, with no surface on top: layered wet slate-grey stone with dripping water streaks and moss in the cracks. Seamless on ALL four sides (left-right AND top-bottom).
-(7) GROUND FILL B — a variant of the fill, seamless with A on all sides.
-(8) GROUND FILL C — another variant (a crack or a buried detail), seamless with A and B.
-ROW 3:
-(9) FLOATING LEDGE — a flat mossy stone slab, seen from the side, as wide as the square but only about a quarter as tall, sitting at the top of its square (the rest of the square stays transparent). Its left and right ends join seamlessly when several are laid in a row.
-(10) BRIDGE PIECE — a fallen tree trunk wrapped in vines, used as a bridge, the same width and height as the ledge, also seamless left to right.
-(11) WATER SURFACE — a fast bright-blue river surface with white foam streaks, the top edge is the surface line, seamless left to right.
-(12) DEEP WATER — deep rushing blue water with bubbles, seamless on all four sides.
-```
-### 24 — BASE 2 tiles → `assets/worlds/base2.png`
-```
-Create this image from scratch. Do not ask for a reference image — everything you need is described below (the attached sheets only show the art style to match).
-
-A TILE SET for one world of a side-view jungle run-and-gun game, in detailed 16-bit PIXEL ART: square pixels with hard edges, a dark one-pixel outline only where a tile meets the air, three or four flat shades per colour, light from the top left. No anti-aliasing, no blur, no gradients, no glow, no text, no letters, no numbers.
-
-THE WORLD: deep inside the enemy base, a dark armoured corridor.
-
-REMOVE THE BACKGROUND COMPLETELY: a PNG with real transparency. No background colour, no white, no grey, NO checkerboard pattern, no grid lines, no borders, no frames.
-
-LAYOUT: 4 columns and 3 rows of equal cells (512 x 512 pixels each, 2048 x 1536 in total). Each tile is a separate SQUARE about 400 x 400 pixels in the middle of its cell, with a clear transparent gap around it — tiles never touch each other. Every square tile fills its whole square (nothing sticks out of it) and is SEAMLESS: its left edge continues perfectly into its right edge, so the tiles can be laid side by side in a row without any visible line or border.
-
-ROW 1:
-(1) GROUND TOP A — the walkable surface: dark navy-blue armour plating with small red warning lights set into the top edge. The surface runs along the top of the square, the rest is the ground under it.
-(2) GROUND TOP B — the same surface, slightly different details, same height and colours so it swaps with A seamlessly.
-(3) GROUND TOP C — another variant of the same surface.
-(4) GROUND TOP, LEFT END — the same surface where the ground ends on the left: the left side shows the cliff edge of the ground.
-ROW 2:
-(5) GROUND TOP, RIGHT END — the same, mirrored: the ground ends on the right.
-(6) GROUND FILL A — what is underneath, with no surface on top: dark navy steel panels with thick cables, pipes and vents. Seamless on ALL four sides (left-right AND top-bottom).
-(7) GROUND FILL B — a variant of the fill, seamless with A on all sides.
-(8) GROUND FILL C — another variant (a crack or a buried detail), seamless with A and B.
-ROW 3:
-(9) FLOATING LEDGE — a red-painted steel I-beam, seen from the side, as wide as the square but only about a quarter as tall, sitting at the top of its square (the rest of the square stays transparent). Its left and right ends join seamlessly when several are laid in a row.
-(10) BRIDGE PIECE — a retractable metal bridge segment with red-and-white edge markings, the same width and height as the ledge, also seamless left to right.
-(11) WATER SURFACE — bubbling toxic green coolant liquid surface, the top edge is the surface line, seamless left to right.
-(12) DEEP WATER — deep dark green coolant, seamless on all four sides.
-```
-### 25 — SNOW FIELD tiles → `assets/worlds/snow.png`
-```
-Create this image from scratch. Do not ask for a reference image — everything you need is described below (the attached sheets only show the art style to match).
-
-A TILE SET for one world of a side-view jungle run-and-gun game, in detailed 16-bit PIXEL ART: square pixels with hard edges, a dark one-pixel outline only where a tile meets the air, three or four flat shades per colour, light from the top left. No anti-aliasing, no blur, no gradients, no glow, no text, no letters, no numbers.
-
-THE WORLD: a frozen mountain field in a blizzard.
-
-REMOVE THE BACKGROUND COMPLETELY: a PNG with real transparency. No background colour, no white, no grey, NO checkerboard pattern, no grid lines, no borders, no frames.
-
-LAYOUT: 4 columns and 3 rows of equal cells (512 x 512 pixels each, 2048 x 1536 in total). Each tile is a separate SQUARE about 400 x 400 pixels in the middle of its cell, with a clear transparent gap around it — tiles never touch each other. Every square tile fills its whole square (nothing sticks out of it) and is SEAMLESS: its left edge continues perfectly into its right edge, so the tiles can be laid side by side in a row without any visible line or border.
-
-ROW 1:
-(1) GROUND TOP A — the walkable surface: a thick soft layer of snow with a rounded top edge and small ice crystals. The surface runs along the top of the square, the rest is the ground under it.
-(2) GROUND TOP B — the same surface, slightly different details, same height and colours so it swaps with A seamlessly.
-(3) GROUND TOP C — another variant of the same surface.
-(4) GROUND TOP, LEFT END — the same surface where the ground ends on the left: the left side shows the cliff edge of the ground.
-ROW 2:
-(5) GROUND TOP, RIGHT END — the same, mirrored: the ground ends on the right.
-(6) GROUND FILL A — what is underneath, with no surface on top: frozen blue-grey rock packed with ice veins and frost. Seamless on ALL four sides (left-right AND top-bottom).
-(7) GROUND FILL B — a variant of the fill, seamless with A on all sides.
-(8) GROUND FILL C — another variant (a crack or a buried detail), seamless with A and B.
-ROW 3:
-(9) FLOATING LEDGE — a slab of clear blue ice with small icicles hanging under it, seen from the side, as wide as the square but only about a quarter as tall, sitting at the top of its square (the rest of the square stays transparent). Its left and right ends join seamlessly when several are laid in a row.
-(10) BRIDGE PIECE — frosted wooden planks with snow on top, a bridge segment, the same width and height as the ledge, also seamless left to right.
-(11) WATER SURFACE — icy dark-blue water with floating chunks of ice, the top edge is the surface line, seamless left to right.
-(12) DEEP WATER — deep freezing navy-blue water, seamless on all four sides.
-```
-### 26 — ENERGY ZONE tiles → `assets/worlds/energy.png`
-```
-Create this image from scratch. Do not ask for a reference image — everything you need is described below (the attached sheets only show the art style to match).
-
-A TILE SET for one world of a side-view jungle run-and-gun game, in detailed 16-bit PIXEL ART: square pixels with hard edges, a dark one-pixel outline only where a tile meets the air, three or four flat shades per colour, light from the top left. No anti-aliasing, no blur, no gradients, no glow, no text, no letters, no numbers.
-
-THE WORLD: a power plant full of fire jets and machinery.
-
-REMOVE THE BACKGROUND COMPLETELY: a PNG with real transparency. No background colour, no white, no grey, NO checkerboard pattern, no grid lines, no borders, no frames.
-
-LAYOUT: 4 columns and 3 rows of equal cells (512 x 512 pixels each, 2048 x 1536 in total). Each tile is a separate SQUARE about 400 x 400 pixels in the middle of its cell, with a clear transparent gap around it — tiles never touch each other. Every square tile fills its whole square (nothing sticks out of it) and is SEAMLESS: its left edge continues perfectly into its right edge, so the tiles can be laid side by side in a row without any visible line or border.
-
-ROW 1:
-(1) GROUND TOP A — the walkable surface: dark iron floor grating with orange-hot vent slots and heat-scorched edges. The surface runs along the top of the square, the rest is the ground under it.
-(2) GROUND TOP B — the same surface, slightly different details, same height and colours so it swaps with A seamlessly.
-(3) GROUND TOP C — another variant of the same surface.
-(4) GROUND TOP, LEFT END — the same surface where the ground ends on the left: the left side shows the cliff edge of the ground.
-ROW 2:
-(5) GROUND TOP, RIGHT END — the same, mirrored: the ground ends on the right.
-(6) GROUND FILL A — what is underneath, with no surface on top: heat-stained dark metal walls with copper pipes and pressure gauges. Seamless on ALL four sides (left-right AND top-bottom).
-(7) GROUND FILL B — a variant of the fill, seamless with A on all sides.
-(8) GROUND FILL C — another variant (a crack or a buried detail), seamless with A and B.
-ROW 3:
-(9) FLOATING LEDGE — a copper pipe platform held by brackets, seen from the side, as wide as the square but only about a quarter as tall, sitting at the top of its square (the rest of the square stays transparent). Its left and right ends join seamlessly when several are laid in a row.
-(10) BRIDGE PIECE — a narrow metal grated catwalk segment, the same width and height as the ledge, also seamless left to right.
-(11) WATER SURFACE — molten orange lava surface with dark crust plates (it replaces water here), the top edge is the surface line, seamless left to right.
-(12) DEEP WATER — deep dark-red molten lava, seamless on all four sides.
-```
-### 27 — HANGAR tiles → `assets/worlds/hangar.png`
-```
-Create this image from scratch. Do not ask for a reference image — everything you need is described below (the attached sheets only show the art style to match).
-
-A TILE SET for one world of a side-view jungle run-and-gun game, in detailed 16-bit PIXEL ART: square pixels with hard edges, a dark one-pixel outline only where a tile meets the air, three or four flat shades per colour, light from the top left. No anti-aliasing, no blur, no gradients, no glow, no text, no letters, no numbers.
-
-THE WORLD: a huge aircraft hangar.
-
-REMOVE THE BACKGROUND COMPLETELY: a PNG with real transparency. No background colour, no white, no grey, NO checkerboard pattern, no grid lines, no borders, no frames.
-
-LAYOUT: 4 columns and 3 rows of equal cells (512 x 512 pixels each, 2048 x 1536 in total). Each tile is a separate SQUARE about 400 x 400 pixels in the middle of its cell, with a clear transparent gap around it — tiles never touch each other. Every square tile fills its whole square (nothing sticks out of it) and is SEAMLESS: its left edge continues perfectly into its right edge, so the tiles can be laid side by side in a row without any visible line or border.
-
-ROW 1:
-(1) GROUND TOP A — the walkable surface: dark asphalt-grey hangar floor with a painted yellow guide line along the top. The surface runs along the top of the square, the rest is the ground under it.
-(2) GROUND TOP B — the same surface, slightly different details, same height and colours so it swaps with A seamlessly.
-(3) GROUND TOP C — another variant of the same surface.
-(4) GROUND TOP, LEFT END — the same surface where the ground ends on the left: the left side shows the cliff edge of the ground.
-ROW 2:
-(5) GROUND TOP, RIGHT END — the same, mirrored: the ground ends on the right.
-(6) GROUND FILL A — what is underneath, with no surface on top: grey corrugated hangar wall panels with rivets and a few oil stains. Seamless on ALL four sides (left-right AND top-bottom).
-(7) GROUND FILL B — a variant of the fill, seamless with A on all sides.
-(8) GROUND FILL C — another variant (a crack or a buried detail), seamless with A and B.
-ROW 3:
-(9) FLOATING LEDGE — yellow steel scaffolding platform, seen from the side, as wide as the square but only about a quarter as tall, sitting at the top of its square (the rest of the square stays transparent). Its left and right ends join seamlessly when several are laid in a row.
-(10) BRIDGE PIECE — a conveyor belt segment with rollers, the same width and height as the ledge, also seamless left to right.
-(11) WATER SURFACE — a pit of dark oil with a shiny surface, the top edge is the surface line, seamless left to right.
-(12) DEEP WATER — deep black oil, seamless on all four sides.
-```
-### 28 — ALIEN'S LAIR tiles → `assets/worlds/alien.png`
-```
-Create this image from scratch. Do not ask for a reference image — everything you need is described below (the attached sheets only show the art style to match).
-
-A TILE SET for one world of a side-view jungle run-and-gun game, in detailed 16-bit PIXEL ART: square pixels with hard edges, a dark one-pixel outline only where a tile meets the air, three or four flat shades per colour, light from the top left. No anti-aliasing, no blur, no gradients, no glow, no text, no letters, no numbers.
-
-THE WORLD: the inside of a living alien hive.
-
-REMOVE THE BACKGROUND COMPLETELY: a PNG with real transparency. No background colour, no white, no grey, NO checkerboard pattern, no grid lines, no borders, no frames.
-
-LAYOUT: 4 columns and 3 rows of equal cells (512 x 512 pixels each, 2048 x 1536 in total). Each tile is a separate SQUARE about 400 x 400 pixels in the middle of its cell, with a clear transparent gap around it — tiles never touch each other. Every square tile fills its whole square (nothing sticks out of it) and is SEAMLESS: its left edge continues perfectly into its right edge, so the tiles can be laid side by side in a row without any visible line or border.
-
-ROW 1:
-(1) GROUND TOP A — the walkable surface: purple-red fleshy ground with ridges of bone and small teeth along the top. The surface runs along the top of the square, the rest is the ground under it.
-(2) GROUND TOP B — the same surface, slightly different details, same height and colours so it swaps with A seamlessly.
-(3) GROUND TOP C — another variant of the same surface.
-(4) GROUND TOP, LEFT END — the same surface where the ground ends on the left: the left side shows the cliff edge of the ground.
-ROW 2:
-(5) GROUND TOP, RIGHT END — the same, mirrored: the ground ends on the right.
-(6) GROUND FILL A — what is underneath, with no surface on top: pulsing dark-red organic tissue with purple veins and bony lumps. Seamless on ALL four sides (left-right AND top-bottom).
-(7) GROUND FILL B — a variant of the fill, seamless with A on all sides.
-(8) GROUND FILL C — another variant (a crack or a buried detail), seamless with A and B.
-ROW 3:
-(9) FLOATING LEDGE — a curved bone rib used as a platform, seen from the side, as wide as the square but only about a quarter as tall, sitting at the top of its square (the rest of the square stays transparent). Its left and right ends join seamlessly when several are laid in a row.
-(10) BRIDGE PIECE — a stretched strand of sinew and bone segments, a bridge, the same width and height as the ledge, also seamless left to right.
-(11) WATER SURFACE — bubbling bright-green alien acid surface, the top edge is the surface line, seamless left to right.
-(12) DEEP WATER — deep dark-green acid, seamless on all four sides.
-```
-
-## 29-32 — The four fortress bosses, one look per world → `assets/worlds/<world>_boss.png` (3 × 2)
-The other worlds already have their own boss (statue, tank — prompt 20 —, giant, alien heart). Attach `assets/enemies_tiles.png` for the style.
-### 29 — JUNGLE boss → `assets/worlds/jungle_boss.png`
-```
-Create this image from scratch. Do not ask for a reference image — everything you need is described below (the attached sheets only show the art style to match).
-
-The parts of the DEFENSE WALL at the end of the jungle, a fortress boss in a side-view jungle run-and-gun game, in detailed 16-bit PIXEL ART: square pixels with hard edges, a dark one-pixel outline, three or four flat shades per colour, light from the top left, seen from the side. No anti-aliasing, no blur, no gradients, no glow, no text, no letters, no numbers.
-
-REMOVE THE BACKGROUND COMPLETELY: a PNG with real transparency. No background colour, no white, no grey, NO checkerboard pattern, no grid lines, no borders, no frames.
-
-LAYOUT: 3 columns and 2 rows of equal cells (512 x 512 pixels each, 1536 x 1024 in total). One part in the middle of each cell with a clear transparent gap around it — parts never touch each other or the cell edges.
-
-ROW 1:
-(1) WALL BLOCK — one SQUARE block of the fortress wall (about 400 x 400 pixels): mossy old stone blocks and rusted steel plates overgrown with vines. Seamless on all four sides so many can be stacked into one big wall.
-(2) CANNON MOUNT — a rusty bronze cannon dome bolted into the wall, round, about 250 pixels across, seen from the front, WITHOUT a barrel (the game adds the barrel).
-(3) CANNON BARREL — a thick gun barrel lying flat, pointing LEFT, about 300 pixels long and 70 tall, matching the mount.
-ROW 2:
-(4) CORE, intact — a big red alien-tech sensor eye set in a stone frame, the weak point the players shoot, tall: about 220 pixels wide and 400 tall.
+THE 6 COLUMNS (the same in every row):
+(1) WALL BLOCK — one SQUARE block of the fortress wall, about 210 x 210 pixels, seamless on all four sides so many can be stacked into one big wall.
+(2) CANNON MOUNT — round, about 130 pixels across, seen from the front, WITHOUT a barrel.
+(3) CANNON BARREL — a thick gun barrel lying flat, pointing LEFT, about 170 pixels long and 40 tall.
+(4) CORE, intact — the weak point the players shoot, tall: about 110 pixels wide and 210 tall.
 (5) CORE, damaged — the SAME core, same size and position, cracked, sparking, parts bent.
-(6) CORE, destroyed — what is left of the same core: a broken smoking frame, lower (about 280 pixels tall), sitting on the same bottom line.
+(6) CORE, destroyed — what is left of it: a broken smoking frame, about 140 pixels tall, on the same bottom line.
+
+ROW 1 — JUNGLE DEFENSE WALL: wall = mossy old stone blocks and rusted steel plates overgrown with vines; cannon = a rusty bronze dome; core = a big red sensor eye in a stone frame.
+ROW 2 — BASE 1 CORE: wall = grey concrete and steel bunker plating with yellow-black hazard stripes; cannon = a grey steel turret dome with a slit; core = a glass reactor tube full of bright orange energy in a steel frame.
+ROW 3 — BASE 2 TWIN CORE: wall = dark navy armour plating with red warning lights and cables; cannon = a dark navy turret with a red targeting lens; core = a blue-white plasma sphere held by four clamps in a dark steel frame.
+ROW 4 — HANGAR FINAL GATE: wall = huge yellow-and-black striped blast-door steel with giant bolts; cannon = a heavy yellow industrial gun mount; core = a massive green computer core with blinking lights in a hazard-striped frame.
 ```
-### 30 — BASE 1 boss → `assets/worlds/base1_boss.png`
-```
-Create this image from scratch. Do not ask for a reference image — everything you need is described below (the attached sheets only show the art style to match).
 
-The parts of the BASE CORE of the outer bunker, a fortress boss in a side-view jungle run-and-gun game, in detailed 16-bit PIXEL ART: square pixels with hard edges, a dark one-pixel outline, three or four flat shades per colour, light from the top left, seen from the side. No anti-aliasing, no blur, no gradients, no glow, no text, no letters, no numbers.
-
-REMOVE THE BACKGROUND COMPLETELY: a PNG with real transparency. No background colour, no white, no grey, NO checkerboard pattern, no grid lines, no borders, no frames.
-
-LAYOUT: 3 columns and 2 rows of equal cells (512 x 512 pixels each, 1536 x 1024 in total). One part in the middle of each cell with a clear transparent gap around it — parts never touch each other or the cell edges.
-
-ROW 1:
-(1) WALL BLOCK — one SQUARE block of the fortress wall (about 400 x 400 pixels): grey concrete and steel bunker plating with yellow-black hazard stripes. Seamless on all four sides so many can be stacked into one big wall.
-(2) CANNON MOUNT — a grey steel turret dome with a slit, round, about 250 pixels across, seen from the front, WITHOUT a barrel (the game adds the barrel).
-(3) CANNON BARREL — a thick gun barrel lying flat, pointing LEFT, about 300 pixels long and 70 tall, matching the mount.
-ROW 2:
-(4) CORE, intact — a glass reactor tube full of bright orange energy in a steel frame, the weak point the players shoot, tall: about 220 pixels wide and 400 tall.
-(5) CORE, damaged — the SAME core, same size and position, cracked, sparking, parts bent.
-(6) CORE, destroyed — what is left of the same core: a broken smoking frame, lower (about 280 pixels tall), sitting on the same bottom line.
-```
-### 31 — BASE 2 boss → `assets/worlds/base2_boss.png`
+## 24 — One matching icon set → `assets/abilities.png` (4 × 4) — IN
+Attach `assets/ui_icons.png` and `assets/powerups.png`. Every agent's ability icon (they win over agents_ui.png's), then `ui_ranks`, `ui_ffa`, `ui_horde`, `ui_coop` and `pk_overdrive` (`build_abilities()`).
 ```
 Create this image from scratch. Do not ask for a reference image — everything you need is described below (the attached sheets only show the art style to match).
 
-The parts of the TWIN CORE deep inside the base, a fortress boss in a side-view jungle run-and-gun game, in detailed 16-bit PIXEL ART: square pixels with hard edges, a dark one-pixel outline, three or four flat shades per colour, light from the top left, seen from the side. No anti-aliasing, no blur, no gradients, no glow, no text, no letters, no numbers.
+A MATCHING SET of 16 game icons in 16-bit PIXEL ART for a jungle run-and-gun game. ALL 16 MUST LOOK LIKE ONE SET: the same size, the same chunky square pixels with hard edges, the same dark two-pixel outline, two or three flat shades per colour, light from the top left, one bold simple symbol per icon that reads at a glance even when small, front view, centred. No frame, no badge, no circle or square behind the symbol (the game draws its own buttons). No anti-aliasing, no blur, no gradients, no glow, no text, no letters, no numbers.
 
-REMOVE THE BACKGROUND COMPLETELY: a PNG with real transparency. No background colour, no white, no grey, NO checkerboard pattern, no grid lines, no borders, no frames.
+REMOVE THE BACKGROUND COMPLETELY: a PNG with real transparency. No background colour, no white, no grey, NO checkerboard pattern, no grid lines, no borders.
 
-LAYOUT: 3 columns and 2 rows of equal cells (512 x 512 pixels each, 1536 x 1024 in total). One part in the middle of each cell with a clear transparent gap around it — parts never touch each other or the cell edges.
+LAYOUT: 4 columns and 4 rows of equal cells (256 x 256 pixels each, 1024 x 1024 in total). One icon in the middle of each cell, every icon about 180 x 180 pixels, a clear transparent gap around it — icons never touch each other or the cell edges.
 
-ROW 1:
-(1) WALL BLOCK — one SQUARE block of the fortress wall (about 400 x 400 pixels): dark navy armour plating with red warning lights and cables. Seamless on all four sides so many can be stacked into one big wall.
-(2) CANNON MOUNT — a dark navy gun turret with a red targeting lens, round, about 250 pixels across, seen from the front, WITHOUT a barrel (the game adds the barrel).
-(3) CANNON BARREL — a thick gun barrel lying flat, pointing LEFT, about 300 pixels long and 70 tall, matching the mount.
+ROW 1 — agent abilities (each in its agent's colour):
+(1) BULLET STORM (orange): five bullets fanning out to the right from one point.
+(2) MEND (teal): a white medical cross with a small heart in the middle and two tiny plus signs beside it.
+(3) PHASE DASH (green): a running boot leaving three speed streaks, with a thin arrow pointing up-right.
+(4) AEGIS (blue): a dome-shaped energy shield over a small square shield.
 ROW 2:
-(4) CORE, intact — a spinning blue-white plasma sphere held by four clamps in a dark steel frame, the weak point the players shoot, tall: about 220 pixels wide and 400 tall.
-(5) CORE, damaged — the SAME core, same size and position, cracked, sparking, parts bent.
-(6) CORE, destroyed — what is left of the same core: a broken smoking frame, lower (about 280 pixels tall), sitting on the same bottom line.
-```
-### 32 — HANGAR boss → `assets/worlds/hangar_boss.png`
-```
-Create this image from scratch. Do not ask for a reference image — everything you need is described below (the attached sheets only show the art style to match).
-
-The parts of the FINAL GATE of the hangar, a fortress boss in a side-view jungle run-and-gun game, in detailed 16-bit PIXEL ART: square pixels with hard edges, a dark one-pixel outline, three or four flat shades per colour, light from the top left, seen from the side. No anti-aliasing, no blur, no gradients, no glow, no text, no letters, no numbers.
-
-REMOVE THE BACKGROUND COMPLETELY: a PNG with real transparency. No background colour, no white, no grey, NO checkerboard pattern, no grid lines, no borders, no frames.
-
-LAYOUT: 3 columns and 2 rows of equal cells (512 x 512 pixels each, 1536 x 1024 in total). One part in the middle of each cell with a clear transparent gap around it — parts never touch each other or the cell edges.
-
-ROW 1:
-(1) WALL BLOCK — one SQUARE block of the fortress wall (about 400 x 400 pixels): huge yellow-and-black striped blast-door steel with giant bolts. Seamless on all four sides so many can be stacked into one big wall.
-(2) CANNON MOUNT — a heavy yellow industrial gun mount, round, about 250 pixels across, seen from the front, WITHOUT a barrel (the game adds the barrel).
-(3) CANNON BARREL — a thick gun barrel lying flat, pointing LEFT, about 300 pixels long and 70 tall, matching the mount.
-ROW 2:
-(4) CORE, intact — a massive green computer core with blinking lights in a hazard-striped frame, the weak point the players shoot, tall: about 220 pixels wide and 400 tall.
-(5) CORE, damaged — the SAME core, same size and position, cracked, sparking, parts bent.
-(6) CORE, destroyed — what is left of the same core: a broken smoking frame, lower (about 280 pixels tall), sitting on the same bottom line.
+(5) CHAIN ARC (purple): a lightning bolt that splits into three branches.
+(6) FRAG GRENADE (blue): a round green military frag grenade with its pin and lever, a small orange spark at the fuse.
+(7) ADRENALINE (red): a red syringe crossed by a bold yellow lightning bolt.
+(8) CLOAK (crimson): a hooded head drawn as a dashed outline, half fading away.
+ROW 3:
+(9) GROUND POUND (amber): a fist smashing down onto the ground with three cracks and shock lines spreading out.
+(10) TOXIC CLOUD (lime): a canister with a puffy green gas cloud and a small skull in the cloud.
+(11) SENTRY DRONE (sky blue): a small four-rotor drone with a single eye and a twin gun underneath.
+(12) RANKS (gold): a shield-shaped rank emblem with three chevrons and a small star on top.
+ROW 4 — mode cards and a power-up:
+(13) FREE-FOR-ALL (red): four crosshairs pointing at each other from the four corners.
+(14) HORDE (dark green): a wave of three enemy soldier silhouettes, the middle one bigger, charging forward.
+(15) LOCAL CO-OP (orange): two game controllers side by side.
+(16) OVERDRIVE (gold): a gold star burst with a lightning bolt through it.
 ```

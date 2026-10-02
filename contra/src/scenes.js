@@ -263,7 +263,7 @@
       this.coinsEarned = this.cfg.coinsEarned || 0;
       this.coinPickups = this.physics.add.group({ allowGravity: false, immovable: true });
       (L.coins || []).forEach(([c, r]) => {
-        const k = this.coinPickups.create((c + 0.5) * T, (r + 0.5) * T, 'pk_coin').setDepth(7);
+        const k = this.coinPickups.create((c + 0.5) * T, (r + 0.5) * T, 'pk_coin').setDepth(7).setScale(this.artScale.pk_coin || 1);
         this.tweens.add({ targets: k, y: k.y - 10, duration: 700 + (c % 5) * 60, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
       });
       this.physics.add.overlap(this.players.map((p) => p.phys), this.coinPickups, (a, b) => {
@@ -343,7 +343,7 @@
       this.livesIcon.setScale(Math.min(1, 40 / this.livesIcon.height));
       this.teamLabel = this.add.text(W - 160, 126, 'TEAM', ts(18, '#ffd39a')).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100);
       this.adminTag = fixed(this.add.text(W - 40, 162, 'ADMIN · SCORE NOT SAVED', ts(16, '#ff8080')).setOrigin(1, 0.5)).setVisible(false);
-      this.coinIcon = fixed(this.add.image(W - 130, 200, 'pk_coin').setScale(0.6));
+      this.coinIcon = fixed(this.add.image(W - 130, 200, 'pk_coin').setScale(0.6 * (this.artScale.pk_coin || 1)));
       this.coinText = fixed(this.add.text(W - 40, 200, '', ts(26, '#ffd23c')).setOrigin(1, 0.5).setShadow(0, 2, '#000', 6));
     }
 
@@ -599,9 +599,11 @@
       const fit = (ts) => { const w = ts.texture.getSourceImage().width; if (w !== T) ts.setTileScale(T / w); return ts; };
       // water a little below the banks, darker as it gets deep, and slowly moving
       const ownWater = L.tiles && has('water_' + L.tiles);            // a world's painted water needs no tint
+      const ownDeep = L.tiles && has('water_deep_' + L.tiles);
       this.waterTs = [
         fit(this.add.tileSprite(0, gy + 40, L.w * T, T, k('water')).setOrigin(0).setDepth(1).setTint(ownWater ? 0xffffff : 0xd8ecff)),
-        fit(this.add.tileSprite(0, gy + 40 + T, L.w * T, H - gy, k('water_deep')).setOrigin(0).setDepth(1).setTint(ownWater ? 0xffffff : 0x6f93bd)),
+        fit(this.add.tileSprite(0, gy + 40 + T, L.w * T, H - gy, ownWater && !ownDeep ? k('water') : k('water_deep')).setOrigin(0).setDepth(1)
+          .setTint(ownDeep ? 0xffffff : ownWater ? 0x8a8a9a : 0x6f93bd)),
       ];
       const variant = (name, i) => (has(k(name) + '_' + i) ? k(name) + '_' + i : k(name));
       const nIn = has(k('g_in') + '_2') ? 3 : 2;                    // a world set has three fill tiles
@@ -740,11 +742,11 @@
         this.sparks.explode(4, bul.x, bul.y);
         if (bul.pierce > 0) { bul.pierce--; bul.hitSet = bul.hitSet || new Set(); if (bul.hitSet.has(e)) return; bul.hitSet.add(e); } else this.kill(bul);
         if (bul.ghost) return;
-        // a headshot (top quarter of a soldier) does double damage
-        const head = !e.T.boss && !e.T.fixed && bul.y < e.body.top + e.body.height * 0.25;
+        // FOCUS FIRE: keep hitting the same target and every third hit in a row does double damage
+        const focus = this.focusHit(bul.shooter, e);
         e.lastHitBy = bul.shooter;
-        e.damage((bul.dmg || 1) * (head ? 2 : 1));
-        if (head && bul.shooter && !bul.shooter.bot && !bul.shooter.remote) { this.heads++; if (!e.active) this.popText(e.x, e.y - e.displayHeight, 'HEADSHOT', '#ffd23c'); }
+        e.damage((bul.dmg || 1) * (focus ? 2 : 1));
+        if (focus && bul.shooter && !bul.shooter.bot && !bul.shooter.remote) { this.heads++; this.popText(e.x, e.y - e.displayHeight, 'FOCUS ×2', '#ffd23c'); }
         if (bul.ice && e.active && !e.T.boss) e.stunT = Math.max(e.stunT || 0, 450);
         if (bul.fire && e.active) {                      // fire rounds: it keeps burning for a moment
           for (const ms of [500, 1000]) this.time.delayedCall(ms, () => { if (e.active) { this.sparks.explode(3, e.body.center.x, e.body.top); e.damage(1); } });
@@ -774,9 +776,12 @@
           return;
         }
         victim.lastHitBy = bul.shooter;
-        // a headshot (top 28% of the body) does double damage — aim matters
-        const head = bul.y < victim.body.top + victim.body.height * 0.28;
-        if (victim.hit((bul.dmg || 1) * (head ? 2 : 1)) && head) this.popText(victim.body.center.x, victim.body.top - 20, 'HEADSHOT', '#ffd23c');
+        // FOCUS FIRE works on players too: stay on them and every third hit in a row does double damage
+        const focus = this.focusHit(bul.shooter, victim);
+        if (victim.hit((bul.dmg || 1) * (focus ? 2 : 1)) && focus) {
+          this.popText(victim.body.center.x, victim.body.top - 20, 'FOCUS ×2', '#ffd23c');
+          if (bul.shooter && !bul.shooter.bot && !bul.shooter.remote) this.heads++;
+        }
       });
       ph.add.overlap(bodies, this.ebullets, (a, b) => {
         const [z, bul] = pick(a, b, (o) => !!o.owner);
@@ -877,7 +882,7 @@
     ebomb(x, y, vx, vy) {
       const b = this.ebombs.get(x, y, 'bomb');
       if (!b) return;
-      b.setTexture('bomb').setActive(true).setVisible(true).setDepth(9);
+      b.setTexture('bomb').setActive(true).setVisible(true).setDepth(9).setScale(this.artScale.bomb || 1);
       b.body.enable = true;
       b.body.allowGravity = true;
       b.body.setSize(18, 18, true);
@@ -973,7 +978,17 @@
       if (n > 1) this.dropPickup(Phaser.Math.Between(8, L.w - 8) * T, 40, ['heal', 'rapid', 'spread', 'pierce', 'blast', 'barrier'][n % 6]);
       this.score += 500 * (n - 1);
     }
-    // a short word that floats up and fades (HEADSHOT, +1 ...)
+    // FOCUS FIRE (instead of headshots, which were luck at this size): hits on the same target with no more than
+    // 1.5 s between them build a chain; every third hit of a chain does double damage. Switching target or a pause
+    // starts it again — it rewards tracking one target, not where a bullet happened to land.
+    focusHit(shooter, target) {
+      if (!shooter) return false;
+      const now = this.time.now, f = shooter.focus || (shooter.focus = { target: null, n: 0, t: 0 });
+      if (f.target !== target || now - f.t > 1500) { f.target = target; f.n = 0; }
+      f.n++; f.t = now;
+      return f.n % 3 === 0;
+    }
+    // a short word that floats up and fades (FOCUS ×2, +1 ...)
     popText(x, y, msg, col) {
       const t = this.add.text(x, y, msg, ts(22, col || '#ffffff')).setOrigin(0.5).setDepth(40).setShadow(0, 2, '#000', 5);
       this.tweens.add({ targets: t, y: y - 50, alpha: 0, duration: 800, onComplete: () => t.destroy() });
@@ -1144,7 +1159,7 @@
     throwGrenade(p, toxic) {
       const g = this.grenades.get(p.body.center.x, p.body.top + 20, 'bomb');
       if (!g) return;
-      g.setTexture('bomb').setActive(true).setVisible(true).setDepth(9).setScale(1.4).setTint(toxic ? 0x9dff4a : 0x7fb3ff);
+      g.setTexture('bomb').setActive(true).setVisible(true).setDepth(9).setScale(1.4 * (this.artScale.bomb || 1)).setTint(toxic ? 0x9dff4a : 0x7fb3ff);
       g.isFrag = true; g.owner = p; g.toxic = !!toxic;
       g.body.enable = true; g.body.allowGravity = true;
       g.body.setSize(18, 18, true);
@@ -1225,8 +1240,10 @@
     // Atlas: a drone over his head that shoots the nearest target
     spawnDrone(p, dur) {
       if (p.drone) p.drone.destroy();
-      const key = this.textures.exists('px_drone') ? 'px_drone' : 'e_flyer';
-      const d = p.drone = this.add.sprite(p.body.center.x, p.body.top - 90, key, 0).setDepth(12).setTint(0x8ad0ff).setFlipX(true);
+      // ATLAS's own sentry (painted) — else the enemy drone tinted blue
+      const own = this.textures.exists('px_sentry'), key = own ? 'px_sentry' : this.textures.exists('px_drone') ? 'px_drone' : 'e_flyer';
+      const d = p.drone = this.add.sprite(p.body.center.x, p.body.top - 140, key, 0).setDepth(12).setFlipX(!own);
+      if (own) d.setScale(this.artScale.px_sentry || 1); else d.setTint(0x8ad0ff).setScale(this.artScale[key] || 1);
       d.cd = 0; d.left = dur; d.t = 0;
     }
     updateDrones(dt) {
@@ -1236,7 +1253,7 @@
         d.left -= dt * 1000; d.cd -= dt * 1000; d.t += dt;
         if (d.left <= 0 || !p.alive) { this.boom(d.x, d.y, 6); d.destroy(); p.drone = null; continue; }
         d.x += (p.body.center.x - p.facing * 40 - d.x) * Math.min(1, dt * 6);
-        d.y += (p.body.top - 90 + Math.sin(d.t * 4) * 10 - d.y) * Math.min(1, dt * 6);
+        d.y += (p.body.top - 140 + Math.sin(d.t * 4) * 10 - d.y) * Math.min(1, dt * 6);
         if (d.texture.frameTotal > 2) d.setFrame(Math.floor(d.t * 14) % 2);
         const t = this.nearestTarget(p);
         if (t && d.cd <= 0 && !p.remote) {

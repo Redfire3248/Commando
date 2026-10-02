@@ -1076,3 +1076,8 @@ body:not(.playing) #game { filter: blur(3px) brightness(.92); transform: scale(1
 .fig .tag .rank-ico { flex: none; }
 .cslot b .rank-ico { margin-right: 6px; vertical-align: -4px; }
 .lb-row .lb-x { margin-left: 8px; background: #5a1d1d; border-color: #ff5a4a; }
+
+/* locker, banners / titles tab: the preview at the top, the tiles straight under it (not pushed to the bottom) */
+#select.looks .sel-main { flex: 0 0 auto; display: block; }
+#select.looks .look-preview { max-width: 760px; margin: 0 auto; }
+#select.looks .sel-tiles { margin-top: 6px; }
