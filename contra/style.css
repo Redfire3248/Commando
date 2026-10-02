@@ -416,3 +416,33 @@ input:focus { border-color: var(--acc); }
 
 .mode-seg { display: flex; gap: 6px; }
 .mode-seg .btn { font-size: 15px; padding: 9px 14px; }
+
+/* ================= touch controls, final layout =================
+   Left: the D-pad (default) or joystick appears under the thumb.
+   Right: an even cluster — FIRE (big, orange), JUMP (blue), SKILL (the ability icon), DASH (green). */
+#dpad { display: none; position: absolute; pointer-events: none; width: calc(170px * var(--ts)); height: calc(170px * var(--ts));
+  left: calc(26px + env(safe-area-inset-left)); bottom: calc(26px + env(safe-area-inset-bottom)); top: auto;
+  border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, .1), rgba(255, 255, 255, .03) 70%); border: 2px solid rgba(255, 255, 255, .16);
+  opacity: .55; transition: opacity .12s; }
+#dpad.on { opacity: 1; }
+#touch.dpad-mode #dpad { display: block; }
+#dpad .dp { position: absolute; width: 34%; height: 34%; border-radius: 10px; border: 2px solid rgba(255, 255, 255, .35); background: rgba(20, 26, 34, .65);
+  color: rgba(255, 255, 255, .9); font: 700 calc(20px * var(--ts)) system-ui, sans-serif; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+#dpad .up { left: 33%; top: 2%; } #dpad .down { left: 33%; bottom: 2%; } #dpad .left { left: 2%; top: 33%; } #dpad .right { right: 2%; top: 33%; }
+#dpad .dp.on { background: rgba(255, 154, 60, .75); border-color: #ffd39a; color: #1a0d02; }
+
+#btns .tb { border-radius: 50%; display: flex; align-items: center; justify-content: center; text-align: center; box-sizing: border-box;
+  font: 800 calc(16px * var(--ts)) Rajdhani, system-ui, sans-serif; letter-spacing: .08em; color: #fff; text-shadow: 0 2px 3px rgba(0, 0, 0, .7);
+  border: 3px solid var(--bc); background: radial-gradient(circle at 50% 35%, var(--b1), var(--b2)); box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .3); opacity: .9; }
+#btns .tb.on { transform: scale(.92); filter: brightness(1.35); opacity: 1; }
+#b-shoot { --bc: #ffb066; --b1: rgba(255, 120, 50, .75); --b2: rgba(140, 40, 10, .7);
+  width: calc(118px * var(--ts)); height: calc(118px * var(--ts)); right: calc(150px * var(--ts) + env(safe-area-inset-right)); bottom: calc(24px * var(--ts) + env(safe-area-inset-bottom)); font-size: calc(19px * var(--ts)); }
+#b-jump { --bc: #8ac8ff; --b1: rgba(70, 150, 255, .7); --b2: rgba(20, 50, 120, .7);
+  width: calc(100px * var(--ts)); height: calc(100px * var(--ts)); right: calc(28px * var(--ts) + env(safe-area-inset-right)); bottom: calc(34px * var(--ts) + env(safe-area-inset-bottom)); }
+#b-dash { --bc: #8affb8; --b1: rgba(60, 220, 130, .65); --b2: rgba(10, 90, 50, .7);
+  width: calc(78px * var(--ts)); height: calc(78px * var(--ts)); right: calc(36px * var(--ts) + env(safe-area-inset-right)); bottom: calc(156px * var(--ts) + env(safe-area-inset-bottom));
+  background: conic-gradient(rgba(0, 0, 0, .7) calc(var(--cd) * 360deg), transparent 0), radial-gradient(circle at 50% 35%, var(--b1), var(--b2)); }
+#b-ability, #b-ability.has-icon { --bc: #c9a8ff; --b1: rgba(80, 60, 120, .75); --b2: rgba(20, 14, 34, .8);
+  width: calc(96px * var(--ts)); height: calc(96px * var(--ts)); right: calc(146px * var(--ts) + env(safe-area-inset-right)); bottom: calc(160px * var(--ts) + env(safe-area-inset-bottom)); }
+#b-ability.has-icon { background-color: rgba(10, 13, 16, .8); font-size: calc(32px * var(--ts)); }
+#b-ability.has-icon { background-size: 100% 100%, 86% 86% !important; background-position: center, center !important; background-repeat: no-repeat, no-repeat !important; }

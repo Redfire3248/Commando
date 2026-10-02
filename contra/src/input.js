@@ -8,7 +8,7 @@
   const T = CG.Touch = {
     enabled: false,
     s: { left: false, right: false, up: false, down: false, shoot: false, jump: false, ability: false, dash: false },
-    opts: { style: 'stick', size: 1, autofire: false },
+    opts: { style: 'dpad', size: 1, autofire: false },
   };
   try { Object.assign(T.opts, JSON.parse(localStorage.getItem('commando.touch')) || {}); } catch (e) { /* defaults */ }
   T.save = () => { try { localStorage.setItem('commando.touch', JSON.stringify(T.opts)); } catch (e) { /* */ } T.apply(); };
@@ -44,12 +44,19 @@
     }
     for (const k in arrows) arrows[k].classList.toggle('on', s[k]);
   }
+  // both the joystick and the D-pad appear under the thumb, wherever it lands on the left half
   function moveStart(e) {
     movePid = e.pointerId;
+    mx0 = e.clientX; my0 = e.clientY;
     if (T.opts.style === 'stick') {
-      mx0 = e.clientX; my0 = e.clientY;
       stick.style.left = mx0 + 'px'; stick.style.top = my0 + 'px';
       stick.classList.add('on');
+    } else {
+      const half = pad.offsetWidth / 2;
+      mx0 = Math.max(half + 6, Math.min(window.innerWidth * 0.5 - half, mx0));
+      my0 = Math.max(half + 6, Math.min(window.innerHeight - half - 6, my0));
+      pad.style.left = (mx0 - half) + 'px'; pad.style.top = (my0 - half) + 'px'; pad.style.bottom = 'auto';
+      pad.classList.add('on');
     }
     moveTo(e);
   }
@@ -63,8 +70,7 @@
       knob.style.transform = `translate(${dx * k}px, ${dy * k}px)`;
       setDir(dx, dy, R);
     } else {
-      const r = pad.getBoundingClientRect();
-      setDir(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2), r.width / 2);
+      setDir(e.clientX - mx0, e.clientY - my0, pad.offsetWidth / 2);
     }
   }
   function moveEnd() {
@@ -72,6 +78,8 @@
     setDir(0, 0, 1);
     stick.classList.remove('on');
     knob.style.transform = '';
+    pad.classList.remove('on');
+    pad.style.left = pad.style.top = pad.style.bottom = '';           // back to its resting place
   }
   // which button is under this point (a little forgiving around the edges)
   function buttonAt(x, y) {
