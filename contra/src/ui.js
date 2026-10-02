@@ -85,7 +85,7 @@ CG.UI = (() => {
     const fresh = id && id !== current;
     current = id;
     $('profile').classList.add('hidden');                     // a new screen closes the profile card and member menu
-    $('member-pop').classList.add('hidden');
+    $('member-pop').classList.add('hidden'); if (fresh) $('invite-pop').classList.add('hidden');
     PANELS.forEach((p) => $(p).classList.toggle('hidden', p !== id));
     // a screen that just opened plays its entrance (figures rise in one after another, panels slide in)
     if (fresh) {
@@ -213,7 +213,7 @@ CG.UI = (() => {
       ? `<small>BOT AGENT</small><div class="bot-pick">${CG.Modes.BOT_AGENTS.map((id) => `<button data-act="squad-bot-as" data-uid="${id}" style="--c:${CG.AGENT[id].color}">
           ${portrait(id) ? `<img src="${portrait(id)}" alt="">` : ''}<span>${CG.AGENT[id].name}</span></button>`).join('')}</div>
           <button class="btn small ghost" data-act="squad-bot-cancel">CANCEL</button>`
-      : `${net.online && lead ? `<button class="plus" data-act="invite-open" title="Invite a friend">${ico('invite', '＋')}</button><small>INVITE</small>` : ''}
+      : `${lead ? `<button class="plus" data-act="invite-open">${ico('invite', '＋')}</button><small>INVITE</small>` : ''}
           ${lead ? `<button class="btn small" data-act="squad-bot" data-uid="${col}">+ BOT</button>` : ''}`);
     const clickFig = (x) => (x.me ? 'data-act="locker"' : `data-act="member" data-uid="${x.key}"`);
     const removeBot = () => '';
@@ -254,7 +254,7 @@ CG.UI = (() => {
           return `<button class="row-m" data-act="member" data-uid="${x.key}">${x.bot ? ico('bot', '') : crown(x) || '<span class="ico"></span>'}${CG.Ranks.icon(x.rr, 18)}<span class="grow">${esc(x.name)}</span>
             <span style="color:${a.color}">${a.name}</span></button>`; }).join('')}
         ${botPick === 99 ? `<div class="slot-in">${emptyInner(99)}</div>` : list.length < max && lead ? `<div class="row-btns">
-          ${net.online ? `<button class="btn small" data-act="invite-open">${ico('invite')}INVITE</button>` : ''}
+          <button class="btn small" data-act="invite-open">${ico('invite')}INVITE</button>
           <button class="btn small" data-act="squad-bot" data-uid="99">+ BOT</button></div>` : ''}
         ${fr.length ? `<div class="kick">FRIENDS ONLINE</div>${fr.map((uid) => `<div class="row-m"><span class="grow">${esc(net.friends[uid].username || net.friends[uid].name)}</span>
           <button class="btn small" data-act="party-invite" data-uid="${esc(uid)}">INVITE</button></div>`).join('')}` : ''}</div>`;
@@ -516,15 +516,23 @@ CG.UI = (() => {
     if (pvp() && net.party && net.party.bots) { await net.setBots([]); net.party.bots = null; }
     return CG.Queue.join(CG.Modes.key(mode));
   }
+  const invited = {};                                   // friend uid -> when this device last invited them
   function renderInvites() {
-    const net = N(), p = net.party, inParty = (p && p.members) || {};
+    const net = N();
+    if (!net.online) {
+      $('party-friends').innerHTML = `<p class="sub">Playing with friends needs an account. Sign in with Google, add your friends in FRIENDS, then invite them here.</p>
+        ${net.state === 'off' ? '' : '<button class="btn primary" data-act="guest-signin">SIGN IN WITH GOOGLE</button>'}`;
+      return;
+    }
+    const p = net.party, inParty = (p && p.members) || {};
     const fr = Object.keys(net.friends).filter((f) => !inParty[f])
       .sort((a, b) => (net.friends[b].online ? 1 : 0) - (net.friends[a].online ? 1 : 0));
     $('party-friends').innerHTML = fr.length ? fr.map((uid) => {
-      const f = net.friends[uid];
-      return `<div class="item"><span class="dot ${f.online ? 'on' : ''}"></span><span class="grow">${esc(f.username || f.name)}</span>
-        <button class="btn small" data-act="party-invite" data-uid="${esc(uid)}" ${f.online ? '' : 'disabled'}>INVITE</button></div>`;
-    }).join('') : '<i>Add friends first (FRIENDS on the left)</i>';
+      const f = net.friends[uid], sent = invited[uid] && Date.now() - invited[uid] < 60000;
+      return `<div class="item"><span class="dot ${f.online ? 'on' : ''}"></span><span class="grow">${esc(f.username || f.name)}<small>${f.online ? 'ONLINE' : 'OFFLINE — sees it next time'}</small></span>
+        <button class="btn small ${sent ? '' : 'primary'}" data-act="party-invite" data-uid="${esc(uid)}">${sent ? 'SENT ✔' : 'INVITE'}</button></div>`;
+    }).join('') : `<p class="sub">No friends yet. Add them in the FRIENDS tab with their code or callsign.</p>
+      <button class="btn" data-act="friends">OPEN FRIENDS</button>`;
   }
 
   const running = () => booted && CG.game.scene.isActive('Game');
@@ -985,7 +993,7 @@ CG.UI = (() => {
     'touch-edit': () => { show(null); CG.Touch.edit(true); },
     'touch-edit-done': () => { CG.Touch.edit(false); CG.Touch.show(false); show('settings'); },
     'touch-edit-reset': () => { CG.Touch.opts.pos = {}; CG.Touch.save(); },
-    'guest-signin': () => { offline = false; home(); },
+    'guest-signin': () => { $('invite-pop').classList.add('hidden'); offline = false; home(); },
     member: (key) => openMember(key),
     'profile-open': (key) => openProfile(key),
     'profile-me': () => openProfile('me'),
@@ -1002,7 +1010,7 @@ CG.UI = (() => {
     'vs-ready': () => { if (vs) play(vs.players, vs.settings); },
     'vs-leave': () => { if (vs && vs.back) vs.back(); else home(); },
     cust: setCustom,
-    'invite-open': () => { renderInvites(); $('invite-pop').classList.remove('hidden'); },
+    'invite-open': () => { say('invite-msg', ''); renderInvites(); $('invite-pop').classList.remove('hidden'); },
     'invite-close': () => $('invite-pop').classList.add('hidden'),
     'lob-prev': (id) => cycle(joined.find((d) => d.id === id), -1),
     'lob-next': (id) => cycle(joined.find((d) => d.id === id), 1),
@@ -1052,7 +1060,11 @@ CG.UI = (() => {
     retry: () => (lastCfg ? startScene(Object.assign({}, lastCfg, { players: lastCfg.players.map((q) => Object.assign({}, q)) })) : toMenu()),
     'inv-accept': (pid) => run(() => N().acceptInvite(pid).then(() => home()), ''),
     'inv-decline': (pid) => run(() => N().declineInvite(pid), ''),
-    'party-invite': (uid) => run(() => N().invite(uid), 'Invite sent', visible('menu') ? 'party-msg' : 'fr-msg'),
+    'party-invite': (uid) => {
+      const where = !$('invite-pop').classList.contains('hidden') ? 'invite-msg' : visible('menu') ? 'party-msg' : 'fr-msg';
+      const f = N().friends[uid], who = f ? f.username || f.name : 'your friend';
+      run(() => N().invite(uid).then(() => { invited[uid] = Date.now(); renderInvites(); toast('Invite sent to ' + who); }), 'Invite sent to ' + who, where);
+    },
     'party-leave': () => run(() => N().leaveParty().then(() => home()), ''),
     'fr-copy': () => run(() => navigator.clipboard.writeText(N().profile.code), 'Code copied', 'fr-msg'),
     'fr-send': () => run(() => N().sendRequest($('fr-add').value).then(() => { $('fr-add').value = ''; }), 'Request sent', 'fr-msg'),

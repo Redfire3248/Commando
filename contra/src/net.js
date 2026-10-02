@@ -22,7 +22,7 @@ CG.Net = {
 
   // the admin panel is only for the owner's Google account (and for test players on a local dev server)
   get isAdmin() {
-    if (this.devGuest && /[?&]fakedb/.test(location.search)) return true;
+    if (this.devGuest) return true;
     const u = this.user;
     return !!(u && !u.isAnonymous && u.email && this.ADMIN_EMAILS.includes(u.email.toLowerCase()) && u.emailVerified !== false);
   },
@@ -32,8 +32,9 @@ CG.Net = {
     const cfg = window.CG_FIREBASE_CONFIG;
     if (!cfg || !cfg.apiKey || cfg.apiKey.indexOf('PASTE') === 0) return;
     this.state = 'loading';
-    // local testing without Firebase: two tabs on the dev server with ?fakedb play against each other
-    if (this.devGuest && /[?&]fakedb/.test(location.search)) {
+    // local testing without Firebase: tabs on the dev server with ?guest play against each other through a
+    // localStorage stand-in — test accounts never go into the real database
+    if (this.devGuest) {
       const s = document.createElement('script');
       s.src = 'src/fakedb.js'; s.onload = () => this.start(cfg);
       document.head.appendChild(s);

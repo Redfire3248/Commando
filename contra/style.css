@@ -1026,3 +1026,12 @@ body:not(.playing) #game { filter: blur(3px) brightness(.92); transform: scale(1
   .starter-card { padding: 8px; gap: 4px; } .starter-card .st-fig { height: 28vh; } .starter-card .st-name { font-size: 24px; }
   .starter-card .st-ab p { display: none; } .starter-head .sub { font-size: 11px; }
 }
+
+/* ---------- invites: the window and the JOIN box ---------- */
+#invite-pop .item .grow small { display: block; font-size: 10px; letter-spacing: .14em; color: var(--dim); font-weight: 700; }
+#invite-pop .item .dot.on + .grow small { color: #7dff9a; }
+#invite-pop .sub { margin: 4px 0 10px; }
+#invite-msg:empty { display: none; }
+.invites .invite { flex-wrap: wrap; font-size: 14px; }
+.invites .invite > span { flex: 1 1 100%; }
+.invites .invite .btn.primary { flex: 1; }
