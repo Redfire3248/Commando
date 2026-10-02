@@ -208,30 +208,46 @@
 
 <!-- ============ settings ============ -->
 <div id="settings" class="overlay hidden">
-  <div class="card wide">
-    <h2>SETTINGS</h2>
-    <div class="set-row"><span>Callsign</span><b id="set-name">—</b><button data-act="un-change" class="btn small online-only">CHANGE</button></div>
-    <div class="set-row"><span>Sound</span><button data-act="sound" id="sound-btn" class="btn small">ON</button></div>
-    <div class="set-row"><span>Home screen</span>
-      <div class="seg"><button data-act="lobby-style" data-uid="a" class="btn small">LINEUP</button><button data-act="lobby-style" data-uid="b" class="btn small">CARDS</button><button data-act="lobby-style" data-uid="c" class="btn small">COMMAND</button></div></div>
-    <div class="set-row"><span>Field of view</span>
-      <div class="seg"><button data-act="fov" data-uid="1" class="btn small">WIDE</button><button data-act="fov" data-uid="1.15" class="btn small">NORMAL</button><button data-act="fov" data-uid="1.3" class="btn small">CLOSE</button></div></div>
-    <h3>Keyboard</h3>
-    <div id="keys-list" class="keys-list"></div>
-    <div class="row"><button data-act="keys-reset" class="btn small ghost">RESET KEYS</button><span class="sub">Click a key, then press the new one</span></div>
-    <h3>Touch controls</h3>
-    <div class="set-row"><span>Button places</span>
-      <div class="seg"><button data-act="touch-edit" class="btn small">MOVE BUTTONS</button><button data-act="touch-edit-reset" class="btn small ghost">RESET</button></div></div>
-    <div class="set-row"><span>Movement</span>
-      <div class="seg"><button data-act="touch-style" data-uid="stick" class="btn small">JOYSTICK</button><button data-act="touch-style" data-uid="dpad" class="btn small">D-PAD</button></div></div>
-    <div class="set-row"><span>Button size</span>
-      <div class="seg"><button data-act="touch-size" data-uid="0.85" class="btn small">S</button><button data-act="touch-size" data-uid="1" class="btn small">M</button><button data-act="touch-size" data-uid="1.2" class="btn small">L</button></div></div>
-    <div class="set-row"><span>Auto fire</span><button data-act="touch-auto" id="touch-auto" class="btn small">OFF</button></div>
-    <div class="row center-row">
-      <button data-act="menu" class="btn ghost">BACK</button>
-      <button data-act="signout" class="btn ghost online-only">SIGN OUT</button>
-      <button data-act="guest-signin" id="guest-signin" class="btn hidden">SIGN IN WITH GOOGLE</button>
+  <div class="card wide settings-card">
+    <div class="set-head"><button data-act="menu" class="btn ghost small">◀ BACK</button><h2>SETTINGS</h2></div>
+    <div class="set-tabs">
+      <button data-act="set-tab" data-uid="general" class="on">GENERAL</button><button data-act="set-tab" data-uid="keys">KEYBOARD</button><button data-act="set-tab" data-uid="touch">TOUCH</button><button data-act="set-tab" data-uid="account">ACCOUNT</button>
     </div>
+
+    <section class="set-page" data-page="general">
+      <div class="set-row"><div class="set-label"><b>Sound</b><small>Shots, explosions and voice callouts</small></div><button data-act="sound" id="sound-btn" class="btn small toggle">ON</button></div>
+      <div class="set-row"><div class="set-label"><b>Screen shake</b><small>The view shakes on big explosions and landings</small></div><button data-act="shake" id="shake-btn" class="btn small toggle">ON</button></div>
+      <div class="set-row"><div class="set-label"><b>Field of view</b><small>How much of the stage you see around you</small></div>
+        <div class="seg"><button data-act="fov" data-uid="1" class="btn small">WIDE</button><button data-act="fov" data-uid="1.15" class="btn small">NORMAL</button><button data-act="fov" data-uid="1.3" class="btn small">CLOSE</button></div></div>
+      <div class="set-row"><div class="set-label"><b>Home screen</b><small>How your squad stands on the PLAY screen</small></div>
+        <div class="seg"><button data-act="lobby-style" data-uid="a" class="btn small">LINEUP</button><button data-act="lobby-style" data-uid="b" class="btn small">CARDS</button><button data-act="lobby-style" data-uid="c" class="btn small">COMMAND</button></div></div>
+    </section>
+
+    <section class="set-page hidden" data-page="keys">
+      <p class="sub">For one player on the keyboard. Click a key, then press the new one.</p>
+      <div id="keys-list" class="keys-list"></div>
+      <div class="row"><button data-act="keys-reset" class="btn small ghost">RESET KEYS</button></div>
+    </section>
+
+    <section class="set-page hidden" data-page="touch">
+      <div class="set-label"><b>Movement control</b><small>Both stay where you put them — use MOVE CONTROLS to place them</small></div>
+      <div class="ctl-cards">
+        <button data-act="touch-style" data-uid="stick" class="ctl-card"><span class="ctl-pic stick-pic"><i></i></span><b>JOYSTICK</b><small>A circle: push the knob the way to go</small></button>
+        <button data-act="touch-style" data-uid="dpad" class="ctl-card"><span class="ctl-pic dpad-pic"><i class="u">▲</i><i class="l">◀</i><i class="r">▶</i><i class="d">▼</i></span><b>D-PAD</b><small>Four arrow buttons: press the one you want</small></button>
+      </div>
+      <div class="set-row"><div class="set-label"><b>Control places</b><small>Drag every control — FIRE, JUMP, SKILL, DASH, pause and the movement control</small></div>
+        <div class="seg"><button data-act="touch-edit" class="btn small primary">MOVE CONTROLS</button><button data-act="touch-edit-reset" class="btn small ghost">RESET</button></div></div>
+      <div class="set-row"><div class="set-label"><b>Control size</b><small>Bigger controls are easier to hit, smaller ones show more of the game</small></div>
+        <div class="seg"><button data-act="touch-size" data-uid="0.85" class="btn small">S</button><button data-act="touch-size" data-uid="1" class="btn small">M</button><button data-act="touch-size" data-uid="1.2" class="btn small">L</button></div></div>
+      <div class="set-row"><div class="set-label"><b>Auto fire</b><small>Keep shooting without holding FIRE</small></div><button data-act="touch-auto" id="touch-auto" class="btn small toggle">OFF</button></div>
+    </section>
+
+    <section class="set-page hidden" data-page="account">
+      <div class="set-row"><div class="set-label"><b>Callsign</b><small>Your name in the squad, on the leaderboard and over your agent</small></div><b id="set-name" class="set-value">—</b><button data-act="un-change" class="btn small online-only">CHANGE</button></div>
+      <div class="set-row"><div class="set-label"><b>Account</b><small id="set-account">—</small></div>
+        <button data-act="signout" class="btn small ghost online-only">SIGN OUT</button>
+        <button data-act="guest-signin" id="guest-signin" class="btn small primary hidden">SIGN IN</button></div>
+    </section>
   </div>
 </div>
 

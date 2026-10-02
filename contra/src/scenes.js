@@ -169,6 +169,9 @@
       this.score = this.cfg.score;
       this.over = false; this.cleared = false; this.camX = 0; this.spawnI = 0; this.bossOn = false; this.bossT = 2500;
       this.artScale = (CG.CONFIG.SHEET_ART && CG.DATA.art && CG.DATA.art.scale) || {};
+      // Settings → Screen shake off: the camera ignores shakes
+      const cam0 = this.cameras.main, shake0 = cam0.shake.bind(cam0);
+      cam0.shake = (...a) => (CG.UI.shakeOn && !CG.UI.shakeOn() ? cam0 : shake0(...a));
       this.enemyScale = (CG.CONFIG.SHEET_ART && CG.DATA.art && CG.DATA.art.enemyScale) || 1;
       // field of view (Settings): 1 = the whole screen of world, more = closer
       this.zoom = Math.max(1, Math.min(1.4, parseFloat((() => { try { return localStorage.getItem('commando.fov'); } catch (e) { return ''; } })()) || 1));
@@ -441,6 +444,7 @@
         this.feedLine(msg);
         if (this.net) this.net.shout('feed', { msg });
         if (!k || k === v) return;
+        this.passiveKill(k);
         this.kills[k.team] = (this.kills[k.team] || 0) + 1;
         if (!k.bot && !k.remote) this.myKills++;
         if (this.kills[k.team] >= this.pvpSet.rounds) { this.duelWinner = k.team; this.duelOver(k.team); }
@@ -719,7 +723,7 @@
         if (!bul.active || !cv || cv.broken) return;
         this.sparks.explode(3, bul.x, bul.y);
         this.kill(bul);
-        if (!bul.ghost) this.hitCover(cv, 1);
+        if (!bul.ghost) this.hitCover(cv, bul.shooter && bul.shooter.agent && bul.shooter.agent.id === 'jax' ? 2 : 1);   // passive: JAX
       });
       ph.add.overlap(this.ebullets, this.covers, (a, b) => {
         const bul = isStatic(a) ? b : a, cv = coverOf(a, b);
@@ -744,8 +748,10 @@
         if (bul.ghost) return;
         // FLANK: a shot in the back (the bullet flies the way the soldier faces) does double damage
         const flank = !e.T.boss && !e.T.fixed && this.fromBehind(bul, e.flipX ? -1 : 1);
+        const who = bul.shooter && bul.shooter.agent ? bul.shooter.agent.id : '';
         e.lastHitBy = bul.shooter;
-        e.damage((bul.dmg || 1) * (flank ? 2 : 1));
+        e.damage((bul.dmg || 1) * (flank ? (who === 'ghost' ? 3 : 2) : 1) * (who === 'hammer' && (e.T.boss || e.T.fixed) ? 2 : 1));   // passives: GHOST, HAMMER
+        if (who === 'viper') this.poison(e, () => e.active && e.damage(1));
         if (flank && bul.shooter && !bul.shooter.bot && !bul.shooter.remote) { this.heads++; this.popText(e.x, e.y - e.displayHeight, 'FLANKED ×2', '#ffd23c'); }
         if (bul.ice && e.active && !e.T.boss) e.stunT = Math.max(e.stunT || 0, 450);
         if (bul.fire && e.active) {                      // fire rounds: it keeps burning for a moment
@@ -777,8 +783,9 @@
         }
         victim.lastHitBy = bul.shooter;
         // FLANK works on players too: get behind them and every shot in the back does double damage
-        const flank = this.fromBehind(bul, victim.facing);
-        if (victim.hit((bul.dmg || 1) * (flank ? 2 : 1)) && flank) {
+        const flank = this.fromBehind(bul, victim.facing), who = bul.shooter && bul.shooter.agent ? bul.shooter.agent.id : '';
+        if (who === 'viper') this.poison(victim, () => victim.alive && victim.hit(1));                  // passive: VIPER
+        if (victim.hit((bul.dmg || 1) * (flank ? (who === 'ghost' ? 3 : 2) : 1)) && flank) {
           this.popText(victim.body.center.x, victim.body.top - 20, 'FLANKED ×2', '#ffd23c');
           if (bul.shooter && !bul.shooter.bot && !bul.shooter.remote) this.heads++;
         }
@@ -805,7 +812,7 @@
         if (!bomb.active || z.owner.dead) return;
         this.boom(bomb.x, bomb.y, 10);
         this.kill(bomb);
-        z.owner.hit(2);
+        z.owner.hit(z.owner.agent.id === 'brick' ? 1 : 2);                     // passive: BRICK
       });
       ph.add.collider(bodies, this.enemies, null, (a, b) => { const e = a.T ? a : b; return !!(e.T && e.T.solid && e.active); });
       ph.add.overlap(bodies, this.enemies, (a, b) => {
@@ -872,7 +879,7 @@
       this.cameras.main.shake(260, 0.014);
       CG.Sfx.play('bigboom');
       for (let k = -3; k <= 3; k++) this.boom(x + k * 70, y - 10, 10);
-      for (const p of this.players) if (!p.remote && p.alive && p.onGround && Math.abs(p.body.center.x - x) < 360) p.hit(2);
+      for (const p of this.players) if (!p.remote && p.alive && p.onGround && Math.abs(p.body.center.x - x) < 360) p.hit(p.agent.id === 'brick' ? 1 : 2);
     }
     efire(x, y, a) {
       this.shot(this.ebullets, 'ebullet', x, y, a, CG.CONFIG.ENEMY_BULLET_SPEED + 35 * this.diff, 16);
@@ -978,6 +985,19 @@
       if (n > 1) this.dropPickup(Phaser.Math.Between(8, L.w - 8) * T, 40, ['heal', 'rapid', 'spread', 'pierce', 'blast', 'barrier'][n % 6]);
       this.score += 500 * (n - 1);
     }
+    // passive: VIPER — a hit poisons, one more damage a second later (at most once a second per target)
+    poison(target, hurt) {
+      const now = this.time.now;
+      if (target.poisonAt && now < target.poisonAt) return;
+      target.poisonAt = now + 1000;
+      this.time.delayedCall(1000, () => { if (target.setTintFill) { target.setTintFill(0x9dff4a); this.time.delayedCall(80, () => target.clearTint && target.clearTint()); } hurt(); });
+    }
+    // passive: DUKE — every fourth kill gives a heart back
+    passiveKill(k) {
+      if (!k || !k.agent || k.agent.id !== 'duke' || k.remote || !k.alive) return;
+      k.dukeKills = (k.dukeKills || 0) + 1;
+      if (k.dukeKills % 4 === 0) { k.heal(1); this.popText(k.body.center.x, k.body.top - 40, '+1 BLOODLUST', '#ff5a4f'); }
+    }
     // FLANK (instead of headshots, which were luck at this size): a bullet flying the same way its target faces hit
     // it in the back. Pure positioning — jump over a soldier, get round a player — nothing random.
     fromBehind(bul, facing) {
@@ -991,6 +1011,7 @@
     }
     killEnemy(e) {
       const c = e.body.center, S = CG.CONFIG.SCORE;
+      this.passiveKill(e.lastHitBy);
       if (e.lastHitBy && !e.lastHitBy.bot && !e.lastHitBy.remote) this.myKills++;
       this.score += S[e.type] || 0;
       this.boom(c.x, c.y, e.T.boss ? 40 : 18);
@@ -1042,16 +1063,17 @@
       if (k.kind === 'rapid') { p.rapid = true; this.say('RAPID FIRE', 900); }
       if (k.kind === 'spread') { p.spread = true; this.say('SPREAD SHOT', 900); }
       CG.Sfx.play('pickup');
-      if (k.kind === 'barrier') { p.barrierT = C.barrierMs; this.say('SHIELD', 900); }
+      const lasts = p.agent.id === 'volt' ? 1.5 : 1;                                  // passive: VOLT
+      if (k.kind === 'barrier') { p.barrierT = C.barrierMs * lasts; this.say('SHIELD', 900); }
       if (k.kind === 'life' && !this.isClient) { this.teamLives++; this.say('TEAM LIFE +1', 900); }
-      if (k.kind === 'heal') p.heal(2);
+      if (k.kind === 'heal') p.heal(p.agent.id === 'nova' ? 3 : 2);                 // passive: NOVA
       const PW = { pierce: 'PIERCING ROUNDS', blast: 'EXPLOSIVE ROUNDS', double: 'DOUBLE DAMAGE', ice: 'ICE ROUNDS' };
       if (PW[k.kind]) { p[k.kind] = true; this.say(PW[k.kind], 900); }
       if (k.kind === 'fire') { p.fire = true; this.say('FIRE ROUNDS', 900); }
       if (k.kind === 'shock') { p.shock = true; this.say('SHOCK ROUNDS', 900); }
-      if (k.kind === 'magnet') { p.magnetT = 20000; this.say('COIN MAGNET', 900); }
-      if (k.kind === 'boots') { p.bootsT = 20000; this.say('JUMP BOOTS', 900); }
-      if (k.kind === 'autoaim') { p.aimT = 12000; this.say('AUTO AIM', 900); }
+      if (k.kind === 'magnet') { p.magnetT = 20000 * lasts; this.say('COIN MAGNET', 900); }
+      if (k.kind === 'boots') { p.bootsT = 20000 * lasts; this.say('JUMP BOOTS', 900); }
+      if (k.kind === 'autoaim') { p.aimT = 12000 * lasts; this.say('AUTO AIM', 900); }
       if (k.kind === 'bigheal') { p.heal(p.maxHp); this.say('FULL HEAL', 900); }
       if (k.kind === 'armor') { if (!p.armorMax) { p.armorMax = 2; p.maxHp += 2; } p.hp = Math.min(p.maxHp, p.hp + 2); this.say('ARMOUR +2', 900); }
       if (k.kind === 'dcoins') { this.coinMult = 2; this.say('DOUBLE COINS', 900); }
@@ -1263,12 +1285,13 @@
     // coin magnet: coins and pick-ups fly to whoever has it
     updateMagnets(dt) {
       for (const p of this.players) {
-        if (!(p.magnetT > 0) || !p.alive || p.remote) continue;
-        const c = p.body.center;
+        const scav = p.agent.id === 'atlas';                                            // passive: ATLAS, a short pull
+        if (!(p.magnetT > 0 || scav) || !p.alive || p.remote) continue;
+        const c = p.body.center, reach = p.magnetT > 0 ? 500 : 230;
         const pull = (k) => {
           if (!k || !k.active) return;
           const dx = c.x - k.x, dy = c.y - k.y, d = Math.hypot(dx, dy);
-          if (d < 500 && d > 4) { this.tweens.killTweensOf(k); k.x += dx / d * Math.min(d, 900 * dt); k.y += dy / d * Math.min(d, 900 * dt); if (k.body) k.body.reset(k.x, k.y); }
+          if (d < reach && d > 4) { this.tweens.killTweensOf(k); k.x += dx / d * Math.min(d, 900 * dt); k.y += dy / d * Math.min(d, 900 * dt); if (k.body) k.body.reset(k.x, k.y); }
         };
         this.coinPickups.children.iterate(pull);
         if (!this.isClient) this.pickups.children.iterate(pull);

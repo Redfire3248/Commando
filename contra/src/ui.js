@@ -29,7 +29,6 @@ CG.UI = (() => {
   const priceOf = (id) => { const it = CG.Shop.agentItem(id); return it ? it.price : 0; };
   const coins = () => CG.Profile.coins();                  // the account's, or this device's for a guest
   // a bar out of 5 for the agent screens (health 4-8, speed 90-116%)
-  const bar = (v) => `<span class="bar"><i style="width:${Math.round(Math.max(0.08, Math.min(1, v)) * 100)}%"></i></span>`;
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const visible = (id) => !$(id).classList.contains('hidden');
   const portrait = (id) => (CG.PORTRAITS && CG.PORTRAITS[id]) || '';
@@ -377,7 +376,7 @@ CG.UI = (() => {
       return `<div class="starter-card" style="--c:${a.color}">
         <div class="st-fig">${figure(id)}</div>
         <div class="st-name">${a.name}</div><div class="st-role">${a.role.toUpperCase()}</div>
-        <div class="stat-rows"><span>HEALTH</span>${bar(a.hp / 8)}<b>${a.hp}</b><span>SPEED</span>${bar((a.speed - 0.8) / 0.4)}<b>${Math.round(a.speed * 100)}%</b></div>
+        <div class="passive"><small>PASSIVE</small><b>${a.passive.name}</b><span>${a.passive.desc}</span></div>
         <div class="st-ab">${abIcon(id) ? `<img src="${abIcon(id)}" alt="">` : ''}<div><b>${ab.name}</b><p>${ab.desc}</p></div></div>
         <button class="btn primary big-btn" data-act="starter-pick" data-uid="${id}">CHOOSE ${a.name}</button>
       </div>`;
@@ -797,7 +796,7 @@ CG.UI = (() => {
       <div class="sel-info" style="--c:${looking.color}">
         <div class="sel-name">${looking.name}</div>
         <div class="sel-role">${looking.role}</div>
-        <div class="stat-rows"><span>HEALTH</span>${bar(looking.hp / 8)}<b>${looking.hp}</b><span>SPEED</span>${bar((looking.speed - 0.8) / 0.4)}<b>${Math.round(looking.speed * 100)}%</b></div>
+        <div class="passive"><small>PASSIVE</small><b>${looking.passive.name}</b><span>${looking.passive.desc}</span></div>
         <div class="sel-ab">${abIcon(looking.id) ? `<img src="${abIcon(looking.id)}" alt="">` : ''}<div><small>ABILITY</small><b>${ab.name}</b><p>${ab.desc}</p></div></div>
         ${action}
       </div>`;
@@ -879,7 +878,7 @@ CG.UI = (() => {
           <div class="ac-art">${portrait(a.id) ? `<img src="${portrait(a.id)}" alt="">` : ''}</div>
           <div class="ac-body">
             <div class="ac-name">${a.name}</div><div class="ac-role">${a.role}</div>
-            <div class="stat-rows"><span>HEALTH</span>${bar(a.hp / 8)}<span>SPEED</span>${bar((a.speed - 0.8) / 0.4)}</div>
+            <div class="passive"><small>PASSIVE</small><b>${a.passive.name}</b><span>${a.passive.desc}</span></div>
             <div class="ac-ab">${abIcon(a.id) ? `<img src="${abIcon(a.id)}" alt="">` : ''}<span><b>${ab.name}</b> — ${ab.desc}</span></div>
             ${has ? `<div class="owned-tag">${CG.Profile.get().starter === a.id ? '✔ YOUR STARTER' : '✔ UNLOCKED'}</div>`
               : `<div class="row"><span class="price"><span class="coin"></span>${price}</span>
@@ -926,7 +925,16 @@ CG.UI = (() => {
     $('touch-auto').textContent = o.autofire ? 'ON' : 'OFF';
     $('touch-auto').classList.toggle('on', !!o.autofire);
     document.querySelectorAll('#settings .online-only').forEach((b) => b.classList.toggle('hidden', !N().online));
+    $('shake-btn').textContent = shakeOn() ? 'ON' : 'OFF';
+    [$('sound-btn'), $('shake-btn'), $('touch-auto')].forEach((b) => b.classList.toggle('on', b.textContent === 'ON'));
+    const u = N().user;
+    $('set-account').textContent = N().online ? 'Signed in' + (u && u.email ? ' as ' + u.email : '') + ' — progress saved to your account' : 'Guest — saved on this device only';
+    document.querySelectorAll('[data-act="set-tab"]').forEach((b) => b.classList.toggle('on', b.dataset.uid === setTab));
+    document.querySelectorAll('#settings .set-page').forEach((pg) => pg.classList.toggle('hidden', pg.dataset.page !== setTab));
   }
+  // which settings page is open (touch screens start on TOUCH)
+  let setTab = CG.Touch.enabled ? 'touch' : 'general';
+  const shakeOn = () => store.get('commando.shake', '1') !== '0';
 
   // ---------------------------------------------------------------- friends
   function say(id, msg) { $(id).textContent = msg || ''; }
@@ -1030,6 +1038,8 @@ CG.UI = (() => {
       if (it) run(() => (N().online ? N().buy(it) : CG.Profile.buyLocal(it)).then(() => { CG.Sfx.play('pickup'); renderShop(); }), it.name + ' bought!', 'shop-msg');
     },
     sound: () => { CG.Sfx.toggle(); renderSettings(); },
+    shake: () => { store.set('commando.shake', shakeOn() ? '0' : '1'); renderSettings(); },
+    'set-tab': (t) => { setTab = t; renderSettings(); },
     'touch-style': (v) => { CG.Touch.opts.style = v; CG.Touch.save(); renderSettings(); },
     'touch-size': (v) => { CG.Touch.opts.size = +v; CG.Touch.save(); renderSettings(); },
     'touch-auto': () => { CG.Touch.opts.autofire = !CG.Touch.opts.autofire; CG.Touch.save(); CG.Touch.syncButtons(); renderSettings(); },
@@ -1153,6 +1163,7 @@ CG.UI = (() => {
     localDevice() { return { type: 'any' }; },
     storyCleared(n) { if (n > storyCleared()) store.set(STORY, String(n)); },
     announce: (a) => notices.announce(a),
+    shakeOn,
     gameOver, matchEnded, refreshFriends, netChanged, loginMessage, localBest, localName, myAgent, myName, show, toast, play, playOnline, takeLocalBots,
   };
 })();

@@ -45,10 +45,10 @@
     root.style.setProperty('--ts', (T.opts.size * fit).toFixed(3));
     // buttons the player moved: placed by their centre, as a share of the screen
     const pos = T.opts.pos || {};
-    document.querySelectorAll('#btns [data-btn], #b-pause').forEach((b) => {
-      const id = b.dataset.btn || 'pause', at = pos[id];
-      if (at) Object.assign(b.style, { left: 'calc(' + (at.x * 100).toFixed(2) + 'vw - ' + b.offsetWidth / 2 + 'px)', top: 'calc(' + (at.y * 100).toFixed(2) + 'vh - ' + b.offsetHeight / 2 + 'px)', right: 'auto', bottom: 'auto', marginLeft: '0' });
-      else Object.assign(b.style, { left: '', top: '', right: '', bottom: '', marginLeft: '' });
+    document.querySelectorAll('#btns [data-btn], #b-pause, #stick, #dpad').forEach((b) => {
+      const id = b.dataset.btn || (b.id === 'b-pause' ? 'pause' : b.id), at = pos[id];
+      if (at) Object.assign(b.style, { left: 'calc(' + (at.x * 100).toFixed(2) + 'vw - ' + b.offsetWidth / 2 + 'px)', top: 'calc(' + (at.y * 100).toFixed(2) + 'vh - ' + b.offsetHeight / 2 + 'px)', right: 'auto', bottom: 'auto', margin: '0' });
+      else Object.assign(b.style, { left: '', top: '', right: '', bottom: '', margin: '' });
     });
   };
   // Settings → MOVE BUTTONS: the controls show over a dimmed screen and each one can be dragged to a new place
@@ -67,7 +67,7 @@
   const arrows = { up: pad.querySelector('.up'), down: pad.querySelector('.down'), left: pad.querySelector('.left'), right: pad.querySelector('.right') };
   const btns = {};
   document.querySelectorAll('#btns [data-btn]').forEach((b) => { btns[b.dataset.btn] = b; });
-  let movePid = null, mx0 = 0, my0 = 0;
+  let movePid = null;
   const fingers = new Map();                          // pointerId -> button name it is on (right side)
 
   function setDir(dx, dy, radius) {
@@ -80,34 +80,24 @@
     }
     for (const k in arrows) arrows[k].classList.toggle('on', s[k]);
   }
-  // both the joystick and the D-pad appear under the thumb, wherever it lands on the left half
+  // The movement control stays where it is (Settings → MOVE BUTTONS places it):
+  //   'stick' — a circle joystick: put a thumb on it and push the knob the way to go
+  //   'dpad'  — four arrow buttons: press the arrow (between two arrows = the diagonal), slide onto another to turn
+  const mover = () => (T.opts.style === 'stick' ? stick : pad);
+  function centre() { const r = mover().getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, R: r.width / 2 }; }
+  function onMover(x, y) { const c = centre(); return Math.hypot(x - c.x, y - c.y) < c.R * 1.3; }
   function moveStart(e) {
     movePid = e.pointerId;
-    mx0 = e.clientX; my0 = e.clientY;
-    if (T.opts.style === 'stick') {
-      stick.style.left = mx0 + 'px'; stick.style.top = my0 + 'px';
-      stick.classList.add('on');
-    } else {
-      const half = pad.offsetWidth / 2;
-      mx0 = Math.max(half + 6, Math.min(window.innerWidth * 0.5 - half, mx0));
-      my0 = Math.max(half + 6, Math.min(window.innerHeight - half - 6, my0));
-      pad.style.left = (mx0 - half) + 'px'; pad.style.top = (my0 - half) + 'px'; pad.style.bottom = 'auto';
-      pad.classList.add('on');
-    }
+    mover().classList.add('on');
     moveTo(e);
   }
   function moveTo(e) {
+    const c = centre(), dx = e.clientX - c.x, dy = e.clientY - c.y;
     if (T.opts.style === 'stick') {
-      const R = 70 * T.opts.size;
-      let dx = e.clientX - mx0, dy = e.clientY - my0;
-      const d = Math.hypot(dx, dy);
-      if (d > R * 1.6) { mx0 = e.clientX - dx / d * R * 1.6; my0 = e.clientY - dy / d * R * 1.6; stick.style.left = mx0 + 'px'; stick.style.top = my0 + 'px'; dx = e.clientX - mx0; dy = e.clientY - my0; }
-      const k = Math.min(1, R / Math.max(1, Math.hypot(dx, dy)));
+      const k = Math.min(1, c.R * 0.62 / Math.max(1, Math.hypot(dx, dy)));
       knob.style.transform = `translate(${dx * k}px, ${dy * k}px)`;
-      setDir(dx, dy, R);
-    } else {
-      setDir(e.clientX - mx0, e.clientY - my0, pad.offsetWidth / 2);
     }
+    setDir(dx, dy, c.R);
   }
   function moveEnd() {
     movePid = null;
@@ -115,7 +105,6 @@
     stick.classList.remove('on');
     knob.style.transform = '';
     pad.classList.remove('on');
-    pad.style.left = pad.style.top = pad.style.bottom = '';           // back to its resting place
   }
   // which button is under this point (a little forgiving around the edges)
   function buttonAt(x, y) {
@@ -137,10 +126,13 @@
   let drag = null;
   root.addEventListener('pointerdown', (e) => {
     if (!T.editing) return;
-    const b = e.target.closest('#btns [data-btn], #b-pause');
+    const b = [...document.querySelectorAll('#btns [data-btn], #b-pause'), mover()].find((el) => {
+      const r = el.getBoundingClientRect();
+      return r.width && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    });
     if (!b) return;
     e.preventDefault(); e.stopImmediatePropagation();
-    drag = { b, id: b.dataset.btn || 'pause', pid: e.pointerId };
+    drag = { b, id: b.dataset.btn || (b.id === 'b-pause' ? 'pause' : b.id), pid: e.pointerId };
     try { root.setPointerCapture(e.pointerId); } catch (err) { /* */ }
   }, true);
   root.addEventListener('pointermove', (e) => {
@@ -155,10 +147,9 @@
     if (T.editing) return;
     if (e.target.closest('#b-pause')) return;
     e.preventDefault();
-    const leftSide = e.clientX < window.innerWidth * 0.45;
     const b = buttonAt(e.clientX, e.clientY);
     if (b) fingers.set(e.pointerId, b);
-    else if (leftSide && movePid === null) moveStart(e);
+    else if (movePid === null && onMover(e.clientX, e.clientY)) moveStart(e);
     else return;
     try { root.setPointerCapture(e.pointerId); } catch (err) { /* fine without */ }
     syncButtons();

@@ -11,7 +11,7 @@ CG.Bot = (() => {
       for (const q of sc.players) {
         if (!sc.isFoe(p, q) || !q.alive) continue;
         const d = Math.hypot(q.body.center.x - c.x, q.body.center.y - c.y);
-        if (d < bd) { bd = d; best = { body: q.body, T: { ai: 'player' } }; }
+        if (d < bd) { bd = d; best = { body: q.body, T: { ai: 'player' }, player: q }; }
       }
       return best ? { e: best, d: bd } : null;
     }
@@ -145,6 +145,18 @@ CG.Bot = (() => {
     else if (!p.onGround && p.body.velocity.y > 0 && dy < -60 && mem.t % 20 === 0) s.jump = true;       // double jump up after them
     if (danger(sc, p) && p.mdashCd <= 0) { s.dash = true; s.up = Math.random() < 0.4; }
     if (p.abilityCd <= 0) s.ability = t.d < 520 || (p.agent.id === 'nova' && p.hp < p.maxHp - 1);
+    // the other player lies down on the same level to shoot under the bot's fire: turn to them, get down too and
+    // fire low — or, now and then, jump in and shoot down at them from above
+    const foe = t.e.player;
+    if (foe && foe.prone && foe.onGround && Math.abs(dy) < 90) {
+      const face = Math.sign(dx) || p.facing;
+      s.up = false; s.jump = false; s.left = s.right = false;
+      if (face !== p.facing) { if (face > 0) s.right = true; else s.left = true; }     // turn first
+      else if (mem.t % 240 < 200 || !p.onGround) {
+        if (p.onGround) s.down = true;                                                  // prone: shots stay low
+        else { s.down = true; if (face > 0) s.right = true; else s.left = true; }     // in the air: aim down at them
+      } else if (Math.abs(dx) < 420) s.jump = true;
+    }
     return s;
   }
 

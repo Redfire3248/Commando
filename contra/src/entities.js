@@ -118,7 +118,7 @@
         const run = dir * C.run * this.agent.speed * (this.adrenT > 0 ? 1.35 : 1) * (this.perkSpeed || 1) * (this.hack.speed ? 1.6 : 1);
         if (this.launchT > 0) { this.launchT -= ms; b.velocity.x += (run - b.velocity.x) * Math.min(1, dt * 2); }   // thrown by a blast: drift, don't snap
         else b.velocity.x = this.prone ? 0 : run;
-        if (onGround) this.airJumps = 1;
+        if (onGround) this.airJumps = this.agent.id === 'kite' ? 2 : 1;          // passive: KITE jumps three times
         if (inp.jumpPressed && onGround) {
           if (inp.down && sc.time.now - this.ledgeT < 80) this.dropT = 260;      // drop through a ledge
           else { b.velocity.y = -C.jump * (this.hack.jump || this.bootsT > 0 ? 1.45 : 1); this.setProne(false); CG.Sfx.play('jump'); }
@@ -170,7 +170,7 @@
         for (const off of fan) { const bul = sc.fire(this, m.x, m.y, a + off); if (bul && storm) bul.pierce = 1; }
         this.shots++;
         CG.Sfx.play('shoot');
-        this.fireCd = (this.rapid || this.adrenT > 0 ? C.rapidMs : C.fireMs) * (storm ? 0.45 : 1);
+        this.fireCd = (this.rapid || this.adrenT > 0 ? C.rapidMs : C.fireMs) * (storm ? 0.45 : 1) * (this.agent.id === 'razor' ? 0.88 : 1);   // passive: RAZOR
       }
       this.sync(dt);
     }
