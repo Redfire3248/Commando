@@ -176,7 +176,7 @@ CG.UI = (() => {
     const best = localBest(), admin = !!opts.admin;
     if (!admin && score > best) store.set(BEST, String(score));
     if (!admin) N().submitScore(score);
-    const coins = admin ? 0 : CG.Shop.coinsFor(score);
+    const coins = admin ? 0 : CG.Shop.coinsFor(score) + (opts.coins || 0);      // score coins + coins picked up
     if (coins && N().online) N().addCoins(coins).catch(() => {});
     $('over-score').textContent = score;
     $('over-coins').classList.toggle('hidden', !coins || !N().online);

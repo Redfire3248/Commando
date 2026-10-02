@@ -6,13 +6,36 @@
 CG.Admin = (() => {
   const $ = (id) => document.getElementById(id);
   let tab = 'players', refresh = null, users = null;
+  // The panel's markup is created the first time the owner opens it, so for everyone else it is not on the page at all.
+  const MARKUP = `<div class="admin-head">
+    <div class="admin-title"><b>ADMIN</b><small id="admin-who"></small></div>
+    <button data-act="admin-close" class="btn small ghost">✕</button>
+  </div>
+  <div class="admin-tabs">
+    <button data-tab="players" class="on">🎖<span>Players</span></button>
+    <button data-tab="spawn">👾<span>Enemies</span></button>
+    <button data-tab="items">✚<span>Items</span></button>
+    <button data-tab="stage">🗺<span>Stage</span></button>
+    <button data-tab="shop">🛒<span>Shop</span></button>
+    <button data-tab="users">👥<span>Accounts</span></button>
+  </div>
+  <div id="admin-body"></div>
+  <div class="admin-foot">Using the game tabs marks the run: no score or coins are saved. F2 opens and closes this panel.</div>`;
+  function build() {
+    if ($('admin')) return;
+    const d = document.createElement('div');
+    d.id = 'admin';
+    d.className = 'hidden';
+    d.innerHTML = MARKUP;
+    document.body.appendChild(d);
+  }
 
   const scene = () => {
     if (!CG.game) return null;
     const m = CG.game.scene;
     return m.isActive('Game') || m.isPaused('Game') ? m.getScene('Game') : null;
   };
-  const isOpen = () => !$('admin').classList.contains('hidden');
+  const isOpen = () => !!$('admin') && !$('admin').classList.contains('hidden');
   const esc = (t) => String(t === undefined ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   // a small picture of a texture (or one frame of a sheet), for the buttons
@@ -65,11 +88,15 @@ CG.Admin = (() => {
     },
     items(s) {
       if (!s) return needGame();
-      const list = [['heal', 'First aid'], ['heal_big', 'Squad medkit'], ['life', 'Squad life'], ['rapid', 'Rapid fire'], ['spread', 'Spread'], ['barrier', 'Shield']];
-      return '<p class="admin-tip">Drops next to the first player.</p><div class="admin-grid">' + list.map(([k, n]) => {
+      const list = [['heal', 'First aid'], ['heal_big', 'Squad medkit'], ['life', 'Squad life'], ['rapid', 'Rapid fire'], ['spread', 'Spread'], ['barrier', 'Shield'],
+        ['pierce', 'Piercing'], ['blast', 'Explosive'], ['double', 'Double damage'], ['ice', 'Ice rounds']];
+      const tile = ([k, n], extra) => {
         const key = s.textures.exists('pk_' + k) ? 'pk_' + k : 'pk_life';
-        return `<button class="tile btn" data-adm="item" data-k="${k}">${img(thumb(key))}<span>${n}</span></button>`;
-      }).join('') + '</div>';
+        return `<button class="tile btn ${extra || ''}" data-adm="item" data-k="${k}">${img(thumb(key))}<span>${n}</span></button>`;
+      };
+      return '<p class="admin-tip">Drops next to the first player.</p><div class="admin-grid">' + list.map((x) => tile(x)).join('') + '</div>'
+        + '<div class="admin-sec">Admin only</div><p class="admin-tip">Never drops in the game: only this panel can give it out.</p>'
+        + '<div class="admin-grid">' + tile(['overdrive', 'OVERDRIVE · 15 s untouchable, five-way piercing spray'], 'admin-only') + '</div>';
     },
     stage(s) {
       if (!s) return needGame();
@@ -196,12 +223,13 @@ CG.Admin = (() => {
 
   function open() {
     if (!CG.Net.isAdmin) return;                          // not the owner's account: F2 does nothing
+    build();
     $('admin').classList.remove('hidden');
     render();
     clearInterval(refresh);
     refresh = setInterval(() => { if (isOpen() && tab === 'players' && scene() && !document.querySelector('#admin:hover')) render(); }, 700);
   }
-  function close() { $('admin').classList.add('hidden'); clearInterval(refresh); }
+  function close() { if ($('admin')) $('admin').classList.add('hidden'); clearInterval(refresh); }
 
   document.addEventListener('click', (e) => {
     const t = e.target.closest('#admin .admin-tabs button');

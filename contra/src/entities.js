@@ -38,7 +38,8 @@
       Object.assign(this, {
         facing: 1, aimX: 1, aimY: 0, hp, maxHp: hp, dead: false, out: false, prone: false, onGround: false,
         invT: 0, barrierT: 0, rapid: false, spread: false, fireCd: 0, dropT: 0, ledgeT: -1e9, runT: 0, spin: 0,
-        abilityCd: 0, stormT: 0, domeT: 0, dashT: 0, adrenT: 0, god: false, freeAbility: false, dashHit: null,
+        abilityCd: 0, stormT: 0, domeT: 0, dashT: 0, adrenT: 0, overT: 0, god: false, freeAbility: false, dashHit: null,
+        pierce: false, blast: false, double: false, ice: false,
       });
     }
 
@@ -62,7 +63,7 @@
       if (this.out) { this.tag.setVisible(false); this.bar.clear(); return; }
       const ms = dt * 1000, C = this.C, b = this.body, sc = this.scene;
       const wasCd = this.abilityCd;
-      for (const k of ['invT', 'barrierT', 'fireCd', 'dropT', 'abilityCd', 'stormT', 'domeT', 'dashT', 'adrenT']) this[k] = Math.max(0, this[k] - ms);
+      for (const k of ['invT', 'barrierT', 'fireCd', 'dropT', 'abilityCd', 'stormT', 'domeT', 'dashT', 'adrenT', 'overT']) this[k] = Math.max(0, this[k] - ms);
       if (this.freeAbility) this.abilityCd = 0;
       if (wasCd > 0 && this.abilityCd <= 0) sc.abilityReady(this);
       if (this.dead) { this.tag.setVisible(false); this.bar.clear(); return; }
@@ -79,9 +80,16 @@
         if (dir) this.facing = dir;
         this.setProne(onGround && inp.down && !dir);
         b.velocity.x = this.prone ? 0 : dir * C.run * this.agent.speed * (this.adrenT > 0 ? 1.35 : 1) * (this.perkSpeed || 1);
+        if (onGround) this.airJumps = 1;
         if (inp.jumpPressed && onGround) {
           if (inp.down && sc.time.now - this.ledgeT < 80) this.dropT = 260;      // drop through a ledge
           else { b.velocity.y = -C.jump; this.setProne(false); CG.Sfx.play('jump'); }
+        } else if (inp.jumpPressed && this.airJumps > 0) {                       // double jump
+          this.airJumps--;
+          b.velocity.y = -C.jump * 0.9;
+          this.spin = 0;
+          sc.sparks.explode(6, b.center.x, b.bottom);
+          CG.Sfx.play('jump');
         }
       }
       if (inp.abilityPressed) this.useAbility();
@@ -178,8 +186,12 @@
       else { set = this.aimY < 0 ? (this.aimX ? A.stand_dup : A.stand_up) : this.aimY > 0 ? A.stand_ddown : A.stand_fwd; f = set[0]; }
       v.setFrame(f).setPosition(b.center.x, b.bottom).setFlipX(this.facing < 0).setAngle(angle);
       v.setScale(this.art.scale * (set[2] || 1));
-      const blink = this.invT > 0 && this.dashT <= 0 && Math.floor(this.invT / 80) % 2 === 0;
+      const blink = this.invT > 0 && this.dashT <= 0 && this.overT <= 0 && Math.floor(this.invT / 80) % 2 === 0;
       v.setAlpha(blink ? 0.3 : 1);
+      // Overdrive: pulsing gold
+      if (this.overT > 0) v.setTint(Math.floor(this.overT / 120) % 2 ? 0xffd23c : 0xfff2b0);
+      else if (this.wasOver) v.clearTint();
+      this.wasOver = this.overT > 0;
       this.shield.setVisible(this.barrierT > 0).setPosition(b.center.x, b.center.y)
         .setAlpha(this.barrierT > 2000 ? 1 : 0.4 + 0.6 * Math.abs(Math.sin(this.barrierT / 90)));
 
@@ -197,7 +209,7 @@
     hit(dmg = 1) {
       if (this.remote) return false;                   // their own game decides when they are hit
       if (this.alive && this.scene.underDome(this)) return false;    // a teammate's Aegis covers you
-      if (!this.alive || this.invT > 0 || this.barrierT > 0 || this.domeT > 0 || this.dashT > 0 || this.god) return false;
+      if (!this.alive || this.invT > 0 || this.barrierT > 0 || this.domeT > 0 || this.dashT > 0 || this.overT > 0 || this.god) return false;
       this.hp -= dmg;
       if (this.hp <= 0) { this.hp = 0; this.die(); return true; }
       this.invT = 900;
@@ -212,6 +224,7 @@
       const sc = this.scene, b = this.body, v = this.visual;
       if (this.god) { this.hp = this.maxHp; return; }
       this.dead = true; this.hp = 0; this.rapid = false; this.spread = false; this.barrierT = 0; this.stormT = 0; this.domeT = 0; this.dashT = 0; this.adrenT = 0;
+      this.pierce = this.blast = this.double = this.ice = false; this.overT = 0;
       CG.Sfx.play('die');
       b.stop(); b.enable = false;
       this.shield.setVisible(false);

@@ -188,6 +188,24 @@
       this.inp = new CG.Input(this, this.cfg.devices);
 
       this.buildHud();
+      // coins hanging along the high route: each one is 5 coins for this account (yours alone online)
+      this.coinsEarned = this.cfg.coinsEarned || 0;
+      this.coinPickups = this.physics.add.group({ allowGravity: false, immovable: true });
+      (L.coins || []).forEach(([c, r]) => {
+        const k = this.coinPickups.create((c + 0.5) * T, (r + 0.5) * T, 'pk_coin').setDepth(7);
+        this.tweens.add({ targets: k, y: k.y - 10, duration: 700 + (c % 5) * 60, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      });
+      this.physics.add.overlap(this.players.map((p) => p.phys), this.coinPickups, (a, b) => {
+        const [z, k] = a.owner ? [a, b] : [b, a];
+        if (!k.active || z.owner.remote || z.owner.bot || !z.owner.alive) return;
+        this.coinsEarned += 5;
+        this.sparks.explode(8, k.x, k.y);
+        CG.Sfx.play('pickup');
+        const t = this.add.text(k.x, k.y - 10, '+5', ts(26, '#ffd23c')).setOrigin(0.5).setDepth(40).setShadow(0, 2, '#000', 4);
+        this.tweens.add({ targets: t, y: t.y - 40, alpha: 0, duration: 700, onComplete: () => t.destroy() });
+        k.disableBody(true, true);
+        this.time.delayedCall(0, () => k.destroy());
+      });
       this.scoreText = this.add.text(W - 40, 46, '', ts(38, '#ffffff')).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100).setShadow(0, 2, '#000', 6);
       this.stageText = this.add.text(W - 40, 84, 'STAGE ' + this.cfg.stage + ' · ' + L.name, ts(20, '#ffd39a')).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100);
       this.banner = this.add.text(W / 2, H * 0.36, '', ts(88, '#ff9a3c')).setOrigin(0.5).setScrollFactor(0).setDepth(100).setAlpha(0).setShadow(0, 5, '#000', 14);
@@ -221,6 +239,7 @@
         h.ab = has('ab_' + id) ? left(this.add.image(x + 250, y + 30, 'ab_' + id)) : null;
         if (h.ab) h.ab.setScale(44 / h.ab.height);
         h.cd = left(this.add.graphics());
+        h.pw = left(this.add.text(x + 72, y + 54, '', ts(16, '#ffd39a')).setShadow(0, 2, '#000', 4));
         h.lastHp = -1; h.lastMax = -1;
         return h;
       });
@@ -230,6 +249,8 @@
       this.livesIcon.setScale(Math.min(1, 40 / this.livesIcon.height));
       this.add.text(W - 160, 126, 'TEAM', ts(18, '#ffd39a')).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100);
       this.adminTag = fixed(this.add.text(W - 40, 162, 'ADMIN · SCORE NOT SAVED', ts(16, '#ff8080')).setOrigin(1, 0.5)).setVisible(this.adminUsed);
+      this.coinIcon = fixed(this.add.image(W - 130, 200, 'pk_coin').setScale(0.6));
+      this.coinText = fixed(this.add.text(W - 40, 200, '', ts(26, '#ffd23c')).setOrigin(1, 0.5).setShadow(0, 2, '#000', 6));
     }
 
     updateHud() {
@@ -246,6 +267,8 @@
           }
           h.lastHp = p.hp; h.lastMax = p.maxHp;
         }
+        const tags = [p.rapid && 'R', p.spread && 'S', p.pierce && 'P', p.blast && 'X', p.double && 'D', p.ice && 'I', p.overT > 0 && 'OVERDRIVE'].filter(Boolean).join(' ');
+        if (h.pw.text !== tags) h.pw.setText(tags);
         const a = p.out ? 0.3 : 1;
         [h.port, h.name, h.hearts, h.ab].forEach((o) => o && o.setAlpha(a));
         h.cd.clear();
@@ -255,6 +278,7 @@
         }
       });
       this.livesText.setText('×' + this.teamLives);
+      this.coinText.setText('+' + (this.coinsEarned || 0));
       this.adminTag.setVisible(this.adminUsed);
     }
 
@@ -287,6 +311,8 @@
       });
       // cover: solid, stops every bullet, can be stood on. Painted cover (cover50.png) replaces the pixel boxes by key.
       this.covers = this.physics.add.staticGroup();
+      this.coverList = [];
+      this.brokenCovers = new Set();
       const set = CG.DATA.art && CG.DATA.art.cover50 && CG.DATA.art.cover50[L.theme];
       CG.Level.covers(L).forEach((cv, n) => {
         // painted cover from cover50.png when sliced (cycling through the theme's set, the same on every screen),
@@ -296,7 +322,11 @@
         const img = this.add.image(cv.col * T, gy + 2, key).setOrigin(0, 1).setDepth(6);
         const sc = this.artScale[key];
         if (sc) img.setScale(sc);
-        zone(this.covers, img.x + 4, img.y - img.displayHeight + 6, img.displayWidth - 8, img.displayHeight - 8);
+        const z = zone(this.covers, img.x + 4, img.y - img.displayHeight + 6, img.displayWidth - 8, img.displayHeight - 8);
+        // breakable: bigger pieces take more hits (a low sandbag about 18 shots, a tall crate stack about 40)
+        const hp = Math.round(12 + img.displayHeight * 0.25);
+        z.cover = { id: n, img, zone: z, hp, max: hp, broken: false };
+        this.coverList.push(z.cover);
       });
       // Ledges are solid on every side (you bump your head on them, you can't jump up through them); the hitbox is
       // as thick as the ledge art. Down + Jump still drops you off one.
@@ -344,12 +374,28 @@
       ph.add.overlap(this.grenades, this.enemies, (a, b) => burst(a.isFrag ? a : b));
       ph.add.collider(this.enemies, this.covers);
       ph.add.collider(this.pickups, this.covers);
-      const stop = (a, b) => { const bul = isStatic(a) ? b : a; if (bul.active) { this.sparks.explode(3, bul.x, bul.y); this.kill(bul); } };
-      ph.add.overlap(this.bullets, this.covers, stop);
-      ph.add.overlap(this.ebullets, this.covers, stop);
+      // cover stops every bullet and takes the damage. Online the host keeps the real count: another player's
+      // shots are only drawn here, and enemy shots on a non-host screen are the host's to count.
+      const coverOf = (a, b) => (isStatic(a) ? a : b).cover;
+      ph.add.overlap(this.bullets, this.covers, (a, b) => {
+        const bul = isStatic(a) ? b : a, cv = coverOf(a, b);
+        if (!bul.active || !cv || cv.broken) return;
+        this.sparks.explode(3, bul.x, bul.y);
+        this.kill(bul);
+        if (!bul.ghost) this.hitCover(cv, 1);
+      });
+      ph.add.overlap(this.ebullets, this.covers, (a, b) => {
+        const bul = isStatic(a) ? b : a, cv = coverOf(a, b);
+        if (!bul.active || !cv || cv.broken) return;
+        this.sparks.explode(3, bul.x, bul.y);
+        this.kill(bul);
+        if (!this.isClient) this.hitCover(cv, 1);
+      });
       ph.add.collider(this.ebombs, this.covers, (a, b) => {
-        const m = mover(a, b);
-        if (m.active) { this.boom(m.x, m.y, 10); CG.Sfx.play('boom'); this.kill(m); }
+        const m = mover(a, b), cv = coverOf(a, b);
+        if (!m.active) return;
+        this.boom(m.x, m.y, 10); CG.Sfx.play('boom'); this.kill(m);
+        if (cv && !this.isClient) this.hitCover(cv, 6);
       });
       ph.add.collider(this.pickups, this.ledges, null, canLand);
 
@@ -358,7 +404,15 @@
         if (!bul.active || !e.active) return;
         this.sparks.explode(4, bul.x, bul.y);
         if (bul.pierce > 0) { bul.pierce--; bul.hitSet = bul.hitSet || new Set(); if (bul.hitSet.has(e)) return; bul.hitSet.add(e); } else this.kill(bul);
-        if (!bul.ghost) e.damage(1);
+        if (bul.ghost) return;
+        e.damage(bul.dmg || 1);
+        if (bul.ice && e.active && !e.T.boss) e.stunT = Math.max(e.stunT || 0, 450);
+        if (bul.blast) {                                 // a small explosion that also hits whatever is close by
+          this.boom(bul.x, bul.y, 8);
+          for (const o of this.enemies.getChildren()) {
+            if (o !== e && o.active && Phaser.Math.Distance.Between(bul.x, bul.y, o.body.center.x, o.body.center.y) < 95) o.damage(1);
+          }
+        }
       });
       ph.add.overlap(bodies, this.ebullets, (a, b) => {
         const [z, bul] = pick(a, b, (o) => !!o.owner);
@@ -411,7 +465,11 @@
     fire(player, x, y, a, ghost) {
       const b = this.shot(this.bullets, 'bullet', x, y, a, CG.CONFIG.PLAYER.bulletSpeed, 16);
       if (!b) return null;
-      b.isBullet = true; b.shooter = player; b.ghost = !!ghost; b.pierce = 0;
+      b.isBullet = true; b.shooter = player; b.ghost = !!ghost; b.pierce = 0; b.hitSet = null;
+      // bullet power-ups: P pierce, X explosive, D double damage, I ice
+      b.dmg = player && player.double ? 2 : 1;
+      b.blast = !!(player && player.blast); b.ice = !!(player && player.ice);
+      if (player && player.pierce) b.pierce = 2;
       if (player && player.perkGold) b.setTint(0xffd27a); else b.clearTint();
       if (player && player.stormT > 0 && this.anims.exists('fx_storm')) {
         const f = this.add.sprite(x, y, 'fx_storm', 0).setOrigin(0, 0.5).setRotation(a).setScale(0.35).setDepth(12);
@@ -516,8 +574,8 @@
       if (this.artScale[key]) k.setScale(this.artScale[key]);
       k.kind = kind;
       k.netId = ++this.netSeq;
-      k.body.setVelocity(-60, -420);
-      k.body.setBounce(0.3);
+      k.body.setVelocity(0, -420);                 // pops up, lands, then floats in place (see floatPickups)
+      k.body.setBounce(0.2);
       return k;
     }
 
@@ -530,6 +588,13 @@
       if (k.kind === 'barrier') { p.barrierT = C.barrierMs; this.say('SHIELD', 900); }
       if (k.kind === 'life' && !this.isClient) { this.teamLives++; this.say('TEAM LIFE +1', 900); }
       if (k.kind === 'heal') p.heal(2);
+      const PW = { pierce: 'PIERCING ROUNDS', blast: 'EXPLOSIVE ROUNDS', double: 'DOUBLE DAMAGE', ice: 'ICE ROUNDS' };
+      if (PW[k.kind]) { p[k.kind] = true; this.say(PW[k.kind], 900); }
+      if (k.kind === 'overdrive') {                     // the admin's item: 15 s untouchable, five-way piercing spray, fast
+        p.overT = 15000; p.stormT = 15000; p.adrenT = 15000;
+        this.say('OVERDRIVE', 1200);
+        this.cameras.main.flash(250, 255, 210, 60);
+      }
       if (k.kind === 'heal_big') {
         this.players.forEach((q) => { if (q.alive && !q.remote) q.heal(q.maxHp); });
         if (this.net) this.net.shout('heal', { all: true, n: 99 });
@@ -565,7 +630,7 @@
       this.time.delayedCall(3300, () => {
         this.scene.restart({
           players: this.cfg.players, stage: this.cfg.stage + 1, score: this.score + 3000,
-          teamLives: this.teamLives, adminUsed: this.adminUsed, online: this.cfg.online,
+          teamLives: this.teamLives, adminUsed: this.adminUsed, online: this.cfg.online, coinsEarned: this.coinsEarned,
         });
       });
     }
@@ -575,7 +640,7 @@
       this.over = true;
       this.say('GAME OVER', 5000);
       CG.Sfx.play('over');
-      this.time.delayedCall(1400, () => CG.UI.gameOver(this.score, this.cfg.stage, { admin: this.adminUsed, online: !!this.net }));
+      this.time.delayedCall(1400, () => CG.UI.gameOver(this.score, this.cfg.stage, { admin: this.adminUsed, online: !!this.net, coins: this.coinsEarned }));
     }
 
     // ---------------------------------------------------------------- abilities and their effects
@@ -630,6 +695,37 @@
         if (!e.active) continue;
         if (Phaser.Math.Distance.Between(x, y, e.body.center.x, e.body.center.y) < ab.radius + e.body.halfWidth) e.damage(ab.damage);
       }
+      for (const cv of this.coverList) {
+        if (!cv.broken && Phaser.Math.Distance.Between(x, y, cv.zone.x, cv.zone.y) < ab.radius + cv.zone.width / 2) this.hitCover(cv, ab.damage * 2);
+      }
+    }
+    // ---------------------------------------------------------------- breakable cover
+    hitCover(cv, dmg, fromNet) {
+      if (!cv || cv.broken) return;
+      cv.img.setTintFill(0xffffff);
+      this.time.delayedCall(50, () => { if (!cv.broken) this.tintCover(cv); });
+      if (this.isClient && !fromNet) { this.net.send('cover', { id: cv.id, n: dmg }); return; }     // the host counts it
+      cv.hp -= dmg;
+      if (cv.hp <= 0) this.breakCover(cv);
+    }
+    // the more damaged, the darker and more battered it looks
+    tintCover(cv) {
+      const f = Math.max(0, cv.hp / cv.max), c = Math.round(150 + 105 * f);
+      if (f >= 1) cv.img.clearTint(); else cv.img.setTint(Phaser.Display.Color.GetColor(c, Math.round(c * 0.92), Math.round(c * 0.85)));
+      if (f < 0.5 && !cv.cracked) { cv.cracked = true; cv.img.setAngle(cv.id % 2 ? 1.5 : -1.5); }
+    }
+    breakCover(cv) {
+      if (cv.broken) return;
+      cv.broken = true;
+      this.brokenCovers.add(cv.id);
+      const x = cv.img.x + cv.img.displayWidth / 2, y = cv.img.y - cv.img.displayHeight / 2;
+      this.boom(x, y, 16);
+      this.sparks.explode(18, x, y);
+      CG.Sfx.play('boom');
+      this.cameras.main.shake(90, 0.004);
+      cv.zone.body.enable = false;
+      this.tweens.add({ targets: cv.img, alpha: 0, scaleY: cv.img.scaleY * 0.3, duration: 260, onComplete: () => cv.img.destroy() });
+      this.time.delayedCall(0, () => cv.zone.destroy());
     }
     hurtFx(p) {
       this.sparks.explode(6, p.body.center.x, p.body.center.y);
@@ -773,6 +869,13 @@
 
       this.updateHud();
       this.updateDomes();
+      this.pickups.children.iterate((k) => {
+        if (!k || !k.active || k.floating || !k.body || !k.body.moves || !(k.body.blocked.down || k.body.touching.down)) return;
+        k.floating = true;
+        k.body.stop();
+        k.body.moves = false;
+        this.tweens.add({ targets: k, y: k.y - 14, duration: 650, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      });
       if (this.touchPlayer && CG.Touch.enabled) {
         const p = this.touchPlayer;
         CG.Touch.cooldown(p.abilityCd / (p.agent.ability.cd * (p.perkCd || 1)));

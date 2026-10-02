@@ -84,18 +84,10 @@ CG.DATA.level = CG.DATA.levels[0];     // the stage being played; the Game scene
 CG.Level = {
   // Cover: low walls and crates standing on the ground every so often. Same places every time (and on every
   // player's screen online). Kept clear of the start, the boss and where ground enemies appear.
+  // Cover pieces for this stage (placed in the fight zones by parkour()).
   covers(L) {
-    const out = [], busy = new Set();
-    L.enemies.forEach(([t, c, r]) => { if (!r || r === L.groundRow) for (let k = -2; k <= 2; k++) busy.add(c + k); });
     const kinds = L.theme === 'snow' ? ['snowbags', 'crate', 'barrier', 'icecrate', 'snowbags'] : ['sandbags', 'crate', 'barrier', 'crates', 'drums'];
-    let c = 12;
-    while (c < L.boss.wallCol - 14) {
-      if (!busy.has(c) && !busy.has(c + 1)) {
-        out.push({ kind: kinds[(c * 7 + 3) % kinds.length], col: c });
-        c += 9 + (c * 13) % 7;
-      } else c++;
-    }
-    return out;
+    return (L.coverCols || []).map((col) => ({ kind: kinds[(col * 7 + 3) % kinds.length], col }));
   },
   groundAt(col) {
     return CG.DATA.level.ground.some(([a, b]) => col >= a && col < b);
@@ -108,6 +100,60 @@ CG.Level = {
   },
   // The stages used to have pits; the ground is now one unbroken floor (cover replaced the gaps).
   noPits() { CG.DATA.levels.forEach((L) => { L.ground = [[0, L.w]]; }); },
+
+  // Parkour layout: every stage is rebuilt as FIGHT zones (open ground with cover to hide behind, nothing
+  // overhead) and CLIMB sections (ledge routes up to a high path, with coins up there). Built the same way every
+  // time (and on every screen online). Enemies that stood on the old ledges move onto the nearest new ledge at
+  // their height, or down to the ground.
+  CLIMBS: [
+    (s) => ({ w: 22, ledges: [[s + 1, 11, 4], [s + 6, 8, 4], [s + 11, 5, 5], [s + 17, 8, 4]], coins: [[s + 12, 4], [s + 13, 4], [s + 14, 4]] }),   // up and over
+    (s) => ({ w: 21, ledges: [[s + 1, 11, 3], [s + 5, 8, 3], [s + 9, 11, 3], [s + 13, 8, 3], [s + 17, 5, 3]], coins: [[s + 6, 7], [s + 14, 7], [s + 18, 4]] }), // zigzag
+    (s) => ({ w: 25, ledges: [[s + 1, 11, 3], [s + 5, 8, 3], [s + 9, 5, 3], [s + 13, 5, 3], [s + 17, 5, 3], [s + 21, 8, 3]], coins: [[s + 10, 4], [s + 14, 4], [s + 18, 4]] }), // high stepping stones
+  ],
+  parkour() {
+    CG.DATA.levels.forEach((L, li) => {
+      if (L.parkourDone) return;
+      L.parkourDone = true;
+      const end = L.boss.wallCol - 10, ledges = [], coins = [], covers = [];
+      let c = 10, k = li;
+      while (c < end - 18) {
+        // fight zone: open ground, two pieces of cover
+        covers.push(c + 4, c + 11);
+        c += 16;
+        if (c >= end - 18) break;
+        const climb = this.CLIMBS[k++ % this.CLIMBS.length](c);
+        if (c + climb.w > end) break;
+        ledges.push(...climb.ledges);
+        coins.push(...climb.coins);
+        c += climb.w + 2;
+      }
+      // enemies placed on the old ledges: onto the nearest new ledge at that height, else onto the ground
+      L.enemies.forEach((e) => {
+        const [, col, row] = e;
+        if (!row || row === L.groundRow) return;
+        let best = null, bd = 99;
+        for (const [lc, lr, lw] of ledges) {
+          if (lr !== row) continue;
+          const d = col < lc ? lc - col : col >= lc + lw ? col - (lc + lw - 1) : 0;
+          if (d < bd) { bd = d; best = [lc, lw]; }
+        }
+        if (best && bd <= 8) e[1] = Math.min(Math.max(col, best[0]), best[0] + best[1] - 1);
+        else e.length = 2;                       // no row = standing on the ground
+      });
+      // an enemy standing on the ground where cover goes steps out of its way
+      L.enemies.forEach((e) => {
+        if (e[2] && e[2] !== L.groundRow) return;
+        for (const cc of covers) if (e[1] >= cc - 1 && e[1] <= cc + 3) e[1] = cc + 4;
+      });
+      L.ledges = ledges;
+      L.coins = coins;
+      L.coverCols = covers;
+      // flying capsules with the bullet power-ups, one over each climb
+      const kinds = ['pierce', 'blast', 'double', 'ice'];
+      ledges.filter(([, r]) => r === 5).forEach(([lc], i) => { if (i % 2 === 0) L.capsules.push([lc + 1, kinds[(i / 2 + li) % kinds.length]]); });
+      L.capsules.sort((a, b) => a[0] - b[0]);
+    });
+  },
   // Checks every stage's enemies stand on something. Logs a warning for any that would fall.
   check() {
     CG.DATA.levels.forEach((L) => {
@@ -119,6 +165,6 @@ CG.Level = {
     });
   },
 };
-CG.Level.check();
-
 CG.Level.noPits();
+CG.Level.parkour();
+CG.Level.check();

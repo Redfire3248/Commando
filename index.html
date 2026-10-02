@@ -228,24 +228,7 @@
   </div>
 </div>
 
-<!-- ============ admin (only the owner's account) ============ -->
-<div id="admin" class="hidden">
-  <div class="admin-head">
-    <div class="admin-title"><b>ADMIN</b><small id="admin-who"></small></div>
-    <button data-act="admin-close" class="btn small ghost">✕</button>
-  </div>
-  <div class="admin-tabs">
-    <button data-tab="players" class="on">🎖<span>Players</span></button>
-    <button data-tab="spawn">👾<span>Enemies</span></button>
-    <button data-tab="items">✚<span>Items</span></button>
-    <button data-tab="stage">🗺<span>Stage</span></button>
-    <button data-tab="shop">🛒<span>Shop</span></button>
-    <button data-tab="users">👥<span>Accounts</span></button>
-  </div>
-  <div id="admin-body"></div>
-  <div class="admin-foot">Using the game tabs marks the run: no score or coins are saved. F2 opens and closes this panel.</div>
-</div>
-
+<!-- the admin panel is not part of the page: src/admin.js builds it only for the owner's account -->
 <div id="toast" class="hidden"></div>
 
 <!-- ============ touch controls ============ -->

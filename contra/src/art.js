@@ -143,6 +143,8 @@ CG.Art = (() => {
   const FONT = {
     R: ['110', '101', '110', '101', '101'], S: ['011', '100', '010', '001', '110'],
     B: ['110', '101', '110', '101', '110'], '1': ['010', '110', '010', '010', '111'],
+    P: ['110', '101', '110', '100', '100'], X: ['101', '101', '010', '101', '101'],
+    D: ['110', '101', '101', '101', '110'], I: ['111', '010', '010', '010', '111'], A: ['010', '101', '111', '101', '101'],
   };
   function letter(g, ch, x, y, col) {
     FONT[ch].forEach((row, j) => [...row].forEach((b, i) => { if (b === '1') R(g, x + i, y + j, 1, 1, col); }));
@@ -249,11 +251,26 @@ CG.Art = (() => {
       R(g, 18, 20, 6, 5, '#ff4d4d'); R(g, 20, 18, 2, 9, '#ff4d4d');
     }), 2);
 
+    put(scene, 'pk_coin', lowres(12, 12, (g) => {
+      disc(g, 6, 6, 5, '#7a5208'); disc(g, 6, 6, 4, '#ffd23c'); R(g, 5, 3, 2, 6, '#fff3b0'); R(g, 3, 4, 1, 3, '#fff3b0'); R(g, 8, 8, 1, 1, '#b98a10');
+    }), 4);
+
     // ---- power-ups, bullets, effects ----
     put(scene, 'pk_rapid', lowres(26, 16, (g) => badge(g, '#ffd23c', 'R')), S);
     put(scene, 'pk_barrier', lowres(26, 16, (g) => badge(g, '#5ad0ff', 'B')), S);
     put(scene, 'pk_spread', lowres(26, 16, (g) => badge(g, '#ff8a3c', 'S')), S);
     put(scene, 'pk_life', lowres(26, 16, (g) => badge(g, '#ff7a7a', '1')), S);
+    // bullet power-ups (painted ones from a sheet replace these by key)
+    put(scene, 'pk_pierce', lowres(26, 16, (g) => badge(g, '#7ad8ff', 'P')), S);
+    put(scene, 'pk_blast', lowres(26, 16, (g) => badge(g, '#ff6a3c', 'X')), S);
+    put(scene, 'pk_double', lowres(26, 16, (g) => badge(g, '#ff4d7a', 'D')), S);
+    put(scene, 'pk_ice', lowres(26, 16, (g) => badge(g, '#bfefff', 'I')), S);
+    // the admin's Overdrive: a gold badge with red wings (only the admin panel can drop it)
+    put(scene, 'pk_overdrive', lowres(30, 18, (g) => {
+      [[0, 5, 7, 2], [1, 7, 7, 2], [3, 9, 6, 2], [23, 5, 7, 2], [22, 7, 7, 2], [21, 9, 6, 2]].forEach(([x, y, w, h]) => R(g, x, y, w, h, '#ff4a5a'));
+      disc(g, 15, 9, 8, '#5e3c00'); disc(g, 15, 9, 7, '#ffd23c'); disc(g, 15, 9, 5, '#ffe98a');
+      letter(g, 'A', 14, 7, '#7a1010'); R(g, 11, 1, 9, 2, '#ffd23c'); R(g, 12, 0, 1, 1, '#ffd23c'); R(g, 15, 0, 1, 1, '#ffd23c'); R(g, 18, 0, 1, 1, '#ffd23c');
+    }), S);
     const orb = (c1, c2) => (g) => { disc(g, 4, 4, 3, c2); disc(g, 4, 4, 2, c1); R(g, 3, 3, 2, 2, '#ffffff'); };
     put(scene, 'bullet', lowres(9, 9, orb('#ffd27a', '#ff8a3c')), S);
     put(scene, 'ebullet', lowres(9, 9, orb('#ff9aa8', '#ff3050')), S);

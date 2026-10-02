@@ -322,3 +322,36 @@ ROW 3, military base: low yellow-and-black striped barrier; low stack of pipes; 
 ROW 4, snow: low snowbank; low ice block; low frozen log; low snowy rock; medium snow-covered sandbags; medium ice wall; medium frozen supply crate; medium snowy boulder; tall ice pillar; tall snowy rock wall.
 ROW 5, desert, volcano and city: low sandstone block; low broken brick wall; low black lava rock; low rusty car door; medium sandstone ruin; medium broken brick wall; medium lava boulder; medium wrecked car; tall broken concrete wall; tall rusty steel wall.
 ```
+
+## 12 — Four more agents → `agents2.png` (10 columns × 8 rows, two rows per agent)
+**Attach:** `agents.png` (the first agents sheet, as the style reference).
+```
+Use the attached image as the style reference and match it exactly: the same original 16-bit pixel-art style, the same chunky square pixels with hard edges, the same limited palette, the same dark outlines, the same character size and the same pixel scale. No anti-aliasing, no blur, no gradients, no glow.
+
+Make a NEW sprite sheet laid out as a grid of 10 columns and 8 rows (two rows for each of four new characters), one sprite centred in each cell, never touching a neighbour. Standing and running poses stand on the same floor line near the bottom of their cells. Every character faces RIGHT in every frame and carries the SAME rifle as in the reference (black steel body, short thick barrel, brown wooden stock, small orange energy cell), with the barrel pointing exactly in the direction named for each frame. The near leg is one shade lighter than the far leg, and the legs are in clearly different positions in every run frame.
+
+BACKGROUND: transparent PNG (real transparency). No background colour, no white, no grey, no checkerboard pattern, no floor line, no shadows. No grid lines, no borders, no text, no numbers, no labels, no watermark, no muzzle flashes, no bullets.
+
+THE FOUR NEW CHARACTERS (each clearly different in shape and colours):
+ROWS 1–2 — GHOST (woman, stealth sniper): slim, a black hooded cloak, a white half-mask over the mouth and nose, red goggles, grey-and-black urban camouflage, black boots.
+ROWS 3–4 — HAMMER (man, demolition expert): the biggest of all, bald with a thick moustache, a yellow hard hat, an orange hazard vest over a grey shirt, brown work trousers, heavy brown boots.
+ROWS 5–6 — VIPER (woman, toxic specialist): pale skin, a black bob haircut with a lime-green streak, a gas mask hanging at the neck, an olive jacket with lime-green trim, black trousers, black boots.
+ROWS 7–8 — ATLAS (man, cyborg soldier): a grey metal robotic left arm, a steel plate over half of his face with a small flat blue eye light, white-and-blue armoured suit, dark grey trousers, steel boots.
+
+THE 20 POSES — every character, in this order, across their two rows:
+FIRST ROW: cells 1 to 6 — RUN with the rifle aimed straight forward, a six-step cycle (legs far apart; near foot under the body, body lowest; standing on the near leg with the far knee raised; far leg far forward; far foot under the body; standing on the far leg with the near knee raised). Cell 7 — STANDING, rifle aimed forward. Cell 8 — STANDING, rifle aimed straight up. Cell 9 — STANDING, rifle aimed diagonally up. Cell 10 — STANDING, rifle aimed diagonally down.
+SECOND ROW: cells 1 to 3 — RUN with the rifle aimed diagonally up. Cells 4 to 6 — RUN with the rifle aimed diagonally down. Cell 7 — PRONE: lying flat on the stomach, rifle aimed forward. Cells 8 and 9 — SOMERSAULT JUMP: a tight ball, head at the top in cell 8 and at the bottom in cell 9. Cell 10 — DEATH: knocked backwards through the air, arms thrown wide.
+```
+
+## 13 — Power-up badges → `powerups.png` (10 columns × 2 rows)
+**Attach:** `agents_ui.png` (style reference for the badges).
+```
+Use the attached image as the style reference and match its pick-up badges exactly: the same original 16-bit pixel-art style, chunky square pixels with hard edges, a limited palette, dark outlines, steel wings either side of a round coloured badge. No anti-aliasing, no blur, no gradients, no glow.
+
+Make a NEW sheet laid out as a grid of 10 columns and 2 rows, 20 badges, each centred in its own cell with empty space around it, all the same size.
+
+BACKGROUND: transparent PNG (real transparency). No background colour, no white, no grey, no checkerboard pattern, no shadows. No grid lines, no borders, no text, no labels, no watermark. Use simple pictures on the badges, not letters.
+
+ROW 1 — steel-winged badges, each with a coloured centre and a simple picture: 1 light blue with an arrow passing through two circles (piercing rounds); 2 orange with a round black bomb (explosive rounds); 3 pink-red with two bullets side by side (double damage); 4 pale blue with a snowflake (ice rounds); 5 red with a flame (fire rounds); 6 purple with a lightning bolt (shock rounds); 7 gold with a horseshoe magnet (coin magnet); 8 teal with an hourglass (slow time); 9 green with a winged boot (jump boots); 10 white with a heart and a plus (big heal).
+ROW 2 — 1 to 9: the same ten-style badges for: a ghost silhouette (cloak), a hammer (ground pound), a gas mask (toxic cloud), a small flying drone (sentry drone), a crosshair (auto aim), a clock with a plus (longer power-ups), a shield with a plus (armour), a coin stack (double coins), a skull (danger mode). 10: a special ADMIN badge, bigger than the others: a gold badge with a crown on top and red wings, a bright gold centre with a red star.
+```

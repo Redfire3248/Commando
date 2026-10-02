@@ -165,7 +165,8 @@ CG.Online = {
     sc.ebullets.children.iterate((x) => { if (x && x.active) b.push([r(x.x), r(x.y), r(x.body.velocity.x), r(x.body.velocity.y)]); });
     sc.ebombs.children.iterate((x) => { if (x && x.active) m.push([r(x.x), r(x.y), r(x.body.velocity.x), r(x.body.velocity.y)]); });
     sc.pickups.children.iterate((x) => { if (x && x.active) k.push([x.netId, x.kind, r(x.x), r(x.y)]); });
-    return { st: sc.cfg.stage, sc: sc.score, lv: sc.teamLives, cx: r(sc.camX), bo: sc.bossOn ? 1 : 0, cl: sc.cleared ? 1 : 0, ov: sc.over ? 1 : 0, e, b, m, k };
+    return { st: sc.cfg.stage, sc: sc.score, lv: sc.teamLives, cx: r(sc.camX), bo: sc.bossOn ? 1 : 0, cl: sc.cleared ? 1 : 0, ov: sc.over ? 1 : 0, e, b, m, k,
+      cb: [...sc.brokenCovers] };
   },
 
   // events from the other players' games
@@ -175,6 +176,9 @@ CG.Online = {
     if (ev.t === 'hit') {
       const e = sc.enemies.getChildren().find((x) => x.active && x.netId === ev.id);
       if (e) e.damage(ev.n || 1);
+    } else if (ev.t === 'cover') {
+      const cv = sc.coverList && sc.coverList[ev.id];
+      if (cv) sc.hitCover(cv, ev.n || 1, true);
     } else if (ev.t === 'die') {
       if (sc.teamLives > 0) sc.teamLives--;
     } else if (ev.t === 'pick') {
@@ -208,7 +212,7 @@ CG.Online = {
     const sc = this.scene, s = this.snap;
     if (!sc || !s) return;
     if (s.st !== sc.cfg.stage) {                       // the host moved on to the next stage
-      sc.scene.restart(Object.assign({}, sc.cfg, { stage: s.st, score: s.sc, teamLives: s.lv }));
+      sc.scene.restart(Object.assign({}, sc.cfg, { stage: s.st, score: s.sc, teamLives: s.lv, coinsEarned: sc.coinsEarned }));
       return;
     }
     sc.score = s.sc;
@@ -216,7 +220,10 @@ CG.Online = {
     sc.netCamX = s.cx;
     if (s.bo && !sc.bossOn) { sc.bossOn = true; sc.say(CG.DATA.level.boss.say, 1800); }
     if (s.cl && !sc.cleared) { sc.cleared = true; sc.say('STAGE CLEAR', 2400); CG.Sfx.play('clear'); }
-    if (s.ov && !sc.over) { sc.over = true; sc.say('GAME OVER', 5000); CG.Sfx.play('over'); sc.time.delayedCall(1400, () => CG.UI.gameOver(sc.score, sc.cfg.stage, { online: true })); }
+    if (s.ov && !sc.over) { sc.over = true; sc.say('GAME OVER', 5000); CG.Sfx.play('over'); sc.time.delayedCall(1400, () => CG.UI.gameOver(sc.score, sc.cfg.stage, { online: true, coins: sc.coinsEarned })); }
+
+    // cover the host says is broken
+    for (const id of s.cb || []) { const cv = sc.coverList[id]; if (cv && !cv.broken) sc.breakCover(cv); }
 
     // enemies: create the new ones, move the rest, blow up the ones that are gone
     const seen = new Set();
