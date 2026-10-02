@@ -324,23 +324,30 @@ ROW 5, desert, volcano and city: low sandstone block; low broken brick wall; low
 ```
 
 ## 12 — Four more agents → `agents2.png` (10 columns × 8 rows, two rows per agent)
-**Attach:** `agents.png` (the first agents sheet, as the style reference).
+**Attach:** `agents.png` (style reference). Rewritten after the first try came back with a painted checkerboard,
+Hammer missing a row and mixed-up first rows: every row is now spelled out cell by cell.
 ```
-Use the attached image as the style reference and match it exactly: the same original 16-bit pixel-art style, the same chunky square pixels with hard edges, the same limited palette, the same dark outlines, the same character size and the same pixel scale. No anti-aliasing, no blur, no gradients, no glow.
+Create a NEW sprite sheet. The attached image is ONLY a style reference: match its 16-bit pixel-art style exactly (chunky square pixels with hard edges, limited palette, dark outlines, the same character size and pixel scale). Do not copy its characters. No anti-aliasing, no blur, no gradients, no glow.
 
-Make a NEW sprite sheet laid out as a grid of 10 columns and 8 rows (two rows for each of four new characters), one sprite centred in each cell, never touching a neighbour. Standing and running poses stand on the same floor line near the bottom of their cells. Every character faces RIGHT in every frame and carries the SAME rifle as in the reference (black steel body, short thick barrel, brown wooden stock, small orange energy cell), with the barrel pointing exactly in the direction named for each frame. The near leg is one shade lighter than the far leg, and the legs are in clearly different positions in every run frame.
+TRANSPARENT BACKGROUND: the PNG must have real transparency (an alpha channel). Do NOT draw a checkerboard pattern, do NOT fill the background with white, grey or any colour, no floor line, no shadows. Only the characters are visible. No grid lines, no borders, no text, no numbers, no labels.
 
-BACKGROUND: transparent PNG (real transparency). No background colour, no white, no grey, no checkerboard pattern, no floor line, no shadows. No grid lines, no borders, no text, no numbers, no labels, no watermark, no muzzle flashes, no bullets.
+GRID: exactly 10 columns and 8 rows, 80 cells, one sprite centred in each cell, never touching a neighbour. All four characters are the same size. Standing and running poses stand on the same floor line near the bottom of their cells. Everyone faces RIGHT and holds the same rifle as in the reference (black steel body, short thick barrel, brown wooden stock, small orange energy cell), pointing exactly where each cell says.
 
-THE FOUR NEW CHARACTERS (each clearly different in shape and colours):
-ROWS 1–2 — GHOST (woman, stealth sniper): slim, a black hooded cloak, a white half-mask over the mouth and nose, red goggles, grey-and-black urban camouflage, black boots.
-ROWS 3–4 — HAMMER (man, demolition expert): the biggest of all, bald with a thick moustache, a yellow hard hat, an orange hazard vest over a grey shirt, brown work trousers, heavy brown boots.
-ROWS 5–6 — VIPER (woman, toxic specialist): pale skin, a black bob haircut with a lime-green streak, a gas mask hanging at the neck, an olive jacket with lime-green trim, black trousers, black boots.
-ROWS 7–8 — ATLAS (man, cyborg soldier): a grey metal robotic left arm, a steel plate over half of his face with a small flat blue eye light, white-and-blue armoured suit, dark grey trousers, steel boots.
+THE CHARACTERS:
+GHOST (woman, stealth sniper): slim, black hooded cloak, white half-mask over mouth and nose, red goggles, grey-and-black urban camouflage, black boots.
+HAMMER (man, demolition expert): the biggest, bald with a thick moustache, yellow hard hat, orange hazard vest over a grey shirt, brown work trousers, heavy brown boots.
+VIPER (woman, toxic specialist): pale skin, black bob haircut with a lime-green streak, gas mask hanging at her neck, olive jacket with lime-green trim, black trousers, black boots.
+ATLAS (man, cyborg soldier): grey metal robotic left arm, steel plate over half his face with a small flat blue eye light, white-and-blue armoured suit, dark grey trousers, steel boots.
 
-THE 20 POSES — every character, in this order, across their two rows:
-FIRST ROW: cells 1 to 6 — RUN with the rifle aimed straight forward, a six-step cycle (legs far apart; near foot under the body, body lowest; standing on the near leg with the far knee raised; far leg far forward; far foot under the body; standing on the far leg with the near knee raised). Cell 7 — STANDING, rifle aimed forward. Cell 8 — STANDING, rifle aimed straight up. Cell 9 — STANDING, rifle aimed diagonally up. Cell 10 — STANDING, rifle aimed diagonally down.
-SECOND ROW: cells 1 to 3 — RUN with the rifle aimed diagonally up. Cells 4 to 6 — RUN with the rifle aimed diagonally down. Cell 7 — PRONE: lying flat on the stomach, rifle aimed forward. Cells 8 and 9 — SOMERSAULT JUMP: a tight ball, head at the top in cell 8 and at the bottom in cell 9. Cell 10 — DEATH: knocked backwards through the air, arms thrown wide.
+EVERY CHARACTER HAS EXACTLY TWO ROWS, ALWAYS IN THIS ORDER:
+"A" ROW (10 cells): 1–6 running with the rifle aimed straight forward (six clearly different leg positions); 7 standing, rifle forward; 8 standing, rifle straight up; 9 standing, rifle diagonally up; 10 standing, rifle diagonally down. No jumping, no lying down, no death in an A row.
+"B" ROW (10 cells): 1–3 running with the rifle aimed diagonally up; 4–6 running with the rifle aimed diagonally down; 7 lying flat on the stomach, rifle forward; 8 curled into a tight ball (head at the top); 9 the same ball turned upside down (head at the bottom); 10 knocked backwards through the air, arms thrown wide (death).
+
+ROW BY ROW:
+Row 1 = GHOST A row. Row 2 = GHOST B row.
+Row 3 = HAMMER A row. Row 4 = HAMMER B row.
+Row 5 = VIPER A row. Row 6 = VIPER B row.
+Row 7 = ATLAS A row. Row 8 = ATLAS B row.
 ```
 
 ## 13 — Power-up badges → `powerups.png` (10 columns × 2 rows)
