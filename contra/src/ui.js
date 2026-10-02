@@ -37,7 +37,8 @@ CG.UI = (() => {
   // the whole agent for the menus: their idle loop (idle.png) when it is in, else the standing frame
   const figure = (id) => {
     const I = CG.DATA.art && CG.DATA.art.idle && CG.DATA.art.idle[id];
-    if (I) return `<div class="idle" data-n="${I.n}" data-loop="${I.loop || I.n}" style="aspect-ratio:${I.fw} / ${I.fh}"><img src="${I.path}" alt="" style="width:${I.n * 100}%"></div>`;
+    // sized by the body (bh): taller emote frames (a grenade in the air) rise above it instead of shrinking the agent
+    if (I) return `<div class="idle" data-n="${I.n}" data-loop="${I.loop || I.n}" style="aspect-ratio:${I.fw} / ${I.fh};--ik:${((I.fh / (I.bh || I.fh))).toFixed(3)}"><img src="${I.path}" alt="" style="width:${I.n * 100}%"></div>`;
     return body(id) ? `<img src="${body(id)}" alt="">` : '';
   };
   // Plays every idle figure on screen: the breathing frames over and over, and every 7-13 s (different for each
@@ -156,6 +157,7 @@ CG.UI = (() => {
   function renderMenu() {
     const net = N(), prof = net.profile, on = net.online;
     $('menu-name').textContent = myName();
+    $('menu-rank').innerHTML = CG.Ranks.icon(CG.Profile.rr(), 20);
     $('menu-coins').textContent = (prof && prof.coins) || 0;
     $('menu-coins').parentElement.classList.toggle('hidden', !on);
     $('menu-best').textContent = Math.max(localBest(), (prof && prof.best) || 0);
@@ -180,12 +182,13 @@ CG.UI = (() => {
     if (p && p.members) {
       Object.keys(p.members).sort((a, b) => (+p.members[a].at || 0) - (+p.members[b].at || 0)).forEach((uid) => {
         const m = p.members[uid], me = uid === net.uid;
-        list.push({ uid, me, name: me ? myName() : m.name, agent: me ? myAgent() : m.agent, leader: uid === p.leader });
+        list.push({ uid, me, name: me ? myName() : m.name, agent: me ? myAgent() : m.agent, leader: uid === p.leader, key: me ? 'me' : 'm:' + uid,
+          rr: me ? CG.Profile.rr() : m.rr || 0, banner: me ? CG.Profile.banner() : m.banner, title: me ? CG.Profile.title() : m.title });
       });
-      (p.bots || []).forEach((agent, i) => list.push({ bot: true, agent, name: 'BOT ' + (i + 1), i }));
+      (p.bots || []).forEach((agent, i) => list.push({ bot: true, agent, name: 'BOT ' + (i + 1), i, key: 'bot:' + i, rr: CG.Ranks.botRR(i + 1, CG.Profile.rr()) }));
     } else {
-      list.push({ me: true, name: myName(), agent: myAgent() });
-      localBots.forEach((agent, i) => list.push({ bot: true, agent, name: 'BOT ' + (i + 1), i }));
+      list.push({ me: true, name: myName(), agent: myAgent(), key: 'me', rr: CG.Profile.rr(), banner: CG.Profile.banner(), title: CG.Profile.title() });
+      localBots.forEach((agent, i) => list.push({ bot: true, agent, name: 'BOT ' + (i + 1), i, key: 'bot:' + i, rr: CG.Ranks.botRR(i + 1, CG.Profile.rr()) }));
     }
     return list;
   }
@@ -205,8 +208,8 @@ CG.UI = (() => {
           <button class="btn small ghost" data-act="squad-bot-cancel">CANCEL</button>`
       : `${net.online && lead ? `<button class="plus" data-act="invite-open" title="Invite a friend">${ico('invite', '＋')}</button><small>INVITE</small>` : ''}
           ${lead ? `<button class="btn small" data-act="squad-bot" data-uid="${col}">+ BOT</button>` : ''}`);
-    const clickFig = (x) => (x.me ? 'data-act="locker" title="Change agent"' : '');
-    const removeBot = (x) => (x.bot && lead ? `<button class="x" data-act="squad-unbot" data-uid="${x.i}" title="Remove bot">✕</button>` : '');
+    const clickFig = (x) => (x.me ? 'data-act="locker" title="Change agent"' : `data-act="member" data-uid="${x.key}" title="Options"`);
+    const removeBot = () => '';
     const crown = (x) => (x.leader && humansIn() > 1 ? ico('crown', '👑 ') : '');
     ['a', 'b', 'c'].forEach((k) => $('menu').classList.toggle('lobby-' + k, lobbyStyle === k));
     let changed = false;
@@ -219,7 +222,7 @@ CG.UI = (() => {
           return `<div class="cslot ${x.me ? 'me' : ''}" style="--c:${a.color}">
             ${x.leader && humansIn() > 1 ? `<span class="crown">${ico('crown', '👑')}</span>` : ''}${removeBot(x)}
             <div class="cs-art" ${clickFig(x)}>${figure(a.id)}</div>
-            <b>${esc(x.name)}</b><small>${x.bot ? ico('bot', '') : ''}${a.name}${x.me ? ' · ' + a.role.toUpperCase() : ''}</small>
+            <b data-act="member" data-uid="${x.key}">${esc(x.name)}</b><small>${CG.Ranks.icon(x.rr, 14)}${x.bot ? ico('bot', '') : ''}${a.name}${x.me ? ' · ' + a.role.toUpperCase() : ''}</small>
             ${x.me ? `<button class="btn small" data-act="locker">${ico('locker')}LOCKER</button>` : ''}
           </div>`;
         }).join('')}</div>`);
@@ -229,7 +232,8 @@ CG.UI = (() => {
         if (!x) return `<div class="fig empty ${botPick === col ? 'picking' : ''}"><div class="slot-in">${emptyInner(col)}</div><div class="pad"></div></div>`;
         const a = CG.AGENT[x.agent] || CG.AGENTS[0];
         return `<div class="fig ${x.me ? 'me' : ''} ${x.bot ? 'bot' : ''}" style="--c:${a.color}">
-          <div class="tag">${crown(x)}<b>${esc(x.name)}</b><small>${x.bot ? ico('bot', '🤖 ') : ''}${a.name}</small>${removeBot(x)}</div>
+          <div class="tag" data-act="member" data-uid="${x.key}" style="${x.banner ? '--bn:' + CG.Cosmetics.bannerCss(x.banner) : ''}">${crown(x)}<b>${esc(x.name)}</b>
+            <small>${CG.Ranks.icon(x.rr, 14)}${x.bot ? ico('bot', '') : ''}${a.name}</small></div>
           <div class="body ${col > mid ? 'flip' : ''}" ${clickFig(x)}>${figure(a.id)}</div>
           ${x.me ? '<div class="pad ring" data-act="locker"><svg viewBox="0 0 100 30" preserveAspectRatio="none"><ellipse cx="50" cy="15" rx="48" ry="13"/></svg></div>' : '<div class="pad"></div>'}
         </div>`;
@@ -241,8 +245,8 @@ CG.UI = (() => {
       const fr = Object.keys(net.friends || {}).filter((f) => net.friends[f].online && !((p && p.members) || {})[f]).slice(0, 4);
       extra = `<div class="roster"><div class="kick">SQUAD · ${list.length} / ${max}</div>
         ${list.map((x) => { const a = CG.AGENT[x.agent] || CG.AGENTS[0];
-          return `<div class="row-m">${x.bot ? ico('bot', '') : crown(x) || '<span class="ico"></span>'}<span class="grow">${esc(x.name)}</span>
-            <span style="color:${a.color}">${a.name}</span>${removeBot(x)}</div>`; }).join('')}
+          return `<button class="row-m" data-act="member" data-uid="${x.key}">${x.bot ? ico('bot', '') : crown(x) || '<span class="ico"></span>'}${CG.Ranks.icon(x.rr, 18)}<span class="grow">${esc(x.name)}</span>
+            <span style="color:${a.color}">${a.name}</span></button>`; }).join('')}
         ${botPick === 99 ? `<div class="slot-in">${emptyInner(99)}</div>` : list.length < max && lead ? `<div class="row-btns">
           ${net.online ? `<button class="btn small" data-act="invite-open">${ico('invite')}INVITE</button>` : ''}
           <button class="btn small" data-act="squad-bot" data-uid="99">+ BOT</button></div>` : ''}
@@ -254,7 +258,7 @@ CG.UI = (() => {
     if (changed) $('menu').style.setProperty('--el', ((Date.now() - shownAt) / 1000).toFixed(3) + 's');
     // the dock: mode, PLAY, FIND PLAYERS
     const humans = humansIn(), queued = !!(p && p.state === 'queue'), tooMany = humans > CG.Modes.capacity(mode);
-    $('mode-name').innerHTML = ico(mode.kind === 'story' ? 'story' : mode.kind === 'duels' ? 'duels' : 'custom') + CG.Modes.label(mode);
+    $('mode-name').innerHTML = ico(CG.Modes.icon(mode)) + CG.Modes.label(mode);
     $('mode-sub').textContent = CG.Modes.sub(mode);
     $('mode-card').disabled = !lead;
     const play = $('play-main');
@@ -313,6 +317,55 @@ CG.UI = (() => {
     if (location.protocol.startsWith('http')) { check(); setInterval(check, 120000); document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); }); }
   })();
 
+  // ---------------------------------------------------------------- a squad member's options, profile cards
+  let clickAt = { x: 0, y: 0 };
+  function memberOf(key) { return squad().find((x) => x.key === key); }
+  function openMember(key) {
+    const x = memberOf(key), net = N(), lead = isLead();
+    if (!x) return;
+    const isFriend = x.uid && net.friends && net.friends[x.uid];
+    const opts = [`<button data-act="profile-open" data-uid="${x.key}">VIEW PROFILE</button>`];
+    if (x.me) opts.push('<button data-act="locker">CHANGE AGENT</button>', '<button data-act="locker-look">CHANGE BANNER / TITLE</button>');
+    if (x.bot && lead) opts.push(`<button class="danger" data-act="squad-unbot" data-uid="${x.i}">REMOVE BOT</button>`);
+    if (x.uid && !x.me && net.online && !isFriend) opts.push(`<button data-act="add-friend" data-uid="${esc(x.uid)}">ADD FRIEND</button>`);
+    if (x.uid && !x.me && lead) opts.push(`<button class="danger" data-act="kick" data-uid="${esc(x.uid)}">KICK FROM SQUAD</button>`);
+    const pop = $('member-pop');
+    pop.innerHTML = `<div class="mp-head" style="--bn:${CG.Cosmetics.bannerCss(x.banner || 'steel')}"><b>${esc(x.name)}</b>${CG.Ranks.chip(x.rr)}</div>${opts.join('')}`;
+    pop.classList.remove('hidden');
+    const w = pop.offsetWidth, h = pop.offsetHeight;
+    pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, clickAt.x - w / 2)) + 'px';
+    pop.style.top = Math.max(8, Math.min(innerHeight - h - 8, clickAt.y + 12)) + 'px';
+  }
+  const closeMember = () => $('member-pop').classList.add('hidden');
+  async function openProfile(key) {
+    closeMember();
+    const x = memberOf(key) || (key === 'me' ? { me: true, key: 'me', name: myName(), agent: myAgent() } : null);
+    if (!x) return;
+    let prof;
+    if (x.me) prof = CG.Profile.get();
+    else if (x.bot) prof = { rr: x.rr, banner: ['steel', 'jungle', 'carbon', 'arctic'][x.i % 4], title: 'recruit', stats: null };
+    else { prof = { rr: x.rr, banner: x.banner, title: x.title }; try { prof = Object.assign(prof, await N().getProfile(x.uid)); } catch (e) { /* card without stats */ } }
+    const a = CG.AGENT[x.agent] || CG.AGENTS[0], r = CG.Ranks.of(prof.rr || 0), st = prof.stats;
+    const stat = (k, v) => `<div class="pf-stat"><b>${v}</b><small>${k}</small></div>`;
+    $('profile-card').innerHTML = `
+      <div class="pf-banner" style="--bn:${CG.Cosmetics.bannerCss(prof.banner || 'steel')}">
+        <div class="pf-fig">${figure(a.id)}</div>
+        <div class="pf-id"><div class="pf-name">${esc(x.name)}${x.bot ? ' <small>BOT</small>' : ''}</div>
+          <div class="pf-title">${esc(CG.Cosmetics.titleName(prof.title))}</div>
+          <div class="pf-rank">${CG.Ranks.icon(r.rr, 46)}<div><b style="color:${r.tier.color}">${r.name}</b>
+            <div class="pf-bar"><i style="width:${r.div ? r.inDiv : 100}%;background:${r.tier.color}"></i></div><small>${r.div ? r.inDiv + ' / 100 RR' : (r.rr - CG.Ranks.LEGEND_AT) + ' RR'}</small></div></div></div>
+      </div>
+      ${st ? `<div class="pf-stats">${stat('MATCHES', st.matches || 0)}${stat('WINS', st.wins || 0)}${stat('KILLS', st.kills || 0)}${stat('HEADSHOTS', st.heads || 0)}${stat('STAGES', st.stages || 0)}${stat('BEST WAVE', st.wave || 0)}</div>`
+        : `<p class="pf-note">${x.bot ? 'A computer player. Its rank sets how well it plays.' : 'No matches yet.'}</p>`}
+      <div class="pf-btns">${x.me ? `<button class="btn" data-act="locker-look">CHANGE BANNER / TITLE</button><button class="btn" data-act="settings">SETTINGS</button>` : ''}
+        <button class="btn primary" data-act="profile-close">CLOSE</button></div>`;
+    $('profile').classList.remove('hidden');
+  }
+  document.addEventListener('pointerdown', (e) => {
+    clickAt = { x: e.clientX, y: e.clientY };
+    if (!e.target.closest('#member-pop') && !e.target.closest('[data-act="member"]')) closeMember();
+  }, true);
+
   // ---------------------------------------------------------------- the mode picker
   function renderModes() {
     const A = CG.DATA.arenas, M = CG.Modes, c = custom;
@@ -328,6 +381,16 @@ CG.UI = (() => {
         <div class="mt-art"></div>
         <div class="mt-body"><b>${ico('duels')}DUELS</b><p>Team against team in an arena. Wipe out the other team to take the round — then everyone is back at full health. First to ${CG.DUEL_KILLS}.</p>
           <div class="mt-sizes">${M.SIZES.map((n) => `<button class="btn ${sel('duel' + n) ? 'primary' : ''}" data-act="mode-pick" data-uid="duel${n}">${n}v${n}</button>`).join('')}</div></div>
+      </div>
+      <div class="mode-tile ffa ${/^ffa/.test(M.key(mode)) ? 'selected' : ''}" style="--bg:url(assets/atlas/bg15_12.png)">
+        <div class="mt-art"></div>
+        <div class="mt-body"><b>${ico('duels')}FREE-FOR-ALL</b><p>Everyone against everyone. Back in after a death. First to ${CG.Modes.FFA_KILLS} kills. Headshots do double.</p>
+          <div class="mt-sizes two">${[4, 6].map((n) => `<button class="btn ${sel('ffa' + n) ? 'primary' : ''}" data-act="mode-pick" data-uid="ffa${n}">${n} PLAYERS</button>`).join('')}</div></div>
+      </div>
+      <div class="mode-tile horde ${sel('horde')}" style="--bg:url(assets/atlas/bg15_11.png)">
+        <div class="mt-art"></div>
+        <div class="mt-body"><b>${ico('story')}HORDE</b><p>Hold the arena together. Waves come from both sides, a giant every fifth wave. How far can your squad get?</p>
+          <button class="btn primary" data-act="mode-pick" data-uid="horde">${sel('horde') ? '✔ SELECTED' : 'SELECT'}</button></div>
       </div>
       <div class="mode-tile custom ${sel('custom')}" style="--bg:url(assets/atlas/bg15_9.png)">
         <div class="mt-art"></div>
@@ -345,7 +408,7 @@ CG.UI = (() => {
       <button class="btn mode-local" data-act="mode-local">${ico('friends')}LOCAL CO-OP · 1–5 players on this device</button>`;
   }
   function pickMode(k) {
-    mode = k === 'custom' ? Object.assign({}, custom) : k === 'squad' ? { kind: 'story' } : CG.Modes.fromKey(k);
+    mode = k === 'custom' ? Object.assign({}, custom) : CG.Modes.fromKey(k);
     store.set(MODE, JSON.stringify(mode));
     $('mode-pop').classList.add('hidden');
     CG.Sfx.play('pickup');
@@ -377,9 +440,9 @@ CG.UI = (() => {
     if (!isLead()) return;
     if (humansIn() > 1) { run(() => net.startMatch(null, mode), '', 'party-msg'); return; }
     // alone: a game on this device with your bots (duels: bots fill both teams)
-    const me = { device: { type: 'any' }, agent: myAgent(), name: myName() };
+    const me = { device: { type: 'any' }, agent: myAgent(), name: myName(), rr: CG.Profile.rr() };
     const bots = (p ? p.bots || [] : localBots).slice();
-    const bot = (agent, i) => ({ device: { type: 'bot' }, agent, name: 'BOT ' + (i + 1), bot: true });
+    const bot = (agent, i) => ({ device: { type: 'bot' }, agent, name: 'BOT ' + (i + 1), bot: true, rr: CG.Ranks.botRR(i + 1, CG.Profile.rr()) });
     if (pvp()) openVersus(CG.Modes.teams(mode, [me], (n) => bot(bots[n] || CG.Modes.botAgent(), n)), home);
     else play([me].concat(bots.map(bot)));
   }
@@ -396,7 +459,7 @@ CG.UI = (() => {
     $('vs-top').innerHTML = ico(mode.kind === 'custom' ? 'custom' : 'duels') + CG.Modes.label(mode) + ' · ' + A.name.replace('ARENA · ', '') + ' · FIRST TO ' + vs.settings.rounds;
     const line = (t) => vs.players.filter((q) => q.team === t).map((q) => {
       const a = CG.AGENT[q.agent] || CG.AGENTS[0];
-      return `<div class="vs-fig ${t ? 'flip' : ''}" style="--c:${a.color}"><div class="body">${figure(a.id)}</div><b>${esc(q.name)}</b><small>${a.name} · ${q.bot ? 'BOT' : 'READY'}</small></div>`;
+      return `<div class="vs-fig ${t ? 'flip' : ''}" style="--c:${a.color}"><div class="body">${figure(a.id)}</div><b>${esc(q.name)}</b><small>${a.name} · ${q.bot ? 'BOT' : 'READY'}</small>${CG.Ranks.chip(q.rr || 0, { px: 18 })}</div>`;
     }).join('');
     $('vs-a').innerHTML = line(0);
     $('vs-b').innerHTML = line(1);
@@ -449,7 +512,8 @@ CG.UI = (() => {
   function play(players, settings) {
     if (!booted) return;
     lastPlayers = players;
-    lastCfg = pvp() ? { players, mode: 'pvp', pvp: settings || CG.Modes.settings(mode) } : { players, mode: 'squad' };
+    lastCfg = pvp() ? { players, mode: 'pvp', pvp: settings || CG.Modes.settings(mode) }
+      : mode.kind === 'horde' ? { players, mode: 'horde', arena: Math.floor(Math.random() * CG.DATA.arenas.length) } : { players, mode: 'squad' };
     startScene(lastCfg);
   }
   function playOnline(cfg) {
@@ -491,8 +555,32 @@ CG.UI = (() => {
     $('over-score').textContent = score;
     $('over-coins').classList.toggle('hidden', !coins || !N().online);
     $('over-coins').querySelector('b').textContent = coins;
-    $('over-best').textContent = admin ? 'Admin panel used: nothing saved' : opts.duel ? 'First to ' + CG.DUEL_KILLS + ' kills' : opts.online ? 'Online match' : score > best ? 'New best!' : 'Best ' + best;
+    $('over-best').textContent = admin ? 'Admin panel used: nothing saved'
+      : opts.kind === 'ffa' ? 'You placed #' + (opts.place || '?') + ' of ' + (opts.fighters || '?')
+        : opts.kind === 'horde' ? 'You reached wave ' + (opts.wave || 0)
+          : opts.duel ? 'Rounds won decide it' : opts.online ? 'Online match' : score > best ? 'New best!' : 'Best ' + best;
     $('over-retry').textContent = opts.duel ? 'REMATCH' : 'TRY AGAIN';
+    // rank: duels and free-for-all by the result, story by stages cleared, horde by waves. Custom games, two or more
+    // people on one device, and admin use do not count.
+    const kind = opts.kind || (opts.duel ? 'duel' : 'story'), before = CG.Profile.rr();
+    const ranked = !admin && kind !== 'custom' && (opts.humans || 1) <= 1;
+    let delta = 0, won = false;
+    if (kind === 'duel') { won = !!opts.won; delta = CG.Ranks.fightDelta(won, before, opts.foesRR); }
+    else if (kind === 'ffa') {
+      const n = opts.fighters || 4, place = opts.place || n;
+      won = place === 1;
+      delta = won ? CG.Ranks.fightDelta(true, before, opts.foesRR) : place <= n / 2 ? 6 : CG.Ranks.fightDelta(false, before, opts.foesRR);
+    } else if (kind === 'story') delta = 4 * Math.max(0, stage - 1);
+    else if (kind === 'horde') delta = 2 * Math.max(0, (opts.wave || 0) - 2);
+    if (!ranked) delta = 0;
+    if (!admin) CG.Profile.record({ rr: delta, won, kills: opts.kills || 0, heads: opts.heads || 0, stages: kind === 'story' ? stage - 1 : 0, wave: kind === 'horde' ? opts.wave || 0 : 0 }).catch(() => {});
+    const after = Math.max(0, before + delta), rb = CG.Ranks.of(before), ra = CG.Ranks.of(after);
+    $('over-rank').classList.toggle('hidden', admin);
+    $('over-rank').innerHTML = ranked
+      ? `${CG.Ranks.chip(after, { rr: true, px: 34 })}<b class="${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '+' : ''}${delta} RR</b>
+         ${ra.idx > rb.idx ? '<div class="promo">RANK UP!</div>' : ra.idx < rb.idx ? '<div class="demo">RANK DOWN</div>' : ''}
+         ${kind === 'horde' ? `<small>Wave ${opts.wave || 0}</small>` : ''}${opts.heads ? `<small>${opts.heads} headshots</small>` : ''}`
+      : `<small>Unranked ${kind === 'custom' ? '(custom game)' : '(more than one player on this device)'}</small>`;
     $('over-retry').classList.toggle('hidden', !lastPlayers);
     CG.Touch.show(false);
     show('over');
@@ -594,7 +682,7 @@ CG.UI = (() => {
     const kb = joined.filter((d) => d.type === 'kbA' || d.type === 'kbB');
     const person = (d, i) => ({ device: { type: kb.length === 1 && kb[0] === d ? 'kbAll' : d.type, index: d.index }, agent: d.agent, name: i === 0 ? myName() : 'P' + (i + 1) });
     const bots = joined.filter((d) => d.type === 'bot');
-    const bot = (n) => ({ device: { type: 'bot' }, agent: (bots[n] && bots[n].agent) || CG.Modes.botAgent(), name: 'BOT ' + (n + 1), bot: true });
+    const bot = (n) => ({ device: { type: 'bot' }, agent: (bots[n] && bots[n].agent) || CG.Modes.botAgent(), name: 'BOT ' + (n + 1), bot: true, rr: CG.Ranks.botRR(n + 1, CG.Profile.rr()) });
     if (pvp()) openVersus(CG.Modes.teams(mode, humans.map(person), bot), () => show('lobby'));
     else play(humans.map(person).concat(bots.map((d, n) => bot(n))));
   }
@@ -617,13 +705,35 @@ CG.UI = (() => {
   function addBot() { if (joined.length < MAX) { botN++; join('bot' + botN, 'bot'); } }
 
   // ---------------------------------------------------------------- the locker: choose your agent once, used in every match
-  let lookAt = 0;
+  let lookAt = 0, lockerTab = 'agents';
+  function setLockerTab(t) {
+    lockerTab = t;
+    document.querySelectorAll('[data-act="locker-tab"]').forEach((b) => b.classList.toggle('on', b.dataset.uid === t));
+    renderLocker();
+  }
+  // banners and titles this account has, with the one in use first
+  function renderLooks() {
+    const kind = lockerTab, list = kind === 'banner' ? CG.Cosmetics.BANNERS : CG.Cosmetics.TITLES;
+    const cur = kind === 'banner' ? CG.Profile.banner() : CG.Profile.title();
+    const ids = Object.keys(list).filter((id) => CG.Cosmetics.has(kind, id));
+    const a = CG.AGENT[myAgent()] || CG.AGENTS[0];
+    $('sel-main').innerHTML = `<div class="look-preview">
+      <div class="pf-banner" style="--bn:${CG.Cosmetics.bannerCss(CG.Profile.banner())}"><div class="pf-fig">${figure(a.id)}</div>
+        <div class="pf-id"><div class="pf-name">${esc(myName())}</div><div class="pf-title">${esc(CG.Cosmetics.titleName(CG.Profile.title()))}</div>
+        <div class="pf-rank">${CG.Ranks.chip(CG.Profile.rr(), { rr: true, px: 30 })}</div></div></div>
+      <p class="sel-note">Banners and titles show on your profile and over your agent on the squad screen. More in the SHOP — some are earned.</p></div>`;
+    $('agent-cards').innerHTML = ids.map((id) => kind === 'banner'
+      ? `<button class="tile look-tile ${id === cur ? 'look' : ''}" data-act="equip-look" data-uid="${id}"><span class="swatch" style="--bn:${CG.Cosmetics.bannerCss(id)}"></span><b>${list[id].name}</b><span class="marks">${id === cur ? '<i style="background:var(--acc)">✔</i>' : ''}</span></button>`
+      : `<button class="tile look-tile title-tile ${id === cur ? 'look' : ''}" data-act="equip-look" data-uid="${id}"><b>${list[id].name}</b><span class="marks">${id === cur ? '<i style="background:var(--acc)">✔</i>' : ''}</span></button>`).join('');
+    $('select-slots').innerHTML = '';
+  }
   function openLocker() {
     lookAt = Math.max(0, CG.AGENTS.findIndex((a) => a.id === myAgent()));
-    renderLocker();
+    setLockerTab('agents');
     show('select');
   }
   function renderLocker() {
+    if (lockerTab !== 'agents') { renderLooks(); return; }
     const looking = CG.AGENTS[lookAt], ab = looking.ability, own = CG.Shop.hasAgent(looking.id), mine = looking.id === myAgent();
     let action;
     if (!own) action = `<button class="btn primary big-btn" data-act="buy-agent" data-uid="${looking.id}" ${coins() < priceOf(looking.id) ? 'disabled' : ''}>🔒 UNLOCK FOR <span class="coin"></span> ${priceOf(looking.id)}</button>
@@ -730,8 +840,16 @@ CG.UI = (() => {
       return;
     }
     $('shop-items').className = 'shop-grid';
-    $('shop-items').innerHTML = CG.Shop.items().filter((it) => it.kind !== 'agent' && (shopTab === 'perks' ? it.kind !== 'cosmetic' : it.kind === 'cosmetic')).map((it) => {
+    const cosmetic = (k) => ['cosmetic', 'banner', 'title'].includes(k);
+    $('shop-items').innerHTML = CG.Shop.items().filter((it) => it.kind !== 'agent' && (shopTab === 'perks' ? !cosmetic(it.kind) : cosmetic(it.kind))).map((it) => {
       const own = CG.Shop.owned(it.id);
+      if (it.kind === 'banner' || it.kind === 'title') {
+        return `<div class="shop-item look-item ${own ? 'owned' : ''}" style="--c:#c878ff">
+          ${it.kind === 'banner' ? `<div class="swatch big" style="--bn:${CG.Cosmetics.bannerCss(it.look)}"></div>` : `<div class="title-preview">${esc(CG.Cosmetics.titleName(it.look))}</div>`}
+          <div class="top"><div><b>${esc(it.name)}</b><div class="kind">${it.kind}</div></div></div>
+          ${own ? '<div class="owned-tag">✔ OWNED · equip in the LOCKER</div>' : `<div class="row"><span class="price"><span class="coin"></span>${it.price}</span>
+            <button class="btn small primary" data-act="buy" data-uid="${esc(it.id)}" ${c < it.price ? 'disabled' : ''}>BUY</button></div>`}</div>`;
+      }
       return `<div class="shop-item ${own ? 'owned' : ''}" style="--c:${it.kind === 'cosmetic' ? '#c878ff' : '#ff9a3c'}">
         <div class="top"><div class="icon">${esc(it.icon || '★')}</div><div><b>${esc(it.name)}</b><div class="kind">${esc(it.kind || 'perk')}</div></div></div>
         <p>${esc(it.desc || '')}</p>
@@ -802,10 +920,19 @@ CG.UI = (() => {
     'squad-bot': (col) => { botPick = +col; renderStage(); },
     'squad-bot-as': (id) => addSquadBot(id),
     'squad-bot-cancel': () => { botPick = -1; renderStage(); },
-    'squad-unbot': removeSquadBot,
+    'squad-unbot': (i) => { closeMember(); removeSquadBot(i); },
     'mode-open': () => { renderModes(); $('mode-pop').classList.remove('hidden'); },
     'mode-close': () => $('mode-pop').classList.add('hidden'),
     'mode-pick': pickMode,
+    member: (key) => openMember(key),
+    'profile-open': (key) => openProfile(key),
+    'profile-me': () => openProfile('me'),
+    'profile-close': () => $('profile').classList.add('hidden'),
+    'locker-look': () => { closeMember(); $('profile').classList.add('hidden'); openLocker(); setLockerTab('banner'); },
+    'locker-tab': (t) => setLockerTab(t),
+    'equip-look': (id) => run(() => CG.Profile.setLook(lockerTab, id).then(() => { CG.Sfx.play('pickup'); renderLocker(); }), ''),
+    'add-friend': (uid) => { closeMember(); run(() => N().sendRequest(memberOf('m:' + uid) ? memberOf('m:' + uid).name : uid), 'Friend request sent'); },
+    kick: (uid) => { closeMember(); run(() => N().kick(uid), 'Kicked from the squad'); },
     'mode-local': () => { $('mode-pop').classList.add('hidden'); openLobby(); },
     'notice-ok': () => notices.ok(),
     'lobby-style': (v) => { lobbyStyle = v; store.set(LOBBY, v); renderSettings(); },

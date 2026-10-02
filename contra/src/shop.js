@@ -38,7 +38,7 @@ CG.Shop = {
   // the list: the database's (when the admin has saved one) over the built-in one; agents are always there
   source() {
     const src = this.db && Object.keys(this.db).length ? this.db : this.DEFAULTS;
-    return Object.assign({}, this.AGENT_ITEMS, src);
+    return Object.assign({}, this.AGENT_ITEMS, CG.Cosmetics.shopItems(), src);
   },
   items() { return this.allItems().filter((it) => it.off !== true); },
   allItems() {

@@ -155,9 +155,13 @@
       // DUELS / CUSTOM: two teams against each other in an arena, in rounds (see CG.Modes)
       this.pvp = this.cfg.mode === 'duel' || this.cfg.mode === 'pvp';
       this.pvpSet = Object.assign({ arena: null, rounds: CG.DUEL_KILLS, drops: true }, this.cfg.pvp || {});
-      const all = this.pvp ? CG.DATA.arenas : CG.DATA.levels;
-      const L = CG.DATA.level = this.pvp && all[this.pvpSet.arena] ? all[this.pvpSet.arena]
+      this.ffa = this.pvp && !!this.pvpSet.ffa;                               // free-for-all: everyone their own team
+      this.horde = this.cfg.mode === 'horde';                                  // co-op waves in an arena
+      const all = this.pvp || this.horde ? CG.DATA.arenas : CG.DATA.levels;
+      const pickArena = this.pvp ? this.pvpSet.arena : this.horde ? this.cfg.arena : null;
+      const L = CG.DATA.level = (this.pvp || this.horde) && all[pickArena] ? all[pickArena]
         : all[(this.cfg.stage - 1) % all.length];                             // stages repeat, harder each time
+      this.myKills = 0; this.heads = 0; this.wave = 0; this.waveT = 2500; this.waveQueue = []; this.waveSpawnT = 0;
       this.diff = this.cfg.stage - 1;
       // more players = a harder stage: tougher, faster-firing soldiers, extra soldiers, quicker boss reinforcements
       this.crowd = Math.max(0, (this.cfg.players || []).length - 1);
@@ -185,17 +189,20 @@
       this.pickups = this.physics.add.group();
 
       const gy = L.groundRow * T;
-      this.players = this.cfg.players.map((cp, i) => new CG.Player(this, i, this.pvp ? this.teamSpawn(i) : 2.5 * T + i * 70, gy, cp));
+      this.players = this.cfg.players.map((cp, i) => new CG.Player(this, i, this.pvp ? (this.ffa ? this.ffaSlotX(i) : this.teamSpawn(i)) : 2.5 * T + i * 70, gy, cp));
       if (this.pvp) {
         // nametags in the team's colour; team scores, the round, who is down this round
         this.players.forEach((p, i) => {
-          p.team = this.teamOf(i); p.facing = p.team ? -1 : 1;
-          p.color = CG.Modes.TEAMS[p.team].color; p.tag.setColor(p.color);
+          p.team = this.teamOf(i); p.facing = (this.ffa ? p.body.center.x > CG.DATA.level.w * T / 2 : p.team) ? -1 : 1;
+          if (!this.ffa) { p.color = CG.Modes.TEAMS[p.team].color; p.tag.setColor(p.color); }
+          // fighters' ranks over their heads
+          if (p.rr || p.bot) p.tag.setText(p.name + '  ·  ' + CG.Ranks.of(p.rr).name);
         });
-        this.kills = [0, 0]; this.round = 1; this.down = new Set(); this.roundEnd = false;
+        this.kills = this.ffa ? this.players.map(() => 0) : [0, 0]; this.round = 1; this.down = new Set(); this.roundEnd = false;
         this.bossOn = true;                     // nothing to scroll to
         this.dropT = 6000;
       }
+      if (this.horde) { this.bossOn = true; this.dropT = 9000; }
       // one pool of lives for the whole team: 3 for one player, 2 more for each extra player
       this.teamLives = this.cfg.teamLives !== null && this.cfg.teamLives !== undefined ? this.cfg.teamLives : C.lives + 2 * (this.players.length - 1);
       this.adminUsed = !!this.cfg.adminUsed;
@@ -269,11 +276,12 @@
       this.scoreText = this.add.text(W - 40, 46, '', ts(38, '#ffffff')).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100).setShadow(0, 2, '#000', 6);
       this.stageText = this.add.text(W - 40, 84, 'STAGE ' + (((this.cfg.stage - 1) % CG.DATA.levels.length) + 1) + '/' + CG.DATA.levels.length + ' · ' + L.name, ts(20, '#ffd39a')).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100);
       if (this.pvp) { this.scoreText.setVisible(false); this.stageText.setVisible(false); }   // the duel scoreboard instead
+      if (this.horde) this.stageText.setText('HORDE  ·  ' + L.name.replace('ARENA · ', ''));
       this.banner = this.add.text(W / 2, H * 0.36, '', ts(88, '#ff9a3c')).setOrigin(0.5).setScrollFactor(0).setDepth(100).setAlpha(0).setShadow(0, 5, '#000', 14);
       // the stage card: STAGE 3 · WATERFALL and its briefing (story), or the arena's name
       const lap = Math.floor((this.cfg.stage - 1) / CG.DATA.levels.length);
-      this.say(this.pvp ? L.name : 'STAGE ' + (((this.cfg.stage - 1) % CG.DATA.levels.length) + 1) + ' · ' + L.name, 2200);
-      if (!this.pvp && (L.brief || lap)) {
+      this.say(this.pvp || this.horde ? (this.horde ? 'HORDE' : L.name) : 'STAGE ' + (((this.cfg.stage - 1) % CG.DATA.levels.length) + 1) + ' · ' + L.name, 2200);
+      if (!this.pvp && !this.horde && (L.brief || lap)) {
         const brief = this.add.text(W / 2, H * 0.36 + 80, (lap && (this.cfg.stage - 1) % CG.DATA.levels.length === 0 ? 'MISSION COMPLETE — THEY CAME BACK STRONGER. ' : '') + (L.brief || ''),
           ts(30, '#ffe7c2')).setOrigin(0.5).setScrollFactor(0).setDepth(100).setShadow(0, 3, '#000', 8);
         this.tweens.add({ targets: brief, alpha: 0, delay: 2600, duration: 600, onComplete: () => brief.destroy() });
@@ -324,7 +332,7 @@
 
     // ---------------------------------------------------------------- duels: two teams, rounds
     // which team a player is on (cfg.players[i].team; old 1v1 configs alternate)
-    teamOf(i) { const t = this.cfg.players[i] && this.cfg.players[i].team; return t === 0 || t === 1 ? t : i % 2; }
+    teamOf(i) { const t = this.cfg.players[i] && this.cfg.players[i].team; return typeof t === 'number' ? t : i % 2; }
     // where a player starts each round: their team's side, teammates a little further in
     teamSpawn(i) {
       const cols = CG.DATA.level.spawnCols || [2, 27], team = this.teamOf(i);
@@ -332,11 +340,34 @@
       return (cols[team] + (team ? -1 : 1) * k * 1.6 + 0.5) * CG.CONFIG.TILE;
     }
     isFoe(a, b) { return this.pvp && !!a && !!b && a !== b && a.team !== b.team; }
+    // free-for-all: start spread evenly across the arena; come back in at the spot furthest from everyone else
+    ffaSlotX(i) {
+      const L = CG.DATA.level, n = Math.max(2, this.cfg.players.length);
+      return (2 + Math.round(i * (L.w - 5) / (n - 1)) + 0.5) * CG.CONFIG.TILE;
+    }
+    ffaSpawnX(p) {
+      let best = this.ffaSlotX(0), bd = -1;
+      for (let i = 0; i < 6; i++) {
+        const x = this.ffaSlotX(i % this.players.length) + (i >= this.players.length ? 200 : 0);
+        const d = Math.min(...this.players.filter((q) => q !== p && q.alive).map((q) => Math.abs(q.body.center.x - x)), 9999);
+        if (d > bd) { bd = d; best = x; }
+      }
+      return best;
+    }
     // one person each side: show their names instead of the team names
-    get solo() { return this.players.filter((q) => q.team === 0).length === 1 && this.players.filter((q) => q.team === 1).length === 1; }
-    teamName(t) { return this.solo ? (this.players.find((q) => q.team === t) || {}).name || '?' : CG.Modes.TEAMS[t].name; }
+    get solo() { return this.ffa || (this.players.filter((q) => q.team === 0).length === 1 && this.players.filter((q) => q.team === 1).length === 1); }
+    teamName(t) { if (this.ffa) return (this.players[t] || {}).name || '?'; return this.solo ? (this.players.find((q) => q.team === t) || {}).name || '?' : CG.Modes.TEAMS[t].name; }
     buildDuelHud() {
       const { W } = CG.CONFIG, TM = CG.Modes.TEAMS, fixed = (o) => o.setScrollFactor(0).setDepth(102);
+      if (this.ffa) {                                    // free-for-all: the top three and your own score
+        const plate = fixed(this.add.graphics());
+        plate.fillStyle(0x05080a, 0.62).fillRoundedRect(W / 2 - 330, 18, 660, 132, 14);
+        this.ffaTitle = fixed(this.add.text(W / 2, 40, 'FREE-FOR-ALL  ·  FIRST TO ' + this.pvpSet.rounds, ts(22, '#ffd39a')).setOrigin(0.5));
+        this.ffaRows = [0, 1, 2].map((i) => fixed(this.add.text(W / 2, 74 + i * 28, '', ts(24, '#ffffff')).setOrigin(0.5).setShadow(0, 2, '#000', 6)));
+        this.feed = [];
+        this.livesText.setVisible(false); this.livesIcon.setVisible(false); this.teamLabel.setVisible(false); this.coinText.setVisible(false); this.coinIcon.setVisible(false);
+        return;
+      }
       const plate = fixed(this.add.graphics());
       plate.fillStyle(0x05080a, 0.62).fillRoundedRect(W / 2 - 380, 18, 760, 112, 14);
       plate.fillStyle(parseInt(TM[0].color.slice(1), 16), 0.9).fillRect(W / 2 - 380, 18, 10, 112);
@@ -353,6 +384,15 @@
       this.livesText.setVisible(false); this.livesIcon.setVisible(false); this.teamLabel.setVisible(false); this.coinText.setVisible(false); this.coinIcon.setVisible(false);
     }
     updateDuelHud() {
+      if (this.ffa) {
+        const order = this.players.map((q, i) => ({ q, k: this.kills[i] || 0 })).sort((a, b) => b.k - a.k);
+        const me = this.players.find((q) => !q.bot && !q.remote);
+        order.slice(0, 3).forEach((o, i) => {
+          const t = (i + 1) + '.  ' + o.q.name + '   ' + o.k;
+          if (this.ffaRows[i].text !== t) this.ffaRows[i].setText(t).setColor(o.q === me ? '#ffd23c' : o.q.color);
+        });
+        return;
+      }
       const dots = (t) => this.players.filter((q) => q.team === t).map((q) => (q.alive ? '●' : '○')).join(' ');
       this.duelA.setText(this.kills[0] || 0); this.duelB.setText(this.kills[1] || 0);
       this.duelDotsA.setText(dots(0)); this.duelDotsB.setText(dots(1));
@@ -377,6 +417,18 @@
     }
     // a whole team down = the other team scores the round
     downed(victimId, killerId) {
+      if (this.ffa) {                                    // free-for-all: a kill is a point, first to the target wins
+        if (this.over) return;
+        const v = this.players.find((q) => q.netId === victimId), k = killerId && this.players.find((q) => q.netId === killerId);
+        const msg = (k ? k.name : 'THE ARENA') + '  ✕  ' + (v ? v.name : '?');
+        this.feedLine(msg);
+        if (this.net) this.net.shout('feed', { msg });
+        if (!k || k === v) return;
+        this.kills[k.team] = (this.kills[k.team] || 0) + 1;
+        if (!k.bot && !k.remote) this.myKills++;
+        if (this.kills[k.team] >= this.pvpSet.rounds) { this.duelWinner = k.team; this.duelOver(k.team); }
+        return;
+      }
       if (this.over || this.roundEnd || this.down.has(victimId)) return;
       this.down.add(victimId);
       const v = this.players.find((q) => q.netId === victimId), k = killerId && this.players.find((q) => q.netId === killerId);
@@ -417,7 +469,7 @@
       CG.Sfx.play('clear');
       const me = this.players.find((q) => !q.bot && !q.remote);
       const won = !!(me && me.team === t);
-      this.time.delayedCall(2200, () => CG.UI.gameOver(0, 1, { duel: true, winner: name, won, online: !!this.net, admin: this.adminUsed, coins: won ? 25 : 5 }));
+      this.time.delayedCall(2200, () => CG.UI.gameOver(0, 1, Object.assign(this.resultOpts(), { duel: true, winner: name, won, online: !!this.net, admin: this.adminUsed, coins: won ? 25 : 5 })));
     }
     // damage another player: a teammate's game decides for its own player online
     damagePlayer(victim, n, by) {
@@ -538,6 +590,15 @@
           for (let r = L.groundRow + 1; r < L.h; r++) tile(c * T, r * T, variant('g_in', (c + r) % 2));
         }
       });
+      // parkour rock: a solid cliff from its top row down to the ground, grass (or plating, or snow) on top
+      (L.blocks || []).forEach(([c, r, w]) => {
+        zone(this.solids, c * T, r * T, w * T, gy - r * T);
+        for (let i = 0; i < w; i++) {
+          const edge = i === 0 && has(k('g_left')) ? k('g_left') : i === w - 1 && has(k('g_right')) ? k('g_right') : variant('g_top', (c + i) % 3);
+          tile((c + i) * T, r * T, edge);
+          for (let rr = r + 1; rr < L.groundRow; rr++) tile((c + i) * T, rr * T, variant('g_in', (c + i + rr) % 2));
+        }
+      });
       // cover: solid, stops every bullet, can be stood on. Painted cover (cover50.png) replaces the pixel boxes by key.
       this.covers = this.physics.add.staticGroup();
       this.coverList = [];
@@ -583,7 +644,7 @@
     isSurface(px, py) {
       const T = CG.CONFIG.TILE, L = CG.DATA.level, col = Math.floor(px / T), row = Math.floor(py / T);
       if (row >= L.groundRow && CG.Level.groundAt(col)) return true;
-      return L.ledges.some(([c, r, w]) => r === row && col >= c && col < c + w);
+      return L.ledges.some(([c, r, w]) => r === row && col >= c && col < c + w) || (L.blocks || []).some(([c, r, w]) => r === row && col >= c && col < c + w);
     }
 
     setupColliders() {
@@ -638,7 +699,11 @@
         this.sparks.explode(4, bul.x, bul.y);
         if (bul.pierce > 0) { bul.pierce--; bul.hitSet = bul.hitSet || new Set(); if (bul.hitSet.has(e)) return; bul.hitSet.add(e); } else this.kill(bul);
         if (bul.ghost) return;
-        e.damage(bul.dmg || 1);
+        // a headshot (top quarter of a soldier) does double damage
+        const head = !e.T.boss && !e.T.fixed && bul.y < e.body.top + e.body.height * 0.25;
+        e.lastHitBy = bul.shooter;
+        e.damage((bul.dmg || 1) * (head ? 2 : 1));
+        if (head && bul.shooter && !bul.shooter.bot && !bul.shooter.remote) { this.heads++; if (!e.active) this.popText(e.x, e.y - e.displayHeight, 'HEADSHOT', '#ffd23c'); }
         if (bul.ice && e.active && !e.T.boss) e.stunT = Math.max(e.stunT || 0, 450);
         if (bul.fire && e.active) {                      // fire rounds: it keeps burning for a moment
           for (const ms of [500, 1000]) this.time.delayedCall(ms, () => { if (e.active) { this.sparks.explode(3, e.body.center.x, e.body.top); e.damage(1); } });
@@ -668,7 +733,9 @@
           return;
         }
         victim.lastHitBy = bul.shooter;
-        victim.hit(bul.dmg || 1);
+        // a headshot (top 28% of the body) does double damage — aim matters
+        const head = bul.y < victim.body.top + victim.body.height * 0.28;
+        if (victim.hit((bul.dmg || 1) * (head ? 2 : 1)) && head) this.popText(victim.body.center.x, victim.body.top - 20, 'HEADSHOT', '#ffd23c');
       });
       ph.add.overlap(bodies, this.ebullets, (a, b) => {
         const [z, bul] = pick(a, b, (o) => !!o.owner);
@@ -811,8 +878,51 @@
     }
 
     // ---------------------------------------------------------------- enemies, power-ups, boss
+    // ---------------------------------------------------------------- Horde
+    updateHorde(delta) {
+      const { TILE: T } = CG.CONFIG, L = CG.DATA.level, gy = L.groundRow * T, Wd = L.w * T;
+      const alive = this.enemies.getChildren().some((e) => e.active);
+      if (!this.waveQueue.length && !alive) {
+        this.waveT -= delta;
+        if (this.waveT <= 0) this.startWave();
+        return;
+      }
+      this.waveSpawnT -= delta;
+      if (this.waveQueue.length && this.waveSpawnT <= 0) {
+        this.waveSpawnT = Math.max(260, 950 - 45 * this.wave);
+        const t = this.waveQueue.shift(), left = Math.random() < 0.5;
+        const x = t === 'giant' ? Wd / 2 : left ? Phaser.Math.Between(40, 260) : Wd - Phaser.Math.Between(40, 260);
+        const e = this.spawnEnemy(t, x, t === 'drone' ? 4.5 * T : gy);
+        if (e && t === 'runner') e.dir = left ? 1 : -1;
+      }
+    }
+    startWave() {
+      const T = CG.CONFIG.TILE, L = CG.DATA.level;
+      this.wave++;
+      this.waveT = 3500;
+      const n = this.wave, count = 4 + 2 * n + 2 * (this.crowd || 0), q = [];
+      for (let i = 0; i < count; i++) {
+        const r = Math.random();
+        q.push(n >= 4 && r < 0.18 ? 'drone' : n >= 3 && r < 0.36 ? 'grenadier' : n >= 2 && r < 0.6 ? 'rifle' : 'runner');
+      }
+      if (n % 5 === 0) q.push('giant');
+      this.waveQueue = q;
+      this.say('WAVE ' + n, 1400);
+      this.stageText.setText('HORDE  ·  WAVE ' + n);
+      CG.Sfx.play('start');
+      // a breather: everyone gets a heart back, sometimes a power-up falls
+      for (const p of this.players) if (p.alive && !p.remote) p.heal(1);
+      if (n > 1) this.dropPickup(Phaser.Math.Between(8, L.w - 8) * T, 40, ['heal', 'rapid', 'spread', 'pierce', 'blast', 'barrier'][n % 6]);
+      this.score += 500 * (n - 1);
+    }
+    // a short word that floats up and fades (HEADSHOT, +1 ...)
+    popText(x, y, msg, col) {
+      const t = this.add.text(x, y, msg, ts(22, col || '#ffffff')).setOrigin(0.5).setDepth(40).setShadow(0, 2, '#000', 5);
+      this.tweens.add({ targets: t, y: y - 50, alpha: 0, duration: 800, onComplete: () => t.destroy() });
+    }
     killEnemy(e) {
       const c = e.body.center, S = CG.CONFIG.SCORE;
+      if (e.lastHitBy && !e.lastHitBy.bot && !e.lastHitBy.remote) this.myKills++;
       this.score += S[e.type] || 0;
       this.boom(c.x, c.y, e.T.boss ? 40 : 18);
       CG.Sfx.play(e.T.boss ? 'bigboom' : 'boom');
@@ -927,7 +1037,19 @@
       this.over = true;
       this.say('GAME OVER', 5000);
       CG.Sfx.play('over');
-      this.time.delayedCall(1400, () => CG.UI.gameOver(this.score, this.cfg.stage, { admin: this.adminUsed, online: !!this.net, coins: this.coinsEarned }));
+      this.time.delayedCall(1400, () => CG.UI.gameOver(this.score, this.cfg.stage, Object.assign(this.resultOpts(), { admin: this.adminUsed, online: !!this.net, coins: this.coinsEarned })));
+    }
+    // what the end screen needs for the rank: the kind of match, kills, headshots, the wave, the foes' rating
+    resultOpts() {
+      const me = this.players.find((q) => !q.bot && !q.remote);
+      const foes = this.players.filter((q) => me && this.isFoe(me, q));
+      const place = this.ffa && me ? 1 + this.players.filter((q) => (this.kills[q.team] || 0) > (this.kills[me.team] || 0)).length : 0;
+      return {
+        kind: this.horde ? 'horde' : this.ffa ? 'ffa' : this.pvp ? (this.pvpSet.custom ? 'custom' : 'duel') : 'story',
+        kills: this.myKills, heads: this.heads, wave: this.wave, place, fighters: this.players.length,
+        foesRR: foes.length ? foes.reduce((a, q) => a + (q.rr || 0), 0) / foes.length : null,
+        humans: this.players.filter((q) => !q.bot && !q.remote).length,
+      };
     }
 
     // ---------------------------------------------------------------- abilities and their effects
@@ -1290,9 +1412,10 @@
       this.grenades.children.iterate((g) => { if (g && g.active && (g.y > H + 60 || g.x > this.camX + W + 200)) this.kill(g); });
       if (!this.isClient) this.pickups.children.iterate((k) => { if (k && k.active && (k.x < this.camX - 100 || k.y > H + 100)) k.destroy(); });
 
+      if (this.horde && !this.isClient && !this.over) this.updateHorde(delta);
       // boss fight: camera locked at the fortress, soldiers keep arriving from behind
-      if (!this.isClient && !this.bossOn && this.camX >= this.bossCamX - 4) { this.bossOn = true; this.say(CG.DATA.level.boss.say, 1800); }
-      if (this.bossOn && !this.cleared && !this.isClient) {
+      if (!this.isClient && !this.bossOn && !this.horde && this.camX >= this.bossCamX - 4) { this.bossOn = true; this.say(CG.DATA.level.boss.say, 1800); }
+      if (this.bossOn && !this.cleared && !this.isClient && !this.horde && !this.pvp) {
         this.bossT -= delta;
         if (this.bossT <= 0) {
           this.bossT = Math.max(1100, (3800 - 350 * this.diff) / (1 + 0.25 * this.crowd));

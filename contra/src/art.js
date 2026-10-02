@@ -1,6 +1,6 @@
 // All of COMMANDO's art, drawn in code as pixel art: each sprite is painted on a tiny canvas and
 // scaled up with hard edges. No image files are needed for the game to run.
-CG.PLAYER_COLORS = ['#4d8dff', '#ff4d4d', '#45d862', '#ffd23c', '#c878ff'];
+CG.PLAYER_COLORS = ['#4d8dff', '#ff4d4d', '#45d862', '#ffd23c', '#c878ff', '#4fe0d0'];
 
 CG.Art = (() => {
   const S = 3;                                   // screen pixels per art pixel for characters

@@ -274,7 +274,10 @@ CG.Net = {
   get isLeader() { return !!(this.party && this.party.leader === this.uid); },
   partySize(p) { p = p || this.party; return p ? Object.keys(p.members || {}).length + (p.bots || []).length : 0; },
 
-  me() { return { name: this.profile.username || this.profile.name, agent: CG.UI.myAgent(), at: firebase.database.ServerValue.TIMESTAMP }; },
+  me() {
+    const p = this.profile;
+    return { name: p.username || p.name, agent: CG.UI.myAgent(), rr: p.rr || 0, banner: p.banner || 'steel', title: p.title || 'recruit', at: firebase.database.ServerValue.TIMESTAMP };
+  },
 
   async createParty() {
     if (this.partyId) return this.partyId;
@@ -350,6 +353,28 @@ CG.Net = {
     this.dropParty();
   },
 
+  // ---------------------------------------------------------------- rank, stats, profile look
+  // a finished match: `apply` adds the RR change and the stats to the profile (one transaction)
+  async recordResult(apply) {
+    if (!this.online) return;
+    const res = await this.db.ref('users/' + this.uid).transaction((u) => (u ? apply(u) : u));
+    const u = res.snapshot && res.snapshot.val();
+    if (u) { this.profile.rr = u.rr; this.profile.stats = u.stats; }
+    if (this.partyId && u) this.db.ref('parties/' + this.partyId + '/members/' + this.uid + '/rr').set(u.rr || 0).catch(() => {});
+  },
+  async setLook(kind, id) {
+    if (!this.online) return;
+    await this.db.ref('users/' + this.uid + '/' + kind).set(id);
+    this.profile[kind] = id;
+    if (this.partyId) this.db.ref('parties/' + this.partyId + '/members/' + this.uid + '/' + kind).set(id).catch(() => {});
+  },
+  // someone else's profile card (rank, look, stats)
+  async getProfile(uid) { return (await this.db.ref('users/' + uid).get()).val() || {}; },
+  kick(uid) {
+    if (!this.partyId || !this.isLeader || uid === this.uid) return Promise.resolve();
+    return this.db.ref('parties/' + this.partyId + '/members/' + uid).remove();
+  },
+
   setAgent(id) {
     if (this.partyId) this.db.ref('parties/' + this.partyId + '/members/' + this.uid + '/agent').set(id).catch(() => {});
   },
@@ -370,15 +395,16 @@ CG.Net = {
       const p = pid === this.partyId ? this.party : (await this.db.ref('parties/' + pid).get()).val();
       if (!p) continue;
       Object.keys(p.members || {}).sort((a, b) => (p.members[a].at || 0) - (p.members[b].at || 0)).forEach((uid) => {
-        players.push({ id: uid, owner: uid, name: p.members[uid].name, agent: p.members[uid].agent || 'razor' });
+        players.push({ id: uid, owner: uid, name: p.members[uid].name, agent: p.members[uid].agent || 'razor', rr: p.members[uid].rr || 0 });
       });
-      if (!pvp) (p.bots || []).forEach((agent) => { botN++; players.push({ id: 'bot' + botN, owner: this.uid, name: 'BOT ' + botN, agent, bot: true }); });
+      if (!pvp) (p.bots || []).forEach((agent) => { botN++; players.push({ id: 'bot' + botN, owner: this.uid, name: 'BOT ' + botN, agent, bot: true, rr: CG.Ranks.botRR(botN, CG.Profile.rr()) }); });
     }
     // duels: the people split into two teams, bots fill the empty places (the host runs the bots)
-    if (pvp) players = CG.Modes.teams(mode, players, () => { botN++; return { id: 'bot' + botN, owner: this.uid, name: 'BOT ' + botN, agent: CG.Modes.botAgent(), bot: true }; });
+    if (pvp) players = CG.Modes.teams(mode, players, () => { botN++; return { id: 'bot' + botN, owner: this.uid, name: 'BOT ' + botN, agent: CG.Modes.botAgent(), bot: true, rr: CG.Ranks.botRR(botN, CG.Profile.rr()) }; });
     else players = players.slice(0, this.MAX);
     const ref = this.db.ref('matches').push();
-    await ref.child('info').set({ host: this.uid, mode: pvp ? 'pvp' : 'squad', pvp: pvp ? CG.Modes.settings(mode) : null, players, parties: pids, at: firebase.database.ServerValue.TIMESTAMP });
+    await ref.child('info').set({ host: this.uid, mode: pvp ? 'pvp' : mode.kind === 'horde' ? 'horde' : 'squad', pvp: pvp ? CG.Modes.settings(mode) : null,
+      arena: Math.floor(Math.random() * CG.DATA.arenas.length), players, parties: pids, at: firebase.database.ServerValue.TIMESTAMP });
     const up = {};
     pids.forEach((pid) => { up['parties/' + pid + '/state'] = 'match'; up['parties/' + pid + '/match'] = ref.key; up['queue/' + pid] = null; });
     await this.db.ref().update(up);
@@ -405,7 +431,7 @@ CG.Queue = {
     const N = CG.Net;
     mode = mode || 'squad';
     if (!N.isLeader) throw new Error('Only the party leader can queue');
-    if (/^duel/.test(mode) && N.partySize() !== 1) throw new Error('Leave the squad (or remove its bots) to find a duel');
+    if (/^(duel|ffa)/.test(mode) && N.partySize() !== 1) throw new Error('Leave the squad (or remove its bots) to find a match');
     this.mode = mode;
     await N.db.ref('queue/' + N.partyId).set({ size: N.partySize(), leader: N.uid, mode, at: firebase.database.ServerValue.TIMESTAMP });
     await N.db.ref('parties/' + N.partyId).update({ state: 'queue', queueMode: mode });
@@ -427,7 +453,7 @@ CG.Queue = {
     const myMode = q[mine].mode || 'squad';
     const order = Object.keys(q).filter((pid) => (q[pid].mode || 'squad') === myMode).sort((a, b) => (q[a].at || 0) - (q[b].at || 0));
     if (order[0] !== mine) return;                   // an older party gathers the team
-    if (/^duel/.test(myMode)) {                      // the two longest-waiting duellists fight (bots fill bigger teams)
+    if (/^(duel|ffa)/.test(myMode)) {                // the two longest-waiting players fight (bots fill the rest)
       if (order.length < 2) return;
       this.busy = true;
       try { await N.startMatch(order.slice(0, 2), CG.Modes.fromKey(myMode)); } finally { this.busy = false; this.stop(); }

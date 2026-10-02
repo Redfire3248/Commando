@@ -14,6 +14,9 @@
       this.bot = !!opts.bot;
       this.remote = !!(opts.device && opts.device.type === 'remote');    // moved by another player's game (online)
       this.netId = opts.id || 'p' + idx;
+      // rank rating (bots: how well they play)
+      this.rr = opts.rr || 0;
+      this.skill = CG.Ranks.skill(this.rr);
       this.owner = opts.owner || null;
       this.shots = 0;
       this.color = CG.PLAYER_COLORS[idx % CG.PLAYER_COLORS.length];
@@ -292,6 +295,7 @@
       sc.tweens.add({ targets: v, alpha: 0, delay: 650, duration: 350 });
       if (sc.pvp) {                                       // a duel: down until the round ends (see GameScene.downed)
         sc.pvpDeath(this);
+        if (sc.ffa) sc.time.delayedCall(1500, () => { if (!sc.over) this.respawn(); });   // free-for-all: straight back in
         return;
       }
       const respawn = sc.teamLives > 0;
@@ -308,7 +312,7 @@
 
     respawn() {
       const sc = this.scene, T = CG.CONFIG.TILE;
-      const col = sc.pvp ? Math.floor(sc.teamSpawn(this.idx) / T) : CG.Level.safeCol((sc.cameras.main.scrollX + 260 + this.idx * 90) / T);
+      const col = sc.pvp ? Math.floor((sc.ffa ? sc.ffaSpawnX(this) : sc.teamSpawn(this.idx)) / T) : CG.Level.safeCol((sc.cameras.main.scrollX + 260 + this.idx * 90) / T);
       this.lastHitBy = null;
       this.dead = false; this.out = false; this.invT = this.C.respawnInvMs; this.fireCd = 0; this.hp = this.maxHp;
       this.setProne(false);
@@ -432,6 +436,7 @@
 
       if (T.ai === 'runner') {
         if (!this.dir) this.dir = P && P.body.center.x > this.x ? 1 : -1;
+        if (sc.horde && ((this.x < 60 && this.dir < 0) || (this.x > CG.DATA.level.w * CG.CONFIG.TILE - 60 && this.dir > 0))) this.dir *= -1;
         b.velocity.x = this.dir * T.speed * (1 + 0.1 * sc.diff);
         this.setFlipX(this.dir < 0);
         this.setFrame(b.blocked.down ? Math.floor(this.t * 12) % 6 : 6);

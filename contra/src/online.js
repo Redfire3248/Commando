@@ -23,10 +23,10 @@ CG.Online = {
     this.mid = mid; this.info = info; this.host = info.host === N.uid;
     const local = CG.UI.localDevice();
     const players = info.players.map((p) => ({
-      id: p.id, owner: p.owner, name: p.name, agent: p.agent, bot: !!p.bot, team: p.team,
+      id: p.id, owner: p.owner, name: p.name, agent: p.agent, bot: !!p.bot, team: p.team, rr: p.rr || 0,
       device: p.owner !== N.uid ? { type: 'remote' } : p.bot ? { type: 'bot' } : local,
     }));
-    CG.UI.playOnline({ players, online: { mid, host: this.host }, mode: info.mode || 'squad', pvp: info.pvp || null });
+    CG.UI.playOnline({ players, online: { mid, host: this.host }, mode: info.mode || 'squad', pvp: info.pvp || null, arena: info.arena });
   },
 
   // called by the Game scene when it starts (also after each stage)
@@ -168,7 +168,7 @@ CG.Online = {
     sc.ebombs.children.iterate((x) => { if (x && x.active) m.push([r(x.x), r(x.y), r(x.body.velocity.x), r(x.body.velocity.y)]); });
     sc.pickups.children.iterate((x) => { if (x && x.active) k.push([x.netId, x.kind, r(x.x), r(x.y)]); });
     return { st: sc.cfg.stage, sc: sc.score, lv: sc.teamLives, cx: r(sc.camX), bo: sc.bossOn ? 1 : 0, cl: sc.cleared ? 1 : 0, ov: sc.over ? 1 : 0, e, b, m, k,
-      cb: [...sc.brokenCovers], kd: sc.kills || null, rd: sc.round || 0, win: sc.duelWinner === undefined ? null : sc.duelWinner };
+      cb: [...sc.brokenCovers], kd: sc.kills || null, rd: sc.round || 0, win: sc.duelWinner === undefined ? null : sc.duelWinner, wv: sc.wave || 0 };
   },
 
   // events from the other players' games
@@ -235,9 +235,10 @@ CG.Online = {
     }
     sc.teamLives = s.lv;
     sc.netCamX = s.cx;
+    if (sc.horde && s.wv && s.wv !== sc.wave) { sc.wave = s.wv; sc.say('WAVE ' + s.wv, 1400); sc.stageText.setText('HORDE  ·  WAVE ' + s.wv); }
     if (s.bo && !sc.bossOn) { sc.bossOn = true; sc.say(CG.DATA.level.boss.say, 1800); }
     if (s.cl && !sc.cleared) { sc.cleared = true; sc.say('STAGE CLEAR', 2400); CG.Sfx.play('clear'); }
-    if (s.ov && !sc.over) { sc.over = true; sc.say('GAME OVER', 5000); CG.Sfx.play('over'); sc.time.delayedCall(1400, () => CG.UI.gameOver(sc.score, sc.cfg.stage, { online: true, coins: sc.coinsEarned })); }
+    if (s.ov && !sc.over) { sc.over = true; sc.say('GAME OVER', 5000); CG.Sfx.play('over'); sc.time.delayedCall(1400, () => CG.UI.gameOver(sc.score, sc.cfg.stage, Object.assign(sc.resultOpts(), { online: true, coins: sc.coinsEarned }))); }
 
     // cover the host says is broken
     for (const id of s.cb || []) { const cv = sc.coverList[id]; if (cv && !cv.broken) sc.breakCover(cv); }

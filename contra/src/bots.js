@@ -38,7 +38,24 @@ CG.Bot = (() => {
     return hit;
   }
 
+  // a bot plays as well as its rank: low ranks hesitate before shooting, waste shots, slip on their aim and rarely
+  // use their dash or ability; high ranks are sharp
+  function skilled(p, mem, s) {
+    const k = p.skill == null ? 0.6 : p.skill;
+    if (s.shoot) {
+      if (mem.seen === undefined) mem.seen = mem.t;
+      if (mem.t - mem.seen < (1 - k) * 40) s.shoot = false;                    // reaction time
+      else if (Math.random() > 0.45 + 0.55 * k) s.shoot = false;               // trigger discipline
+    } else mem.seen = undefined;
+    if (Math.random() < (1 - k) * 0.12) { s.up = !s.up; s.down = false; }      // aim slips
+    if (k < 0.4) s.dash = false;
+    if (s.ability && Math.random() > 0.25 + 0.75 * k) s.ability = false;
+    return s;
+  }
   function think(sc, p, mem) {
+    return skilled(p, mem, decide(sc, p, mem));
+  }
+  function decide(sc, p, mem) {
     const s = { left: false, right: false, up: false, down: false, shoot: false, jump: false, ability: false, dash: false };
     if (!p.alive) return s;
     const c = p.body.center, cam = sc.cameras.main;

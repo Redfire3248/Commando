@@ -57,8 +57,8 @@
     <div class="chips">
       <button class="chip install-btn hidden" data-act="install" title="Install COMMANDO as an app">⬇<span class="lbl"> APP</span></button>
       <div class="chip coins" title="Coins"><span class="coin"></span><b id="menu-coins">0</b></div>
-      <button class="chip profile" data-act="settings" title="Settings">
-        <img id="menu-photo" class="avatar hidden" alt=""><span id="menu-name">Soldier</span><i class="gear">⚙</i>
+      <button class="chip profile" data-act="profile-me" title="Your profile">
+        <span id="menu-rank"></span><img id="menu-photo" class="avatar hidden" alt=""><span id="menu-name">Soldier</span><i class="gear">⚙</i>
       </button>
     </div>
   </header>
@@ -107,6 +107,10 @@
 <div id="notice" class="notice hidden"><div class="notice-body"><small id="notice-kind">MESSAGE</small><p id="notice-text"></p></div>
   <button data-act="notice-ok" id="notice-ok" class="btn small primary">OK</button></div>
 
+<!-- ============ a squad member's options, and profile cards -->
+<div id="member-pop" class="member-pop hidden"></div>
+<div id="profile" class="pop profile-pop hidden"><div id="profile-card" class="profile-card"></div></div>
+
 <!-- ============ mode picker: STORY · DUELS · CUSTOM ============ -->
 <div id="mode-pop" class="pop modes-pop hidden">
   <div class="modes-card">
@@ -143,6 +147,7 @@
   <div class="sel-top">
     <button data-act="menu" class="btn ghost small">◀ BACK</button>
     <h2>LOCKER</h2>
+    <div class="seg locker-tabs"><button data-act="locker-tab" data-uid="agents" class="btn small on">AGENTS</button><button data-act="locker-tab" data-uid="banner" class="btn small">BANNERS</button><button data-act="locker-tab" data-uid="title" class="btn small">TITLES</button></div>
     <div id="select-slots" class="picks"></div>
   </div>
   <div id="sel-main" class="sel-main"></div>
@@ -225,6 +230,7 @@
     <p class="score">Score <b id="over-score">0</b></p>
     <p class="earned hidden" id="over-coins"><span class="coin"></span> +<b>0</b> coins</p>
     <p class="sub" id="over-best"></p>
+    <div id="over-rank" class="over-rank hidden"></div>
     <button data-act="retry" class="btn primary" id="over-retry">TRY AGAIN</button>
     <button data-act="menu" class="btn ghost">MENU</button>
   </div>
@@ -260,6 +266,7 @@
 <script src="src/art.gen.js"></script>
 <script src="src/art.js"></script>
 <script src="src/agents.js"></script>
+<script src="src/ranks.js"></script>
 <script src="src/shop.js"></script>
 <script src="src/input.js"></script>
 <script src="src/bots.js"></script>

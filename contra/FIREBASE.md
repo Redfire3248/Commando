@@ -51,7 +51,8 @@ Then **Settings → Authorized domains → Add domain** → your website (for ex
         "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16" },
         "username": { ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_]{3,16}$/)" },
         "best": { ".validate": "newData.isNumber()" },
-        "coins": { ".validate": "newData.isNumber() && newData.val() >= 0" }
+        "coins": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "rr": { ".validate": "newData.isNumber() && newData.val() >= 0" }
       }
     },
     "usernames": {

@@ -629,38 +629,60 @@ def build_idle():
     by_agent = dict(zip(IDLE_ORDER, rows))
     # prompt 16: three agents per image, one row each (assets/idle/idle1.png ... idle4.png); a row there wins over the
     # agent's row in idle.png — fewer agents per image come back at a much higher resolution
-    # These sheets are cut by their grid (10 columns, one row per agent): poses that touch, and effects drawn apart
-    # from the body (sparks, gas, a grenade in the air), stay in the frame whose cell they are in. Each frame keeps
-    # its place inside its cell, so a hop stays a hop.
-    global COLS, ROWS
+    # These sheets are cut along their grid (10 columns, one row per agent), but each cut is moved to the emptiest
+    # column (row) near the grid line, so a pose that leans over the line is not sliced: effects drawn apart from the
+    # body (sparks, gas, a grenade in the air) stay in their frame, and nothing is cut off. Each frame keeps its place
+    # relative to its grid cell, so the animation does not jitter and a hop stays a hop.
+    def cuts(proj, n, size):
+        out = [0]
+        for k in range(1, n):
+            c, r = int(k * size), int(size * 0.3)
+            lo, hi = max(1, c - r), min(len(proj) - 1, c + r)
+            out.append(lo + int(np.argmin(proj[lo:hi])))
+        out.append(len(proj))
+        return out
     cells_of = {}
     for name, ids in IDLE_GROUPS:
         g = load(os.path.join('idle', name))
         if g is None:
             continue
-        keep = (COLS, ROWS)
-        COLS, ROWS = 10, len(ids)
-        try:
-            cells = cut_cells(g, grow=3)
-        finally:
-            COLS, ROWS = keep
-        cw, ch = g.shape[1] / 10, g.shape[0] / len(ids)
-        print('  idle/' + name + ':', [sum(1 for c in range(10) if r * 10 + c in cells) for r in range(len(ids))], 'frames per row')
+        m = g[..., 3] > 30
+        ch = g.shape[0] / len(ids)
+        ys = cuts(m.sum(1), len(ids), ch)
         for r, aid in enumerate(ids):
+            band = g[ys[r]:ys[r + 1]]
+            # trim the empty space above the tallest pose and below the feet (the same for every frame of the row)
+            rows_on = np.nonzero((band[..., 3] > 30).sum(1) > 2)[0]
+            if len(rows_on):
+                band = band[max(0, rows_on[0] - 2):rows_on[-1] + 3]
+            cw = band.shape[1] / 10
+            xs = cuts((band[..., 3] > 30).sum(0), 10, cw)
             fr = []
             for c in range(10):
-                if r * 10 + c not in cells:
+                piece = band[:, xs[c]:xs[c + 1]]
+                if (piece[..., 3] > 30).sum() < 200:
                     continue
-                crop, x0, y0 = cells[r * 10 + c]
-                fr.append((crop, int(x0 - c * cw), int(y0 - r * ch)))
+                fr.append((piece, xs[c] - int(c * cw), 0))
+            print('  idle/' + name + ' ' + aid + ':', len(fr), 'frames')
             if fr:
                 cells_of[aid] = (fr, int(cw), int(ch))
     for aid, (fr, cw, ch) in cells_of.items():
+        # a frame is never smaller than what is drawn in it: a pose that pokes past its grid cell makes every frame of
+        # that agent a little bigger instead of being clipped (nothing may be cut off)
+        left = max([0] + [-dx for _, dx, _ in fr])                     # room for pieces that start before their cell
+        cw = max(cw, max(dx + left + c.shape[1] for c, dx, _ in fr))
+        top = max([0] + [-dy for _, _, dy in fr])
+        ch = max(dy + top + c.shape[0] for c, _, dy in fr)                # as tall as the poses, no empty headroom
         sheet = Image.new('RGBA', (cw * len(fr), ch), (0, 0, 0, 0))
         for i, (crop, dx, dy) in enumerate(fr):
-            sheet.alpha_composite(Image.fromarray(crop), (i * cw + max(0, min(dx, cw - crop.shape[1])), max(0, min(dy, ch - crop.shape[0]))))
-        k = max(1, -(-512 // ch))                      # whole-number enlargement to at least 512 px tall
-        out[aid] = {'path': save(blocky(sheet, ch * k), 'idle_' + aid), 'fw': cw * k, 'fh': ch * k, 'n': len(fr), 'loop': min(IDLE_LOOP, len(fr))}
+            sheet.alpha_composite(Image.fromarray(crop), (i * cw + dx + left, dy + top))
+        k = 1                                          # kept at the sheet's own size: big enough, and light for phones
+        # how tall the body is in the breathing frames (bh): the menus size the agent by that, so a grenade thrown high
+        # in the emote rises above the agent instead of shrinking it
+        al = np.array(sheet)[..., 3] > 30
+        tops = [np.nonzero(al[:, i * cw:(i + 1) * cw].any(1))[0] for i in range(min(IDLE_LOOP, len(fr)))]
+        bh = int(ch - min(t[0] for t in tops if len(t))) if any(len(t) for t in tops) else ch
+        out[aid] = {'path': save(blocky(sheet, ch * k), 'idle_' + aid), 'fw': cw * k, 'fh': ch * k, 'bh': bh * k, 'n': len(fr), 'loop': min(IDLE_LOOP, len(fr))}
         by_agent.pop(aid, None)
     for aid, fr in by_agent.items():
         if len(fr) < 2 or aid in IDLE_SKIP:
@@ -700,7 +722,7 @@ def build_ui_icons():
     out = {}
     for i, name in enumerate(UI_ICONS):
         if i in cells:
-            out[name] = save(blocky(Image.fromarray(cells[i][0]), 512), 'ui_' + name)
+            out[name] = save(blocky(Image.fromarray(cells[i][0]), 192), 'ui_' + name)
     print('  ui_icons:', len(out), 'icons')
     manifest['ui'] = out
 
