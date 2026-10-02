@@ -118,12 +118,13 @@ CG.Hazards = (() => {
     (L.hazards || []).forEach(([type, col, col2], i) => {
       const x = (col + 0.5) * T, h = { type, x, x2: col2 ? (col2 + 0.5) * T : x, i, t: (i * 0.9) % 3 };
       if (type === 'flame') {
-        h.nozzle = sc.add.image(x, 0, 'hz_nozzle').setOrigin(0.5, 0).setDepth(6);
+        h.nozzle = sc.add.image(x, 0, 'hz_nozzle').setOrigin(0.5, 0).setDepth(6).setScale(sc.artScale.hz_nozzle || 1);
         h.fire = sc.add.tileSprite(x, 30, 72, gy - 30, 'hz_flame', 0).setOrigin(0.5, 0).setDepth(13).setVisible(false).setBlendMode(Phaser.BlendModes.ADD);
-        h.fire.setTileScale(72 / 48, 1);
+        const ffw = sc.textures.getFrame('hz_flame', 0).width;              // built-in 48 px, or a painted frame
+        h.fire.setTileScale(72 / ffw, 72 / ffw);
       } else if (type === 'crusher') {
         h.chain = sc.add.graphics().setDepth(5);
-        h.img = sc.add.image(x, 60, 'hz_crusher').setOrigin(0.5, 1).setDepth(6);
+        h.img = sc.add.image(x, 60, 'hz_crusher').setOrigin(0.5, 1).setDepth(6).setScale(sc.artScale.hz_crusher || 1);
         h.y = 60; h.top = 60 + 104;                      // bottom edge while resting
       } else if (type === 'rocks') {
         h.cd = 1;
@@ -175,7 +176,8 @@ CG.Hazards = (() => {
           if (r) {
             r.setActive(true).setVisible(true).setDepth(9);
             r.body.enable = true; r.body.reset(r.x, -40);
-            r.body.setCircle(26, 6, 2).setBounce(0.45, 0.35).setVelocity(Phaser.Math.Between(-160, 160), 0);
+            r.setScale(sc.artScale.rock || 1);
+            r.body.setCircle(r.width * 0.4, r.width * 0.1, r.height * 0.05).setBounce(0.45, 0.35).setVelocity(Phaser.Math.Between(-160, 160), 0);
             r.life = 6;
           }
         }
