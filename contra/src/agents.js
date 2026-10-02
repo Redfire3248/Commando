@@ -15,7 +15,8 @@ CG.AGENTS = [
     ability: { name: 'Mend', desc: 'Heals you and every teammate nearby by 3 hearts, makes them untouchable for a moment, and brings back anyone who is out.', cd: 16000, range: 700, heal: 3 },
   },
   {
-    id: 'kite', name: 'KITE', role: 'Scout', color: '#58e05a', hp: 4, speed: 1.16, fallback: 'commandos_3', fallbackWho: 0,
+    // dash: the only agent with the Tac Dash — any of eight directions (hold W / up + DASH to go straight up)
+    id: 'kite', name: 'KITE', role: 'Scout', color: '#58e05a', hp: 4, speed: 1.16, fallback: 'commandos_3', fallbackWho: 0, dash: true,
     ability: { name: 'Phase Dash', desc: 'Dash forward untouchable, slicing every enemy in the way. A kill halves the cooldown.', cd: 6000, dist: 480, damage: 4 },
   },
   {

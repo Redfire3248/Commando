@@ -7,9 +7,9 @@ CG.Bot = (() => {
   function target(sc, p) {
     const cam = sc.cameras.main, c = p.body.center;
     let best = null, bd = Infinity;
-    if (sc.pvp) {                                      // a duel: the other player
+    if (sc.pvp) {                                      // a duel: the nearest player on the other team
       for (const q of sc.players) {
-        if (q === p || !q.alive) continue;
+        if (!sc.isFoe(p, q) || !q.alive) continue;
         const d = Math.hypot(q.body.center.x - c.x, q.body.center.y - c.y);
         if (d < bd) { bd = d; best = { body: q.body, T: { ai: 'player' } }; }
       }
@@ -122,7 +122,7 @@ CG.Bot = (() => {
     if (dir < 0) s.left = true;
     if (p.onGround && (dy < -120 || mem.t % 90 === 0 || (dir > 0 ? p.body.blocked.right : dir < 0 ? p.body.blocked.left : false))) s.jump = true;
     else if (!p.onGround && p.body.velocity.y > 0 && dy < -60 && mem.t % 20 === 0) s.jump = true;       // double jump up after them
-    if (danger(sc, p) && p.mdashCd <= 0) s.dash = true;
+    if (danger(sc, p) && p.mdashCd <= 0) { s.dash = true; s.up = Math.random() < 0.4; }
     if (p.abilityCd <= 0) s.ability = t.d < 520 || (p.agent.id === 'nova' && p.hp < p.maxHp - 1);
     return s;
   }

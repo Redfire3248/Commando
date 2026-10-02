@@ -11,7 +11,8 @@
     const { W, H } = CG.CONFIG;
     const list = CG.DATA.art && CG.DATA.art.bg15;
     if (list && list.length >= 15) {
-      const lap = Math.floor(((stage || 1) - 1) / CG.DATA.levels.length), pick = BG15[theme] || BG15.jungle;
+      const lap = Math.floor(((stage || 1) - 1) / CG.DATA.levels.length);
+      const pick = (CG.DATA.level && CG.DATA.level.bg) || BG15[theme] || BG15.jungle;    // story stages name their own scene
       const key = 'bg15_' + pick[lap % pick.length];
       if (scene.textures.exists(key)) {
         const src = scene.textures.get(key).getSourceImage();
@@ -150,9 +151,12 @@
 
     create() {
       const { W, H, TILE: T } = CG.CONFIG, C = CG.CONFIG.PLAYER;
-      this.pvp = this.cfg.mode === 'duel';                                     // 1v1: players against each other
+      // DUELS / CUSTOM: two teams against each other in an arena, in rounds (see CG.Modes)
+      this.pvp = this.cfg.mode === 'duel' || this.cfg.mode === 'pvp';
+      this.pvpSet = Object.assign({ arena: null, rounds: CG.DUEL_KILLS, drops: true }, this.cfg.pvp || {});
       const all = this.pvp ? CG.DATA.arenas : CG.DATA.levels;
-      const L = CG.DATA.level = all[(this.cfg.stage - 1) % all.length];        // stages repeat, harder each time
+      const L = CG.DATA.level = this.pvp && all[this.pvpSet.arena] ? all[this.pvpSet.arena]
+        : all[(this.cfg.stage - 1) % all.length];                             // stages repeat, harder each time
       this.diff = this.cfg.stage - 1;
       this.score = this.cfg.score;
       this.over = false; this.cleared = false; this.camX = 0; this.spawnI = 0; this.bossOn = false; this.bossT = 2500;
@@ -178,11 +182,14 @@
       this.pickups = this.physics.add.group();
 
       const gy = L.groundRow * T;
-      this.players = this.cfg.players.map((cp, i) => new CG.Player(this, i, this.pvp ? this.duelSpawn(i) : 2.5 * T + i * 70, gy, cp));
+      this.players = this.cfg.players.map((cp, i) => new CG.Player(this, i, this.pvp ? this.teamSpawn(i) : 2.5 * T + i * 70, gy, cp));
       if (this.pvp) {
-        this.players.forEach((p, i) => { p.facing = i % 2 ? -1 : 1; });
-        this.kills = {};
-        this.players.forEach((p) => { this.kills[p.netId] = 0; });
+        // nametags in the team's colour; team scores, the round, who is down this round
+        this.players.forEach((p, i) => {
+          p.team = this.teamOf(i); p.facing = p.team ? -1 : 1;
+          p.color = CG.Modes.TEAMS[p.team].color; p.tag.setColor(p.color);
+        });
+        this.kills = [0, 0]; this.round = 1; this.down = new Set(); this.roundEnd = false;
         this.bossOn = true;                     // nothing to scroll to
         this.dropT = 6000;
       }
@@ -198,6 +205,9 @@
       }
       this.touchPlayer = this.players.find((p) => p.device && (p.device.type === 'touch' || p.device.type === 'any'));
       if (this.touchPlayer) CG.Touch.setAbility(this.touchPlayer.agent);
+      // only an agent with the Tac Dash gets the DASH button
+      const dashBtn = document.getElementById('b-dash');
+      if (dashBtn) dashBtn.classList.toggle('hidden', !(this.touchPlayer && this.touchPlayer.agent.dash));
       this.netSeq = 0;
       this.net = this.cfg.online && CG.Online.mid ? CG.Online.attach(this) : null;
       this.isClient = !!(this.net && !this.net.host);       // online but not the host: the host runs the stage
@@ -244,9 +254,17 @@
         this.time.delayedCall(0, () => k.destroy());
       });
       this.scoreText = this.add.text(W - 40, 46, '', ts(38, '#ffffff')).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100).setShadow(0, 2, '#000', 6);
-      this.stageText = this.add.text(W - 40, 84, 'STAGE ' + this.cfg.stage + ' · ' + L.name, ts(20, '#ffd39a')).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100);
+      this.stageText = this.add.text(W - 40, 84, 'STAGE ' + (((this.cfg.stage - 1) % CG.DATA.levels.length) + 1) + '/' + CG.DATA.levels.length + ' · ' + L.name, ts(20, '#ffd39a')).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100);
+      if (this.pvp) { this.scoreText.setVisible(false); this.stageText.setVisible(false); }   // the duel scoreboard instead
       this.banner = this.add.text(W / 2, H * 0.36, '', ts(88, '#ff9a3c')).setOrigin(0.5).setScrollFactor(0).setDepth(100).setAlpha(0).setShadow(0, 5, '#000', 14);
-      this.say(L.name, 1800);
+      // the stage card: STAGE 3 · WATERFALL and its briefing (story), or the arena's name
+      const lap = Math.floor((this.cfg.stage - 1) / CG.DATA.levels.length);
+      this.say(this.pvp ? L.name : 'STAGE ' + (((this.cfg.stage - 1) % CG.DATA.levels.length) + 1) + ' · ' + L.name, 2200);
+      if (!this.pvp && (L.brief || lap)) {
+        const brief = this.add.text(W / 2, H * 0.36 + 80, (lap && (this.cfg.stage - 1) % CG.DATA.levels.length === 0 ? 'MISSION COMPLETE — THEY CAME BACK STRONGER. ' : '') + (L.brief || ''),
+          ts(30, '#ffe7c2')).setOrigin(0.5).setScrollFactor(0).setDepth(100).setShadow(0, 3, '#000', 8);
+        this.tweens.add({ targets: brief, alpha: 0, delay: 2600, duration: 600, onComplete: () => brief.destroy() });
+      }
       CG.Sfx.play('start');
       CG.UI.onGameStart(this);
     }
@@ -260,8 +278,9 @@
       this.hudL = this.add.container(0, 0).setScrollFactor(0).setDepth(100).setScale(k);
       const left = (o) => { this.hudL.add(o); return o; };
       const has = (k) => this.textures.exists(k);
-      this.hud = this.players.map((p, i) => {
-        const x = 24 + i * 300, y = 22, id = p.agent.id, h = {};
+      const carded = this.pvp ? this.players.filter((p) => !p.bot && !p.remote) : this.players;
+      this.hud = carded.map((p, i) => {
+        const x = 24 + i * 300, y = 22, id = p.agent.id, h = { p };
         h.port = has('portrait_' + id) ? left(this.add.image(x, y, 'portrait_' + id).setOrigin(0)) : null;
         if (h.port) h.port.setScale(64 / h.port.height);
         else if (p.art.tex !== 'pl' + (p.idx % 5)) {
@@ -290,44 +309,102 @@
       this.coinText = fixed(this.add.text(W - 40, 200, '', ts(26, '#ffd23c')).setOrigin(1, 0.5).setShadow(0, 2, '#000', 6));
     }
 
-    // ---------------------------------------------------------------- 1v1 duel
-    duelSpawn(i) {
-      const cols = CG.DATA.level.spawnCols || [2, 27];
-      return (cols[i % cols.length] + 0.5) * CG.CONFIG.TILE;
+    // ---------------------------------------------------------------- duels: two teams, rounds
+    // which team a player is on (cfg.players[i].team; old 1v1 configs alternate)
+    teamOf(i) { const t = this.cfg.players[i] && this.cfg.players[i].team; return t === 0 || t === 1 ? t : i % 2; }
+    // where a player starts each round: their team's side, teammates a little further in
+    teamSpawn(i) {
+      const cols = CG.DATA.level.spawnCols || [2, 27], team = this.teamOf(i);
+      const k = this.cfg.players.slice(0, i).filter((_, j) => this.teamOf(j) === team).length;
+      return (cols[team] + (team ? -1 : 1) * k * 1.6 + 0.5) * CG.CONFIG.TILE;
     }
+    isFoe(a, b) { return this.pvp && !!a && !!b && a !== b && a.team !== b.team; }
+    // one person each side: show their names instead of the team names
+    get solo() { return this.players.filter((q) => q.team === 0).length === 1 && this.players.filter((q) => q.team === 1).length === 1; }
+    teamName(t) { return this.solo ? (this.players.find((q) => q.team === t) || {}).name || '?' : CG.Modes.TEAMS[t].name; }
     buildDuelHud() {
-      const { W } = CG.CONFIG, [a, b] = this.players;
-      this.duelText = this.add.text(W / 2, 40, '', ts(52, '#ffffff')).setOrigin(0.5, 0).setScrollFactor(0).setDepth(102).setShadow(0, 4, '#000', 10);
-      this.duelNames = this.add.text(W / 2, 104, '', ts(22, '#cfd9cc')).setOrigin(0.5, 0).setScrollFactor(0).setDepth(102).setShadow(0, 2, '#000', 6);
-      this.duelNames.setText((a ? a.name : '?') + '   ·   FIRST TO ' + CG.DUEL_KILLS + '   ·   ' + (b ? b.name : '?'));
+      const { W } = CG.CONFIG, TM = CG.Modes.TEAMS, fixed = (o) => o.setScrollFactor(0).setDepth(102);
+      const plate = fixed(this.add.graphics());
+      plate.fillStyle(0x05080a, 0.62).fillRoundedRect(W / 2 - 380, 18, 760, 112, 14);
+      plate.fillStyle(parseInt(TM[0].color.slice(1), 16), 0.9).fillRect(W / 2 - 380, 18, 10, 112);
+      plate.fillStyle(parseInt(TM[1].color.slice(1), 16), 0.9).fillRect(W / 2 + 370, 18, 10, 112);
+      this.duelA = fixed(this.add.text(W / 2 - 46, 66, '0', ts(72, TM[0].color)).setOrigin(1, 0.5).setShadow(0, 4, '#000', 10));
+      this.duelB = fixed(this.add.text(W / 2 + 46, 66, '0', ts(72, TM[1].color)).setOrigin(0, 0.5).setShadow(0, 4, '#000', 10));
+      fixed(this.add.text(W / 2, 62, ':', ts(56, '#ffffff')).setOrigin(0.5).setShadow(0, 4, '#000', 10));
+      fixed(this.add.text(W / 2 - 150, 52, this.teamName(0), ts(28, TM[0].color)).setOrigin(1, 0.5).setShadow(0, 2, '#000', 6));
+      fixed(this.add.text(W / 2 + 150, 52, this.teamName(1), ts(28, TM[1].color)).setOrigin(0, 0.5).setShadow(0, 2, '#000', 6));
+      this.duelDotsA = fixed(this.add.text(W / 2 - 150, 90, '', ts(24, TM[0].color)).setOrigin(1, 0.5));
+      this.duelDotsB = fixed(this.add.text(W / 2 + 150, 90, '', ts(24, TM[1].color)).setOrigin(0, 0.5));
+      this.duelNames = fixed(this.add.text(W / 2, 150, '', ts(22, '#e8efe6')).setOrigin(0.5).setShadow(0, 2, '#000', 6));
+      this.feed = [];
       this.livesText.setVisible(false); this.livesIcon.setVisible(false); this.teamLabel.setVisible(false); this.coinText.setVisible(false); this.coinIcon.setVisible(false);
     }
     updateDuelHud() {
-      const [a, b] = this.players;
-      this.duelText.setText((this.kills[a.netId] || 0) + '  :  ' + (b ? this.kills[b.netId] || 0 : 0));
+      const dots = (t) => this.players.filter((q) => q.team === t).map((q) => (q.alive ? '●' : '○')).join(' ');
+      this.duelA.setText(this.kills[0] || 0); this.duelB.setText(this.kills[1] || 0);
+      this.duelDotsA.setText(dots(0)); this.duelDotsB.setText(dots(1));
+      this.duelNames.setText('ROUND ' + (this.round || 1) + '   ·   FIRST TO ' + this.pvpSet.rounds);
     }
-    // a player in a duel went down: whoever hurt them last scores (the host / this device keeps the count)
+    // the kill feed under the scoreboard (the last three)
+    feedLine(msg) {
+      if (!this.feed) return;
+      const { W } = CG.CONFIG;
+      const t = this.add.text(W / 2, 0, msg, ts(22, '#ffffff')).setOrigin(0.5).setScrollFactor(0).setDepth(102).setShadow(0, 2, '#000', 6);
+      this.feed.unshift(t);
+      this.feed.slice(3).forEach((o) => o.destroy());
+      this.feed.length = Math.min(this.feed.length, 3);
+      this.feed.forEach((o, i) => o.setY(186 + i * 30).setAlpha(1 - i * 0.25));
+      this.time.delayedCall(4000, () => { if (t.active) this.tweens.add({ targets: t, alpha: 0, duration: 400, onComplete: () => { t.destroy(); this.feed = (this.feed || []).filter((o) => o !== t); } }); });
+    }
+    // a player in a duel went down: whoever hurt them last gets the kill (the host / this device keeps count)
     pvpDeath(victim) {
-      const killer = victim.lastHitBy && victim.lastHitBy !== victim ? victim.lastHitBy : this.players.find((q) => q !== victim);
+      const killer = victim.lastHitBy && victim.lastHitBy !== victim ? victim.lastHitBy : null;
       if (this.isClient) { this.net.send('kill', { victim: victim.netId, killer: killer ? killer.netId : null }); return; }
-      this.countKill(killer ? killer.netId : null);
+      this.downed(victim.netId, killer ? killer.netId : null);
     }
-    countKill(killerId) {
-      if (this.over || !killerId) return;
-      this.kills[killerId] = (this.kills[killerId] || 0) + 1;
-      const k = this.players.find((q) => q.netId === killerId);
-      if (k) this.say(k.name + ' SCORES', 900);
-      if (this.kills[killerId] >= CG.DUEL_KILLS) { this.duelWinner = killerId; this.duelOver(killerId); }
+    // a whole team down = the other team scores the round
+    downed(victimId, killerId) {
+      if (this.over || this.roundEnd || this.down.has(victimId)) return;
+      this.down.add(victimId);
+      const v = this.players.find((q) => q.netId === victimId), k = killerId && this.players.find((q) => q.netId === killerId);
+      const msg = (k ? k.name : 'THE ARENA') + '  ✕  ' + (v ? v.name : '?');
+      this.feedLine(msg);
+      if (this.net) this.net.shout('feed', { msg });
+      for (const t of [0, 1]) {
+        if (this.players.some((q) => q.team === t && !this.down.has(q.netId))) continue;
+        this.roundWon(1 - t);
+        return;
+      }
     }
-    duelOver(winnerId) {
+    roundWon(t) {
+      this.roundEnd = true;
+      this.kills[t]++;
+      if (this.kills[t] >= this.pvpSet.rounds) { this.duelWinner = t; this.duelOver(t); return; }
+      this.say(this.teamName(t) + (this.solo ? ' SCORES' : ' TAKE THE ROUND'), 1600);
+      CG.Sfx.play('clear');
+      this.time.delayedCall(2200, () => { if (!this.over) { this.round++; this.resetRound(); } });
+    }
+    // a new round: everyone on this device back at their spawn with full health and abilities ready
+    resetRound() {
+      this.roundEnd = false;
+      this.down = new Set();
+      this.bullets.getChildren().forEach((b) => { if (b.active) this.kill(b); });
+      for (const p of this.players) {
+        if (p.remote) continue;
+        p.respawn();
+        p.abilityCd = 0; p.mdashCd = 0;
+      }
+      this.say('ROUND ' + this.round, 1100);
+    }
+    duelOver(t) {
       if (this.over) return;
       this.over = true;
-      const w = this.players.find((q) => q.netId === winnerId);
-      this.say((w ? w.name : '?') + ' WINS', 5000);
+      const name = this.teamName(t);
+      this.say(name + (this.solo ? ' WINS' : ' WIN'), 5000);
       CG.Sfx.play('clear');
       const me = this.players.find((q) => !q.bot && !q.remote);
-      const won = !!(w && me && w === me);
-      this.time.delayedCall(2200, () => CG.UI.gameOver(0, 1, { duel: true, winner: w ? w.name : '?', won, online: !!this.net, admin: this.adminUsed, coins: won ? 25 : 5 }));
+      const won = !!(me && me.team === t);
+      this.time.delayedCall(2200, () => CG.UI.gameOver(0, 1, { duel: true, winner: name, won, online: !!this.net, admin: this.adminUsed, coins: won ? 25 : 5 }));
     }
     // damage another player: a teammate's game decides for its own player online
     damagePlayer(victim, n, by) {
@@ -364,6 +441,7 @@
         const dTxt = this.add.text(R + 52, 18, '»', ts(30, '#78ffaa')).setOrigin(0.5);
         const dSweep = this.add.graphics();
         const dKey = this.add.text(R + 52, 52, (p.device && DK[p.device.type]) || 'SHIFT', ts(14, '#10141a')).setOrigin(0.5, 0).setBackgroundColor('#78ffaa').setPadding(5, 1, 5, 1);
+        [dBack, dTxt, dSweep, dKey].forEach((o) => o.setVisible(!!p.agent.dash));
         c.add([glow, back, icon, sweep, active, secs, name, keyBox, dBack, dTxt, dSweep, dKey].concat(who ? [who] : []));
         this.tweens.add({ targets: glow, scale: 1.12, alpha: 0.15, duration: 700, yoyo: true, repeat: -1 });
         return { p, c, glow, sweep, active, secs, R, dSweep, dx: R + 52 };
@@ -392,8 +470,8 @@
       this.updateAbilitySlots();
       if (this.pvp) this.updateDuelHud();
       const heart = this.textures.exists('hud_heart');
-      this.hud.forEach((h, i) => {
-        const p = this.players[i];
+      this.hud.forEach((h) => {
+        const p = h.p;
         if (p.hp !== h.lastHp || p.maxHp !== h.lastMax) {
           h.hearts.removeAll(true);
           for (let k = 0; k < p.maxHp; k++) {
@@ -564,7 +642,7 @@
       ph.add.overlap(bodies, this.bullets, (a, b) => {
         if (!this.pvp) return;
         const [z, bul] = pick(a, b, (o) => !!o.owner), victim = z.owner;
-        if (!bul.active || bul.shooter === victim || !victim.alive) return;
+        if (!bul.active || bul.shooter === victim || !victim.alive || (bul.shooter && !this.isFoe(bul.shooter, victim))) return;
         this.kill(bul);
         if (victim.remote) return;
         this.sparks.explode(4, bul.x, bul.y);
@@ -840,7 +918,7 @@
     // is this player inside a teammate's Aegis dome? Returns the dome's owner (or null)
     underDome(p, self) {
       for (const q of this.players) {
-        if (this.pvp && q !== p) continue;
+        if (this.pvp && q.team !== p.team) continue;
         if (q.domeT > 0 && q.alive && (self || q !== p) && Math.abs(q.body.center.x - p.body.center.x) < q.agent.ability.range
           && Math.abs(q.body.bottom - p.body.bottom) < 140) return q;
       }
@@ -873,7 +951,7 @@
         if (!cv.broken && Phaser.Math.Distance.Between(x, y, cv.zone.x, cv.zone.y) < ab.radius + cv.zone.width / 2) this.hitCover(cv, ab.damage * 2);
       }
       if (this.pvp) for (const q of this.players) {
-        if (q !== g.owner && q.alive && Phaser.Math.Distance.Between(x, y, q.body.center.x, q.body.center.y) < ab.radius) this.damagePlayer(q, 3, g.owner);
+        if (this.isFoe(g.owner, q) && q.alive && Phaser.Math.Distance.Between(x, y, q.body.center.x, q.body.center.y) < ab.radius) this.damagePlayer(q, 3, g.owner);
       }
       // the blast throws players (Jax too: grenade jumps). Teammates are only thrown, never hurt.
       this.launchPlayers(x, y, ab.radius * 1.15);
@@ -905,7 +983,7 @@
           if (e.active && Phaser.Math.Distance.Between(x, y, e.body.center.x, e.body.center.y) < ab.radius) e.damage(1);
         }
         if (this.pvp) for (const q of this.players) {
-          if (q !== owner && q.alive && Phaser.Math.Distance.Between(x, y, q.body.center.x, q.body.center.y) < ab.radius) this.damagePlayer(q, 1, owner);
+          if (this.isFoe(owner, q) && q.alive && Phaser.Math.Distance.Between(x, y, q.body.center.x, q.body.center.y) < ab.radius) this.damagePlayer(q, 1, owner);
         }
       } });
       this.time.delayedCall(ab.dur, () => { cloud.stop(); this.time.delayedCall(1000, () => cloud.destroy()); tick.remove(); });
@@ -924,7 +1002,7 @@
       }
       for (const cv of this.coverList || []) if (!cv.broken && Math.abs(cv.zone.x - c.x) < ab.radius) this.hitCover(cv, 4);
       if (this.pvp) for (const q of this.players) {
-        if (q !== p && q.alive && Math.abs(q.body.center.x - c.x) < ab.radius && Math.abs(q.body.bottom - bottom) < 140) this.damagePlayer(q, 2, p);
+        if (this.isFoe(p, q) && q.alive && Math.abs(q.body.center.x - c.x) < ab.radius && Math.abs(q.body.bottom - bottom) < 140) this.damagePlayer(q, 2, p);
       }
     }
     // Atlas: a drone over his head that shoots the nearest target
@@ -1011,7 +1089,7 @@
         if (d < bd) { bd = d; best = { x, y }; }
       };
       for (const e of this.enemies.getChildren()) if (e.active && e.T.ai !== 'flyer') look(e.body.center.x, e.body.center.y);
-      if (this.pvp) for (const q of this.players) if (q !== p && q.alive && !(q.cloakT > 0)) look(q.body.center.x, q.body.center.y);
+      if (this.pvp) for (const q of this.players) if (this.isFoe(p, q) && q.alive && !(q.cloakT > 0)) look(q.body.center.x, q.body.center.y);
       return best;
     }
     hurtFx(p) {
@@ -1061,7 +1139,7 @@
       }
       if (this.pvp) {
         for (const q of this.players) {
-          if (q === p || !q.alive || p.dashHit.has(q)) continue;
+          if (!this.isFoe(p, q) || !q.alive || p.dashHit.has(q)) continue;
           const b = q.body;
           if (Math.abs(b.center.x - c.x) < b.halfWidth + 40 && Math.abs(b.center.y - c.y) < b.halfHeight + 50) {
             p.dashHit.add(q);
@@ -1075,7 +1153,7 @@
     chainArc(p, n, dmg, stun) {
       const cam = this.cameras.main, W = CG.CONFIG.W;
       const pool = this.enemies.getChildren().filter((e) => e.active && e.x > cam.scrollX - 20 && e.x < cam.scrollX + W + 20);
-      if (this.pvp) this.players.forEach((q) => { if (q !== p && q.alive) pool.push(q.duelTarget()); });
+      if (this.pvp) this.players.forEach((q) => { if (this.isFoe(p, q) && q.alive) pool.push(q.duelTarget()); });
       let from = { x: p.body.center.x, y: p.body.center.y }, hits = [];
       for (let i = 0; i < n && pool.length; i++) {
         pool.sort((a, b) => Phaser.Math.Distance.Between(from.x, from.y, a.body.center.x, a.body.center.y)
@@ -1127,7 +1205,7 @@
         this.camX = 0;
         if (!this.isClient && !this.over) {
           this.dropT -= delta;
-          if (this.dropT <= 0) {
+          if (this.dropT <= 0 && this.pvpSet.drops) {
             this.dropT = 9000;
             const kinds = ['heal', 'heal', 'rapid', 'spread', 'pierce', 'blast', 'double', 'ice', 'barrier', 'fire', 'shock', 'boots', 'armor', 'autoaim'];
             const k = this.dropPickup(Phaser.Math.Between(6, 24) * T, 40, kinds[Phaser.Math.Between(0, kinds.length - 1)]);

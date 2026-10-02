@@ -128,8 +128,14 @@
   T.syncButtons = syncButtons;
   // the SKILL button shows its cooldown (called by the game every frame)
   // The SKILL button shows the agent's ability icon, its cooldown sweep and the seconds left; DASH shows its cooldown.
+  // FIRE / JUMP / DASH (and SKILL without an ability icon) show the icons from ui_icons.png when it is in
+  const UIICON = (CG.DATA.art && CG.DATA.art.ui) || {};
+  [['shoot', 'fire'], ['jump', 'jump'], ['dash', 'dash']].forEach(([k, name]) => {
+    const b = btns[k];
+    if (b && UIICON[name]) { b.classList.add('ico'); b.style.setProperty('--ico', 'url("' + UIICON[name] + '")'); }
+  });
   T.setAbility = (agent) => {
-    const b = btns.ability, icon = CG.ABICONS && CG.ABICONS[agent.id];
+    const b = btns.ability, icon = (CG.ABICONS && CG.ABICONS[agent.id]) || UIICON.skill;
     if (!b) return;
     b.style.backgroundImage = icon ? `conic-gradient(rgba(0,0,0,.72) calc(var(--cd) * 360deg), transparent 0), url("${icon}")` : '';
     b.style.borderColor = agent.color;

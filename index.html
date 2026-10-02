@@ -54,7 +54,6 @@
       <button data-act="lobby">LOCAL CO-OP</button>
       <button data-act="shop" class="online-only">SHOP</button>
       <button data-act="friends" class="online-only">FRIENDS</button>
-      <button data-act="how">HOW TO PLAY</button>
       <button data-act="settings">SETTINGS</button>
     </nav>
     <div class="chips">
@@ -71,10 +70,9 @@
     <div class="play-dock">
       <div id="menu-invites" class="invites"></div>
       <div class="best-line">Best score <b id="menu-best">0</b></div>
-      <div class="seg mode-seg" id="home-mode">
-        <button class="btn small on" data-act="mode" data-uid="squad">🛡 SQUAD vs ARMY</button>
-        <button class="btn small" data-act="mode" data-uid="duel">⚔ 1v1 DUEL</button>
-      </div>
+      <button id="mode-card" class="mode-card" data-act="mode-open" title="Change mode">
+        <small>MODE · CHANGE ▸</small><b id="mode-name">STORY</b><span id="mode-sub"></span>
+      </button>
       <div id="party-status" class="dock-status"></div>
       <button data-act="play-main" id="play-main" class="btn primary play-big">PLAY</button>
       <div class="dock-row">
@@ -93,14 +91,20 @@
   </div>
 </div>
 
+<!-- ============ mode picker: STORY · DUELS · CUSTOM ============ -->
+<div id="mode-pop" class="pop modes-pop hidden">
+  <div class="modes-card">
+    <div class="modes-head"><h2>SELECT MODE</h2><button data-act="mode-close" class="btn ghost small">✕ CLOSE</button></div>
+    <div id="modes" class="modes"></div>
+  </div>
+</div>
+
 <!-- ============ local join screen ============ -->
 <div id="lobby" class="overlay hidden">
   <div class="card wide">
     <h2>WHO IS PLAYING?</h2>
-    <div class="seg mode-seg center-row">
-      <button class="btn small on" data-act="mode" data-uid="squad">🛡 SQUAD vs ARMY</button>
-      <button class="btn small" data-act="mode" data-uid="duel">⚔ 1v1 DUEL</button>
-    </div>
+    <div class="lobby-mode center-row"><span>MODE</span><b id="lobby-mode-name">STORY</b>
+      <button class="btn small" data-act="mode-open">CHANGE MODE</button></div>
     <p class="sub center" id="lobby-sub">Everyone press their FIRE button to join · B adds a bot</p>
     <div id="lobby-slots" class="lineup"></div>
     <p class="hint" id="lobby-hint">
@@ -165,30 +169,6 @@
       <button data-act="menu" class="btn ghost">BACK</button>
       <button data-act="signout" class="btn ghost online-only">SIGN OUT</button>
     </div>
-  </div>
-</div>
-
-<!-- ============ how to play ============ -->
-<div id="how" class="overlay hidden">
-  <div class="card wide">
-    <h2>HOW TO PLAY</h2>
-    <table>
-      <tr><th></th><th>Alone</th><th>Keyboard 1</th><th>Keyboard 2</th><th>Gamepad</th></tr>
-      <tr><td>Move / aim</td><td>Arrows or WASD</td><td>W A S D</td><td>Arrows</td><td>Stick / D-pad</td></tr>
-      <tr><td>Shoot</td><td>X, J or click</td><td>F</td><td>K</td><td>X or RT</td></tr>
-      <tr><td>Jump</td><td>Z, K or Space</td><td>G</td><td>L</td><td>A</td></tr>
-      <tr><td>Ability</td><td>C, E or right click</td><td>H</td><td>O</td><td>Y or RB</td></tr>
-      <tr><td>Tac Dash</td><td>Shift or V</td><td>T</td><td>I</td><td>B or LB</td></tr>
-    </table>
-    <ul>
-      <li>Pick an agent. Each has their own health, speed and ability; everyone carries the same rifle.</li>
-      <li>Bullets take a heart, bombs two, water is instant death. The squad shares one pool of lives.</li>
-      <li>Hide behind cover: crates, sandbags and barriers stop every shot — yours too. You can stand on them.</li>
-      <li>First-aid kits heal 2 hearts, the big medkit heals everyone, the medal is +1 squad life.</li>
-      <li>Hold a direction while shooting to aim 8 ways. Down on the ground lies flat. Down + Jump drops off a ledge.</li>
-      <li>On a phone: thumb anywhere on the left half to move, FIRE / JUMP / SKILL on the right (Settings has a D-pad and auto fire).</li>
-    </ul>
-    <div class="row center-row"><button data-act="menu" class="btn ghost">BACK</button></div>
   </div>
 </div>
 
@@ -268,6 +248,7 @@
 <script src="src/bots.js"></script>
 <script src="src/entities.js"></script>
 <script src="src/scenes.js"></script>
+<script src="src/modes.js"></script>
 <script src="src/net.js"></script>
 <script src="src/online.js"></script>
 <script src="src/admin.js"></script>

@@ -23,10 +23,10 @@ CG.Online = {
     this.mid = mid; this.info = info; this.host = info.host === N.uid;
     const local = CG.UI.localDevice();
     const players = info.players.map((p) => ({
-      id: p.id, owner: p.owner, name: p.name, agent: p.agent, bot: !!p.bot,
+      id: p.id, owner: p.owner, name: p.name, agent: p.agent, bot: !!p.bot, team: p.team,
       device: p.owner !== N.uid ? { type: 'remote' } : p.bot ? { type: 'bot' } : local,
     }));
-    CG.UI.playOnline({ players, online: { mid, host: this.host }, mode: info.mode || 'squad' });
+    CG.UI.playOnline({ players, online: { mid, host: this.host }, mode: info.mode || 'squad', pvp: info.pvp || null });
   },
 
   // called by the Game scene when it starts (also after each stage)
@@ -168,7 +168,7 @@ CG.Online = {
     sc.ebombs.children.iterate((x) => { if (x && x.active) m.push([r(x.x), r(x.y), r(x.body.velocity.x), r(x.body.velocity.y)]); });
     sc.pickups.children.iterate((x) => { if (x && x.active) k.push([x.netId, x.kind, r(x.x), r(x.y)]); });
     return { st: sc.cfg.stage, sc: sc.score, lv: sc.teamLives, cx: r(sc.camX), bo: sc.bossOn ? 1 : 0, cl: sc.cleared ? 1 : 0, ov: sc.over ? 1 : 0, e, b, m, k,
-      cb: [...sc.brokenCovers], kd: sc.kills || null, win: sc.duelWinner || null };
+      cb: [...sc.brokenCovers], kd: sc.kills || null, rd: sc.round || 0, win: sc.duelWinner === undefined ? null : sc.duelWinner };
   },
 
   // events from the other players' games
@@ -179,7 +179,7 @@ CG.Online = {
       const e = sc.enemies.getChildren().find((x) => x.active && x.netId === ev.id);
       if (e) e.damage(ev.n || 1);
     } else if (ev.t === 'kill') {
-      if (sc.pvp) sc.countKill(ev.killer);
+      if (sc.pvp) sc.downed(ev.victim, ev.killer);
     } else if (ev.t === 'cover') {
       const cv = sc.coverList && sc.coverList[ev.id];
       if (cv) sc.hitCover(cv, ev.n || 1, true);
@@ -205,6 +205,7 @@ CG.Online = {
       return;
     }
     if (m.t === 'blast') { sc.launchPlayers(m.x, m.y, m.r); return; }       // a teammate's grenade threw me
+    if (m.t === 'feed') { if (sc.feedLine) sc.feedLine(m.msg); return; }     // a duel: who got whom
     if (m.t === 'heal') {
       for (const p of sc.players) {
         if (p.owner !== N.uid || !(m.all || Math.abs(p.body.center.x - m.x) < m.range)) continue;
@@ -228,7 +229,8 @@ CG.Online = {
     sc.score = s.sc;
     if (sc.pvp && s.kd) {
       sc.kills = s.kd;
-      if (s.win && !sc.over) sc.duelOver(s.win);
+      if (s.rd && s.rd !== sc.round) { sc.round = s.rd; sc.resetRound(); }      // the host started a new round
+      if (s.win !== null && s.win !== undefined && !sc.over) sc.duelOver(s.win);
       return this.applyDuelBits(s);
     }
     sc.teamLives = s.lv;

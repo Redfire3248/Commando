@@ -577,3 +577,79 @@ input:focus { border-color: var(--acc); }
 .fig .tag .x { position: absolute; top: -9px; right: -9px; width: 22px; height: 22px; padding: 0; font-size: 12px; line-height: 22px; border-radius: 50%; clip-path: none;
   border: none; background: #c0392b; color: #fff; z-index: 4; }
 .fig .tag .x:hover { background: #ff5a4a; }
+
+/* ---------- home: centred squad with room between them ---------- */
+.stage { gap: 1.6vw; padding: 0 3vw 3vh; }
+.fig { max-width: 19vw; }
+.fig.me { max-width: 24vw; }
+.fig.empty { flex-grow: .5; max-width: 11vw; }
+.fig .body img { width: 165%; }
+.fig.bot .body { cursor: pointer; }
+.bot-pick { display: flex; gap: 6px; }
+.bot-pick button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px; width: 64px; clip-path: none; border: 2px solid var(--c); background: rgba(0, 0, 0, .55); font-size: 12px; }
+.bot-pick button:hover { background: rgba(255, 255, 255, .12); }
+.bot-pick img { width: 48px; height: 48px; image-rendering: pixelated; }
+/* the mode button in the dock */
+.mode-card { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; padding: 10px 14px; border-left: 4px solid var(--acc);
+  background: linear-gradient(90deg, rgba(255, 140, 40, .22), rgba(10, 14, 18, .88)); }
+.mode-card small { font-size: 11px; letter-spacing: .22em; color: var(--acc2); }
+.mode-card b { font: 400 26px var(--head); letter-spacing: .05em; }
+.mode-card span { font-size: 13px; color: var(--dim); letter-spacing: .04em; }
+.mode-card:hover:not([disabled]) { filter: brightness(1.15); }
+/* the mode picker */
+.modes-pop { position: fixed; z-index: 40; background: rgba(2, 4, 6, .78); backdrop-filter: blur(3px); }
+.modes-card { width: min(1180px, 96vw); max-height: 94vh; overflow: auto; box-sizing: border-box; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+.modes-head { display: flex; align-items: center; justify-content: space-between; }
+.modes-head h2 { text-align: left; }
+.modes { display: grid; grid-template-columns: 1fr 1fr 1.25fr; gap: 14px; }
+.mode-tile { position: relative; display: flex; flex-direction: column; min-height: 420px; background: #0b0f13; border: 2px solid rgba(255, 255, 255, .12); overflow: hidden;
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px); }
+.mode-tile.selected { border-color: var(--acc); box-shadow: inset 0 0 0 2px var(--acc); }
+.mode-tile .mt-art { height: 150px; flex: none; background: var(--bg) center / cover no-repeat; image-rendering: pixelated; position: relative; }
+.mode-tile .mt-art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, #0b0f13); }
+.mode-tile .mt-body { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 0 16px 16px; margin-top: -26px; position: relative; }
+.mode-tile .mt-body > b { font: 400 40px var(--head); letter-spacing: .05em; text-shadow: 0 3px 0 #000; }
+.mode-tile.story .mt-body > b { color: #7cff8a; } .mode-tile.duels .mt-body > b { color: #ff8a4a; } .mode-tile.custom .mt-body > b { color: #9ac8ff; }
+.mode-tile p { margin: 0; color: #cfd9cc; font-size: 15px; line-height: 1.4; flex: 1; }
+.mt-sizes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.mt-sizes .btn { font: 400 24px var(--head); padding: 12px 0; }
+.cust { display: grid; grid-template-columns: auto 1fr; gap: 7px 10px; align-items: center; font-size: 12px; letter-spacing: .16em; color: var(--dim); flex: 1; }
+.cust .seg { display: flex; gap: 4px; flex-wrap: wrap; }
+.cust .seg button { flex: 1; padding: 6px 6px; font-size: 13px; letter-spacing: .06em; clip-path: none; }
+.cust .seg button.on { background: rgba(255, 154, 60, .45); border-color: var(--acc); }
+.lobby-mode { display: flex; align-items: center; gap: 10px; }
+.lobby-mode span { font-size: 12px; letter-spacing: .2em; color: var(--dim); }
+.lobby-mode b { font: 400 22px var(--head); color: var(--acc2); }
+@media (max-height: 560px), (max-width: 860px) {
+  .modes-card { padding: 10px; gap: 8px; }
+  .modes { grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; }
+  .mode-tile { min-height: 0; }
+  .mode-tile .mt-art { height: 60px; }
+  .mode-tile .mt-body { padding: 0 8px 8px; gap: 6px; margin-top: -14px; }
+  .mode-tile .mt-body > b { font-size: 22px; }
+  .mode-tile p { font-size: 11px; }
+  .mt-sizes .btn { font-size: 16px; padding: 6px 0; }
+  .cust { gap: 4px 6px; font-size: 9px; letter-spacing: .08em; }
+  .cust .seg button { padding: 3px 4px; font-size: 10px; }
+  .mode-card { padding: 6px 8px; } .mode-card b { font-size: 16px; } .mode-card small, .mode-card span { font-size: 9px; }
+}
+.fig.empty.picking { flex-grow: 1; max-width: none; z-index: 4; }
+@media (max-height: 560px), (max-width: 760px) { .bot-pick button { width: 48px; font-size: 10px; } .bot-pick img { width: 34px; height: 34px; } }
+
+/* ---------- idle loops (idle.png) and interface icons (ui_icons.png) ---------- */
+.idle { position: relative; overflow: hidden; flex: none; }
+.idle img { display: block; height: 100%; max-width: none; image-rendering: pixelated; animation-name: idleStrip; animation-iteration-count: infinite; }
+@keyframes idleStrip { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+.fig .body .idle { height: var(--h); filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .65)); }
+.fig .body .idle img { height: 100%; object-fit: fill; filter: none; animation-name: idleStrip; }
+.lfig .body .idle { height: 150px; }
+.lfig .body .idle img { height: 100%; filter: none; }
+.sel-hero .idle { height: 100%; max-height: 100%; }
+.sel-hero .idle img { height: 100%; max-height: none; aspect-ratio: auto; filter: none; }
+@media (max-height: 560px), (max-width: 760px) { .lfig .body .idle { height: 80px; } }
+.ico { width: 1.1em; height: 1.1em; object-fit: contain; vertical-align: -0.15em; margin-right: .3em; image-rendering: pixelated; }
+.mode-tile .mt-body > b .ico { width: 1em; height: 1em; }
+.topnav .ico { width: 1.1em; height: 1.1em; }
+.fig.empty .plus .ico { width: 60%; height: 60%; margin: 0; }
+.tb.ico { color: transparent !important; }
+.tb.ico::before { content: ""; position: absolute; inset: 20%; background: var(--ico) center / contain no-repeat; image-rendering: pixelated; }

@@ -362,3 +362,42 @@ BACKGROUND: transparent PNG (real transparency). No background colour, no white,
 ROW 1 — steel-winged badges, each with a coloured centre and a simple picture: 1 light blue with an arrow passing through two circles (piercing rounds); 2 orange with a round black bomb (explosive rounds); 3 pink-red with two bullets side by side (double damage); 4 pale blue with a snowflake (ice rounds); 5 red with a flame (fire rounds); 6 purple with a lightning bolt (shock rounds); 7 gold with a horseshoe magnet (coin magnet); 8 teal with an hourglass (slow time); 9 green with a winged boot (jump boots); 10 white with a heart and a plus (big heal).
 ROW 2 — 1 to 9: the same ten-style badges for: a ghost silhouette (cloak), a hammer (ground pound), a gas mask (toxic cloud), a small flying drone (sentry drone), a crosshair (auto aim), a clock with a plus (longer power-ups), a shield with a plus (armour), a coin stack (double coins), a skull (danger mode). 10: a special ADMIN badge, bigger than the others: a gold badge with a crown on top and red wings, a bright gold centre with a red star.
 ```
+
+## 14 — Idle loops for all eleven agents → `idle.png` (8 columns × 6 rows)
+Used on the home screen, the locker and the local co-op screen (each agent breathes and shifts on the spot).
+`python tools/build_art.py` cuts it by the empty space between sprites, so the grid does not have to be exact.
+```
+Create this image from scratch. Do not ask for a reference image — everything you need is described below.
+
+A 16-bit PIXEL ART sprite sheet for a side-scrolling run-and-gun game: chunky square pixels with hard edges, a small flat colour palette with two or three shades per colour, a dark one-pixel outline around every character. No anti-aliasing, no blur, no gradients, no glow, no painterly brush strokes.
+
+REMOVE THE BACKGROUND: a PNG with real transparency. No background colour, no white, no grey, NO checkerboard pattern, no floor line, no shadows, no grid lines, no borders, no text, no names, no numbers.
+
+LAYOUT: 8 columns and 6 rows. Every row holds TWO characters: cells 1–4 are the first character's idle loop, cells 5–8 the second character's idle loop. Every sprite stands alone with clear empty space around it, never touching another sprite. All eleven characters are drawn at the same pixel scale and stand on the same floor line in their row. Everyone faces RIGHT, standing, holding the same rifle (black steel body, short thick barrel, brown wooden stock, small orange energy cell) aimed straight forward at chest height.
+
+THE IDLE LOOP (4 frames, the same for everyone): 1 standing relaxed; 2 chest rises, shoulders up one pixel; 3 standing relaxed again with a tiny shift of weight; 4 shoulders down one pixel, head turns very slightly. The feet never move, the rifle stays level. Small movements only, so the loop plays smoothly.
+
+ROW 1: RAZOR (man, the biggest and broadest, shaved head, black beard, orange headband with two tails, olive tank top, brass ammo belt across the chest, tan camouflage trousers, black boots) — then NOVA (woman, dark brown skin, short curly black hair, white headband with a red cross, teal vest over a black shirt, grey trousers, black boots).
+ROW 2: KITE (woman, slim, bright red ponytail, green bandana, short black jacket, green camouflage trousers, light brown boots) — then BRICK (man, bulky, steel helmet with the visor up, steel-blue armour plates on chest and shoulders, dark grey trousers with knee pads, small round shield on the left forearm).
+ROW 3: VOLT (man, wiry, spiky white-blond hair, brass goggles on the forehead, long purple coat, black harness, black trousers) — then JAX (man, muscular, short dark hair, blue headband with two short tails, white sleeveless shirt, blue camouflage trousers, black boots, fingerless gloves).
+ROW 4: DUKE (man, muscular, blond hair, red headband, bare chest crossed by one ammunition belt, red camouflage trousers, black boots) — then GHOST (woman, slim, black hooded cloak, white half-mask over mouth and nose, red goggles, grey-and-black urban camouflage).
+ROW 5: HAMMER (man, the biggest, bald with a thick moustache, yellow hard hat, orange hazard vest over a grey shirt, brown work trousers, heavy boots) — then VIPER (woman, pale skin, black bob haircut with a lime-green streak, gas mask hanging at her neck, olive jacket with lime-green trim, black trousers).
+ROW 6: ATLAS (man, cyborg soldier, grey metal robotic left arm, steel plate over half his face with a small blue eye light, white-and-blue armoured suit, dark grey trousers) in cells 1–4. Cells 5–8 of row 6 stay completely empty.
+```
+
+## 15 — Interface icons → `ui_icons.png` (4 × 4)
+Touch buttons (FIRE, JUMP, DASH, SKILL), the mode cards, the top tabs, crown / bot / invite on the home screen.
+```
+Create this image from scratch. Do not ask for a reference image — everything you need is described below.
+
+A set of 16 game interface ICONS in 16-bit PIXEL ART: chunky square pixels with hard edges, bold simple shapes that read at a glance even when small, a dark one-pixel outline, two or three flat shades per colour, a military look to match a jungle run-and-gun game. No anti-aliasing, no blur, no gradients, no glow, no text, no letters, no numbers.
+
+REMOVE THE BACKGROUND: a PNG with real transparency. No background colour, no white, no grey, NO checkerboard pattern, no circles or frames behind the icons (the game draws its own buttons), no grid lines, no borders.
+
+LAYOUT: 4 columns and 4 rows, one icon in the middle of each cell, every icon about the same size, clear empty space between icons, never touching.
+
+ROW 1: (1) FIRE — a crosshair with a small orange bullet flying out to the right; (2) JUMP — a thick upward chevron arrow above a small boot; (3) DASH — a green arrow shooting to the right with three speed lines behind it; (4) SKILL — a bold yellow lightning bolt.
+ROW 2: (5) PAUSE — two thick vertical bars; (6) STORY — a green jungle palm tree in front of a mountain; (7) DUELS — two crossed rifles; (8) CUSTOM — a gear with a small slider beside it.
+ROW 3: (9) CROWN — a gold crown with three points; (10) BOT — a small robot head with a visor and an antenna; (11) INVITE — a thick white plus sign; (12) COIN — a gold coin with a star on it.
+ROW 4: (13) TROPHY — a gold cup; (14) LOCKER — a military dog tag on a chain; (15) SHOP — a canvas supply bag with a coin; (16) FRIENDS — two soldier heads in helmets side by side.
+```

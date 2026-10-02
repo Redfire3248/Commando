@@ -74,9 +74,15 @@
       const onGround = this.onGround = b.blocked.down || b.touching.down;
       const dir = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
       if (onGround) this.airDashed = false;
-      // Tac Dash: a quick burst sideways, once per jump in the air (like a Valorant dash)
-      if (inp.dashPressed && this.mdashCd <= 0 && this.dashT <= 0 && !(this.airDashed && !onGround)) {
+      // Tac Dash (only agents with `dash`, i.e. Kite): a quick burst in any of eight directions — the held
+      // direction keys decide (W + DASH straight up, W + D + DASH up and right…); nothing held = forward.
+      // Once per jump in the air, like a Valorant dash.
+      if (inp.dashPressed && this.agent.dash && this.mdashCd <= 0 && this.dashT <= 0 && !(this.airDashed && !onGround)) {
         if (dir) this.facing = dir;
+        let vx = dir, vy = inp.up ? -1 : inp.down && !onGround ? 1 : 0;
+        if (!vx && !vy) vx = this.facing;
+        const len = Math.hypot(vx, vy);
+        this.mdashVec = { x: vx / len, y: vy / len };
         this.mdashT = 190; this.mdashCd = 3200;
         if (!onGround) this.airDashed = true;
         this.setProne(false);
@@ -86,7 +92,9 @@
 
       if (this.mdashT > 0) {                                  // Tac Dash: straight line, no gravity
         b.allowGravity = false;
-        b.velocity.set(this.facing * 2700, 0);
+        const v = this.mdashVec || { x: this.facing, y: 0 };
+        b.velocity.set(v.x * 2500, v.y * 2000);
+        this.wasPhasing = true;                               // ease out of it like the Phase Dash
         if (Math.random() < 0.5) sc.afterimage(this);
       } else if (this.dashT > 0) {                            // Phase Dash: straight along the aim (up too), untouchable
         b.allowGravity = false;
@@ -173,7 +181,7 @@
         }
         case 'nova':
           for (const p of sc.players) {
-            if (sc.pvp && p !== this) continue;                // a duel: Mend only heals yourself
+            if (sc.pvp && p.team !== this.team) continue;      // a duel: Mend only heals your own team
             if (p.remote || Math.abs(p.body.center.x - this.body.center.x) > ab.range) continue;
             if (p.out) { p.respawn(); continue; }                                    // back in the fight
             if (p.alive) { p.heal(ab.heal); p.invT = Math.max(p.invT, 1500); }
@@ -282,9 +290,8 @@
       sc.boom(fromX, v.y - 50, 14);
       sc.tweens.add({ targets: v, x: fromX - this.facing * 150, y: v.y - 90, angle: -this.facing * 60, duration: 420, ease: 'Quad.out' });
       sc.tweens.add({ targets: v, alpha: 0, delay: 650, duration: 350 });
-      if (sc.pvp) {                                       // a duel: no lives to lose, back in after a moment
+      if (sc.pvp) {                                       // a duel: down until the round ends (see GameScene.downed)
         sc.pvpDeath(this);
-        sc.time.delayedCall(1500, () => { if (!sc.over) this.respawn(); });
         return;
       }
       const respawn = sc.teamLives > 0;
@@ -301,7 +308,7 @@
 
     respawn() {
       const sc = this.scene, T = CG.CONFIG.TILE;
-      const col = sc.pvp ? Math.floor(sc.duelSpawn(this.idx) / T) : CG.Level.safeCol((sc.cameras.main.scrollX + 260 + this.idx * 90) / T);
+      const col = sc.pvp ? Math.floor(sc.teamSpawn(this.idx) / T) : CG.Level.safeCol((sc.cameras.main.scrollX + 260 + this.idx * 90) / T);
       this.lastHitBy = null;
       this.dead = false; this.out = false; this.invT = this.C.respawnInvMs; this.fireCd = 0; this.hp = this.maxHp;
       this.setProne(false);

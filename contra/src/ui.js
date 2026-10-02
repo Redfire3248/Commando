@@ -7,7 +7,7 @@
 // Offline play is only offered when the online service is not set up or cannot be reached.
 CG.UI = (() => {
   const $ = (id) => document.getElementById(id);
-  const PANELS = ['login', 'username', 'menu', 'lobby', 'select', 'shop', 'settings', 'how', 'friends', 'pause', 'over'];
+  const PANELS = ['login', 'username', 'menu', 'lobby', 'select', 'shop', 'settings', 'friends', 'pause', 'over'];
   const BEST = 'commando.best', NAME = 'commando.name', AGENT = 'commando.agent';
   let lastPlayers = null, scene = null, booted = false, offline = false, current = null;
 
@@ -34,6 +34,17 @@ CG.UI = (() => {
   const visible = (id) => !$(id).classList.contains('hidden');
   const portrait = (id) => (CG.PORTRAITS && CG.PORTRAITS[id]) || '';
   const body = (id) => (CG.BODIES && CG.BODIES[id]) || portrait(id);
+  // the whole agent for the menus: their idle loop (idle.png) when it is in, else the standing frame
+  const figure = (id) => {
+    const I = CG.DATA.art && CG.DATA.art.idle && CG.DATA.art.idle[id];
+    if (I) return `<div class="idle" style="aspect-ratio:${I.fw} / ${I.fh}"><img src="${I.path}" alt="" style="width:${I.n * 100}%;animation-timing-function:steps(${I.n});animation-duration:${I.n * 0.2}s"></div>`;
+    return body(id) ? `<img src="${body(id)}" alt="">` : '';
+  };
+  // an icon from ui_icons.png, or the fallback text
+  const ico = (name, alt) => {
+    const U = CG.DATA.art && CG.DATA.art.ui;
+    return U && U[name] ? `<img class="ico" src="${U[name]}" alt="">` : (alt || '');
+  };
   const abIcon = (id) => (CG.ABICONS && CG.ABICONS[id]) || '';
   const N = () => CG.Net;
 
@@ -92,8 +103,14 @@ CG.UI = (() => {
   }
 
   // ---------------------------------------------------------------- home: the squad on stage
-  let mode = 'squad';                        // 'squad' (co-op against the army) or 'duel' (1v1)
-  let localBots = [];                        // bots in your squad while you are not in an online party
+  // the mode (CG.Modes): story, duels 1v1-3v3 or custom; remembered on this device
+  const MODE = 'commando.mode', CUSTOM = 'commando.custom';
+  const loadJson = (k, d) => { try { return Object.assign({}, d, JSON.parse(store.get(k, '') || '{}')); } catch (e) { return Object.assign({}, d); } };
+  let mode = loadJson(MODE, { kind: 'story' });
+  let custom = loadJson(CUSTOM, CG.Modes.CUSTOM);
+  const pvp = () => CG.Modes.isPvp(mode);
+  let localBots = [];                        // bots in your squad while you are not in an online party (jax / duke)
+  let botPick = -1;                          // the empty place showing the JAX / DUKE choice
   function renderMenu() {
     const net = N(), prof = net.profile, on = net.online;
     $('menu-name').textContent = myName();
@@ -108,6 +125,12 @@ CG.UI = (() => {
       <button class="btn small primary" data-act="inv-accept" data-uid="${esc(pid)}">JOIN</button><button class="btn small" data-act="inv-decline" data-uid="${esc(pid)}">✕</button></div>`).join('');
     renderStage();
     if (!$('invite-pop').classList.contains('hidden')) renderInvites();
+    // tab icons (ui_icons.png) once it is in
+    const U = CG.DATA.art && CG.DATA.art.ui;
+    if (U) document.querySelectorAll('.topnav button').forEach((b) => {
+      const name = { locker: 'locker', shop: 'shop', friends: 'friends', menu: 'story' }[b.dataset.act];
+      if (name && U[name] && !b.querySelector('.ico')) b.insertAdjacentHTML('afterbegin', ico(name));
+    });
   }
   // everyone in the squad: online party members (in the order they came) and bots, or just you and your bots
   function squad() {
@@ -134,47 +157,99 @@ CG.UI = (() => {
     [me].concat(rest).slice(0, max).forEach((x, i) => { cols[i === 0 ? mid : mid + (i % 2 ? 1 : -1) * Math.ceil(i / 2)] = x; });
     $('stage').innerHTML = cols.map((x, col) => {
       if (!x) {
-        return `<div class="fig empty"><div class="slot-in">
-          ${net.online && lead ? '<button class="plus" data-act="invite-open" title="Invite a friend">＋</button><small>INVITE</small>' : ''}
-          ${lead ? '<button class="btn small" data-act="squad-bot">+ BOT</button>' : ''}
+        const choose = botPick === col;
+        return `<div class="fig empty ${choose ? 'picking' : ''}"><div class="slot-in">
+          ${choose ? `<small>BOT AGENT</small><div class="bot-pick">${CG.Modes.BOT_AGENTS.map((id) => `<button data-act="squad-bot-as" data-uid="${id}" style="--c:${CG.AGENT[id].color}">
+              ${portrait(id) ? `<img src="${portrait(id)}" alt="">` : ''}<span>${CG.AGENT[id].name}</span></button>`).join('')}</div>
+              <button class="btn small ghost" data-act="squad-bot-cancel">CANCEL</button>`
+            : `${net.online && lead ? `<button class="plus" data-act="invite-open" title="Invite a friend">${ico('invite', '＋')}</button><small>INVITE</small>` : ''}
+          ${lead ? `<button class="btn small" data-act="squad-bot" data-uid="${col}">+ BOT</button>` : ''}`}
         </div><div class="pad"></div></div>`;
       }
       const a = CG.AGENT[x.agent] || CG.AGENTS[0];
       return `<div class="fig ${x.me ? 'me' : ''} ${x.bot ? 'bot' : ''}" style="--c:${a.color}">
-        <div class="tag">${x.leader && humansIn() > 1 ? '👑 ' : ''}<b>${esc(x.name)}</b><small>${x.bot ? '🤖 ' : ''}${a.name}</small>
+        <div class="tag">${x.leader && humansIn() > 1 ? ico('crown', '👑 ') : ''}<b>${esc(x.name)}</b><small>${x.bot ? ico('bot', '🤖 ') : ''}${a.name}</small>
           ${x.bot && lead ? `<button class="x" data-act="squad-unbot" data-uid="${x.i}" title="Remove bot">✕</button>` : ''}</div>
-        <div class="body ${col > mid ? 'flip' : ''}" ${x.me ? 'data-act="locker" title="Change agent"' : ''}>${body(a.id) ? `<img src="${body(a.id)}" alt="">` : ''}</div>
+        <div class="body ${col > mid ? 'flip' : ''}" ${x.me ? 'data-act="locker" title="Change agent"' : x.bot && lead ? `data-act="bot-swap" data-uid="${x.i}" title="Swap JAX / DUKE"` : ''}>${figure(a.id)}</div>
         <div class="pad"></div>
         ${x.me ? '<button class="btn small change" data-act="locker">CHANGE AGENT</button>' : ''}
       </div>`;
     }).join('');
     // the dock: mode, PLAY, FIND PLAYERS
-    const humans = humansIn(), queued = !!(p && p.state === 'queue');
-    document.querySelectorAll('[data-act="mode"]').forEach((b) => b.classList.toggle('on', b.dataset.uid === mode));
-    $('home-mode').classList.toggle('hidden', !lead);
+    const humans = humansIn(), queued = !!(p && p.state === 'queue'), tooMany = humans > CG.Modes.capacity(mode);
+    $('mode-name').textContent = CG.Modes.label(mode);
+    $('mode-sub').textContent = CG.Modes.sub(mode);
+    $('mode-card').disabled = !lead;
     const play = $('play-main');
-    play.disabled = !lead || queued || (mode === 'duel' && humans > 2);
-    play.textContent = !lead ? 'LEADER STARTS' : queued ? 'SEARCHING…' : mode === 'duel' && humans > 2 ? 'DUEL IS 1v1' : humans > 1 ? 'START MATCH' : 'PLAY';
+    play.disabled = !lead || queued || tooMany;
+    play.textContent = !lead ? 'LEADER STARTS' : queued ? 'SEARCHING…' : tooMany ? 'TOO MANY PLAYERS' : humans > 1 ? 'START MATCH' : 'PLAY';
     const find = $('find-btn');
-    find.classList.toggle('hidden', !net.online || !lead || (mode === 'duel' && humans > 1));
-    find.textContent = queued ? 'CANCEL SEARCH' : mode === 'duel' ? 'FIND A DUEL' : 'FIND PLAYERS';
+    find.classList.toggle('hidden', !net.online || !lead || mode.kind === 'custom' || (pvp() && humans > 1));
+    find.textContent = queued ? 'CANCEL SEARCH' : pvp() ? 'FIND A ' + CG.Modes.label(mode) : 'FIND PLAYERS';
     $('leave-btn').classList.toggle('hidden', !(p && humans > 1));
     $('party-status').textContent = queued ? 'Looking for other players… (starts on its own after 30 s)'
       : humans > 1 ? (lead ? 'Squad of ' + humans + ' — start when ready' : 'Waiting for the leader to start')
-        : mode === 'duel' ? 'Alone you fight a bot · find a duel to fight a real player' : 'Add bots, invite friends or find players';
+        : pvp() ? 'Bots fill the empty places in both teams' : 'Add bots, invite friends or find players';
+  }
+  // ---------------------------------------------------------------- the mode picker
+  function renderModes() {
+    const A = CG.DATA.arenas, M = CG.Modes, c = custom;
+    const seg = (field, vals, show) => vals.map((v) => `<button class="${c[field] === v ? 'on' : ''}" data-act="cust" data-uid="${field}:${v}">${show ? show(v) : v}</button>`).join('');
+    const sel = (k) => (k === M.key(mode) ? 'selected' : '');
+    $('modes').innerHTML = `
+      <div class="mode-tile story ${sel('squad')}" style="--bg:url(assets/atlas/bg15_1.png)">
+        <div class="mt-art"></div>
+        <div class="mt-body"><b>${ico('story')}STORY</b><p>The campaign: eight stages against the army, from the jungle to the alien lair. 1–5 players, bots help.</p>
+          <button class="btn primary" data-act="mode-pick" data-uid="squad">${sel('squad') ? '✔ SELECTED' : 'SELECT'}</button></div>
+      </div>
+      <div class="mode-tile duels ${/^duel/.test(M.key(mode)) ? 'selected' : ''}" style="--bg:url(assets/atlas/bg15_5.png)">
+        <div class="mt-art"></div>
+        <div class="mt-body"><b>${ico('duels')}DUELS</b><p>Team against team in an arena. Wipe out the other team to take the round — then everyone is back at full health. First to ${CG.DUEL_KILLS}.</p>
+          <div class="mt-sizes">${M.SIZES.map((n) => `<button class="btn ${sel('duel' + n) ? 'primary' : ''}" data-act="mode-pick" data-uid="duel${n}">${n}v${n}</button>`).join('')}</div></div>
+      </div>
+      <div class="mode-tile custom ${sel('custom')}" style="--bg:url(assets/atlas/bg15_9.png)">
+        <div class="mt-art"></div>
+        <div class="mt-body"><b>${ico('custom')}CUSTOM</b>
+          <div class="cust">
+            <span>MAP</span><div class="seg">${A.map((a, i) => `<button class="${c.arena === i ? 'on' : ''}" data-act="cust" data-uid="arena:${i}">${a.name.replace('ARENA · ', '')}</button>`).join('')}</div>
+            <span style="color:${M.TEAMS[0].color}">${M.TEAMS[0].name}</span><div class="seg">${seg('a', M.SIZES)}</div>
+            <span style="color:${M.TEAMS[1].color}">${M.TEAMS[1].name}</span><div class="seg">${seg('b', M.SIZES)}</div>
+            <span>FIRST TO</span><div class="seg">${seg('rounds', M.ROUNDS)}</div>
+            <span>POWER-UPS</span><div class="seg">${seg('drops', [true, false], (v) => (v ? 'ON' : 'OFF'))}</div>
+            <span>MY SQUAD</span><div class="seg">${seg('together', [true, false], (v) => (v ? 'SAME TEAM' : 'SPLIT UP'))}</div>
+          </div>
+          <button class="btn primary" data-act="mode-pick" data-uid="custom">${sel('custom') ? '✔ UPDATE' : 'SELECT'}</button></div>
+      </div>`;
+  }
+  function pickMode(k) {
+    mode = k === 'custom' ? Object.assign({}, custom) : k === 'squad' ? { kind: 'story' } : CG.Modes.fromKey(k);
+    store.set(MODE, JSON.stringify(mode));
+    $('mode-pop').classList.add('hidden');
+    CG.Sfx.play('pickup');
+    if (visible('lobby')) renderLobby(); else renderStage();
+  }
+  function setCustom(v) {
+    const [f, x] = v.split(':');
+    custom[f] = x === 'true' ? true : x === 'false' ? false : +x;
+    store.set(CUSTOM, JSON.stringify(custom));
+    renderModes();
   }
   // the bots you set up alone go with you into a new online party
   function takeLocalBots() { const b = localBots.length ? localBots.slice() : null; localBots = []; return b; }
-  function freeAgent(used) {
-    const free = CG.AGENTS.filter((a) => !used.includes(a.id));
-    return (free.length ? free[Math.floor(Math.random() * free.length)] : CG.AGENTS[Math.floor(Math.random() * CG.AGENTS.length)]).id;
-  }
-  function addSquadBot() {
+  // bots only play the two basic commandos: you choose which one when you add it, tap it to swap
+  function addSquadBot(agent) {
     const p = N().party, list = squad();
-    if (list.length >= MAX) return;
-    const agent = freeAgent(list.map((x) => x.agent));
+    botPick = -1;
+    if (list.length >= MAX || !CG.Modes.BOT_AGENTS.includes(agent)) { renderStage(); return; }
     if (p) run(() => N().setBots((p.bots || []).concat([agent])), '', 'party-msg');
     else { localBots.push(agent); renderStage(); }
+  }
+  function swapSquadBot(i) {
+    const p = N().party, bots = (p ? p.bots || [] : localBots).slice(), B = CG.Modes.BOT_AGENTS;
+    if (bots[+i] === undefined) return;
+    bots[+i] = B[(B.indexOf(bots[+i]) + 1) % B.length];
+    if (p) run(() => N().setBots(bots), '', 'party-msg');
+    else { localBots = bots; renderStage(); }
   }
   function removeSquadBot(i) {
     const p = N().party;
@@ -185,19 +260,20 @@ CG.UI = (() => {
     const net = N(), p = net.party;
     if (!isLead()) return;
     if (humansIn() > 1) { run(() => net.startMatch(null, mode), '', 'party-msg'); return; }
-    // alone: a game on this device with your bots (a duel: against a bot)
+    // alone: a game on this device with your bots (duels: bots fill both teams)
     const me = { device: { type: 'any' }, agent: myAgent(), name: myName() };
     const bots = (p ? p.bots || [] : localBots).slice();
     const bot = (agent, i) => ({ device: { type: 'bot' }, agent, name: 'BOT ' + (i + 1), bot: true });
-    play(mode === 'duel' ? [me, bot(bots[0] || freeAgent([me.agent]), 0)] : [me].concat(bots.map(bot)));
+    if (pvp()) play(CG.Modes.teams(mode, [me], (n) => bot(bots[n] || CG.Modes.botAgent(), n)));
+    else play([me].concat(bots.map(bot)));
   }
   async function findPlayers() {
     const net = N();
     if (net.party && net.party.state === 'queue') return CG.Queue.cancel();
-    if (mode === 'duel') localBots = [];
+    if (pvp()) localBots = [];
     await net.createParty();
-    if (mode === 'duel' && net.party && net.party.bots) { await net.setBots([]); net.party.bots = null; }
-    return CG.Queue.join(mode);
+    if (pvp() && net.party && net.party.bots) { await net.setBots([]); net.party.bots = null; }
+    return CG.Queue.join(CG.Modes.key(mode));
   }
   function renderInvites() {
     const net = N(), p = net.party, inParty = (p && p.members) || {};
@@ -224,10 +300,12 @@ CG.UI = (() => {
     CG.Touch.show(touch);
     if (touch && CG.Touch.enabled && !document.fullscreenElement) landscape();
   }
+  let lastCfg = null;
   function play(players) {
     if (!booted) return;
     lastPlayers = players;
-    startScene({ players, mode });
+    lastCfg = pvp() ? { players, mode: 'pvp', pvp: CG.Modes.settings(mode) } : { players, mode: 'squad' };
+    startScene(lastCfg);
   }
   function playOnline(cfg) {
     if (!booted) return;
@@ -293,7 +371,7 @@ CG.UI = (() => {
   function join(id, type, index) {
     if (joined.length >= MAX || joined.some((d) => d.id === id)) return;
     const d = { id, type, index };
-    if (type === 'bot') d.agent = freeAgent(joined.map((q) => q.agent));
+    if (type === 'bot') d.agent = CG.Modes.botAgent();
     else {
       // the first person keeps the locker agent; the others get the next agent nobody has
       const first = !joined.some((q) => q.type !== 'bot');
@@ -304,7 +382,13 @@ CG.UI = (() => {
   }
   // left / right: the next agent this person owns that no other person has (bots give way at the start)
   function cycle(d, dir) {
-    if (!d || d.type === 'bot') return;
+    if (!d) return;
+    if (d.type === 'bot') {                                   // bots: JAX or DUKE
+      const B = CG.Modes.BOT_AGENTS;
+      d.agent = B[(B.indexOf(d.agent) + 1) % B.length];
+      renderLobby();
+      return;
+    }
     const taken = humanAgents(d), n = CG.AGENTS.length;
     let i = CG.AGENTS.findIndex((a) => a.id === d.agent);
     for (let k = 0; k < n; k++) {
@@ -326,20 +410,20 @@ CG.UI = (() => {
       html += d
         ? `<div class="lfig" style="--c:${CG.PLAYER_COLORS[i]};--ac:${a.color}">
             <div class="lhead"><b>P${i + 1}</b><button class="btn small x" data-act="leave" data-uid="${esc(d.id)}" title="Leave">✕</button></div>
-            <div class="body">${body(a.id) ? `<img src="${body(a.id)}" alt="">` : ''}</div>
+            <div class="body">${figure(a.id)}</div>
             <div class="lname">${d.type === 'bot' ? '🤖 ' : ''}${a.name}</div>
-            ${d.type === 'bot' ? '<div class="arrows"></div>' : `<div class="arrows"><button class="btn small" data-act="lob-prev" data-uid="${esc(d.id)}">◀</button><button class="btn small" data-act="lob-next" data-uid="${esc(d.id)}">▶</button></div>`}
+            ${`<div class="arrows"><button class="btn small" data-act="lob-prev" data-uid="${esc(d.id)}">◀</button><button class="btn small" data-act="lob-next" data-uid="${esc(d.id)}">▶</button></div>`}
             <small>${esc(d.type === 'pad' ? LABEL.pad(d.index) : LABEL[d.type])}</small></div>`
         : `<div class="lfig empty"><b>P${i + 1}</b><span>Press FIRE to join</span></div>`;
     }
     $('lobby-slots').innerHTML = html;
     const humans = joined.filter((d) => d.type !== 'bot').length;
-    document.querySelectorAll('[data-act="mode"]').forEach((b) => b.classList.toggle('on', b.dataset.uid === mode));
-    $('lobby-sub').textContent = mode === 'duel' ? 'Two players fight each other: first to ' + CG.DUEL_KILLS + ' kills. Alone? You get a bot to fight.'
-      : 'Everyone press their FIRE button to join · B adds a bot';
-    const tooMany = mode === 'duel' && joined.length > 2;
+    $('lobby-mode-name').textContent = CG.Modes.label(mode);
+    $('lobby-sub').textContent = pvp() ? 'People take turns between the two teams · bots fill the empty places'
+      : 'Everyone press their FIRE button to join · B adds a bot (JAX or DUKE)';
+    const tooMany = humans > CG.Modes.capacity(mode);
     $('lobby-start').disabled = humans === 0 || tooMany;
-    $('lobby-start').textContent = tooMany ? 'A DUEL IS TWO PLAYERS' : humans ? 'START ▸' : 'WAITING FOR PLAYERS';
+    $('lobby-start').textContent = tooMany ? 'TOO MANY FOR ' + CG.Modes.label(mode) : humans ? 'START ▸' : 'WAITING FOR PLAYERS';
     $('lobby-touch').classList.toggle('hidden', !CG.Touch.enabled || joined.some((d) => d.id === 'touch'));
     $('lobby-bot').disabled = joined.length >= MAX;
   }
@@ -363,21 +447,15 @@ CG.UI = (() => {
     } catch (e) { /* not supported here */ }
   }
   function startLocal() {
-    if (!joined.some((d) => d.type !== 'bot')) return;
-    if (mode === 'duel') {
-      if (joined.length > 2) return;
-      if (joined.length === 1) addBot();                                                 // alone: fight a bot
-    }
-    // bots never take an agent a person has
-    joined.filter((d) => d.type === 'bot' && humanAgents().includes(d.agent)).forEach((d) => { d.agent = freeAgent(joined.map((q) => q.agent)); });
+    const humans = joined.filter((d) => d.type !== 'bot');
+    if (!humans.length || humans.length > CG.Modes.capacity(mode)) return;
     // a lone keyboard player gets both key layouts and the mouse
     const kb = joined.filter((d) => d.type === 'kbA' || d.type === 'kbB');
-    let human = 0;
-    play(joined.map((d, i) => {
-      const bot = d.type === 'bot';
-      return { device: { type: kb.length === 1 && kb[0] === d ? 'kbAll' : d.type, index: d.index }, agent: d.agent, bot,
-        name: bot ? 'BOT ' + (i + 1) : human++ === 0 ? myName() : 'P' + (i + 1) };
-    }));
+    const person = (d, i) => ({ device: { type: kb.length === 1 && kb[0] === d ? 'kbAll' : d.type, index: d.index }, agent: d.agent, name: i === 0 ? myName() : 'P' + (i + 1) });
+    const bots = joined.filter((d) => d.type === 'bot');
+    const bot = (n) => ({ device: { type: 'bot' }, agent: (bots[n] && bots[n].agent) || CG.Modes.botAgent(), name: 'BOT ' + (n + 1), bot: true });
+    if (pvp()) play(CG.Modes.teams(mode, humans.map(person), bot));
+    else play(humans.map(person).concat(bots.map((d, n) => bot(n))));
   }
   const KEY_JOIN = {
     KeyF: 'kbA', KeyG: 'kbA', KeyW: 'kbA', KeyA: 'kbA', KeyS: 'kbA', KeyD: 'kbA',
@@ -413,7 +491,7 @@ CG.UI = (() => {
     else action = `<button class="btn primary big-btn" data-act="lock">EQUIP ${looking.name}</button><div class="sel-note">You keep it for every match</div>`;
     $('sel-main').innerHTML = `
       <div class="sel-hero ${own ? '' : 'locked'}" style="--c:${looking.color}">
-        ${body(looking.id) ? `<img src="${body(looking.id)}" alt="">` : ''}
+        ${figure(looking.id)}
         ${own ? '' : '<div class="lock-badge">🔒</div>'}
       </div>
       <div class="sel-info" style="--c:${looking.color}">
@@ -572,8 +650,15 @@ CG.UI = (() => {
     locker: openLocker,
     'play-main': playMain,
     find: () => run(findPlayers, '', 'party-msg'),
-    'squad-bot': addSquadBot,
+    'squad-bot': (col) => { botPick = +col; renderStage(); },
+    'squad-bot-as': (id) => addSquadBot(id),
+    'squad-bot-cancel': () => { botPick = -1; renderStage(); },
+    'bot-swap': (i) => swapSquadBot(i),
     'squad-unbot': removeSquadBot,
+    'mode-open': () => { renderModes(); $('mode-pop').classList.remove('hidden'); },
+    'mode-close': () => $('mode-pop').classList.add('hidden'),
+    'mode-pick': pickMode,
+    cust: setCustom,
     'invite-open': () => { renderInvites(); $('invite-pop').classList.remove('hidden'); },
     'invite-close': () => $('invite-pop').classList.add('hidden'),
     'lob-prev': (id) => cycle(joined.find((d) => d.id === id), -1),
@@ -614,16 +699,14 @@ CG.UI = (() => {
       renderLocker();
     },
     friends: () => show('friends'),
-    how: () => show('how'),
     menu: () => (running() || paused() ? toMenu() : home()),
     resume, quit: toMenu,
     admin: () => { resume(); CG.Admin.open(); },
     'admin-close': () => CG.Admin.close(),
-    retry: () => (lastPlayers ? play(lastPlayers) : toMenu()),
+    retry: () => (lastCfg ? startScene(Object.assign({}, lastCfg, { players: lastCfg.players.map((q) => Object.assign({}, q)) })) : toMenu()),
     'inv-accept': (pid) => run(() => N().acceptInvite(pid).then(() => home()), ''),
     'inv-decline': (pid) => run(() => N().declineInvite(pid), ''),
     'party-invite': (uid) => run(() => N().invite(uid), 'Invite sent', visible('menu') ? 'party-msg' : 'fr-msg'),
-    mode: (m) => { mode = m; if (visible('lobby')) renderLobby(); else renderStage(); },
     'party-leave': () => run(() => N().leaveParty().then(() => home()), ''),
     'fr-copy': () => run(() => navigator.clipboard.writeText(N().profile.code), 'Code copied', 'fr-msg'),
     'fr-send': () => run(() => N().sendRequest($('fr-add').value).then(() => { $('fr-add').value = ''; }), 'Request sent', 'fr-msg'),
