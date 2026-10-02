@@ -1070,3 +1070,9 @@ body:not(.playing) #game { filter: blur(3px) brightness(.92); transform: scale(1
   .email-form .em-row .btn, #offline-btn { padding-top: 7px; padding-bottom: 7px; }
   .or-line { margin: 0; }
 }
+
+/* rank emblem in front of every name on the home screen */
+.fig .tag { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.fig .tag .rank-ico { flex: none; }
+.cslot b .rank-ico { margin-right: 6px; vertical-align: -4px; }
+.lb-row .lb-x { margin-left: 8px; background: #5a1d1d; border-color: #ff5a4a; }

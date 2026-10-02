@@ -342,7 +342,7 @@
       this.livesIcon = fixed(this.add.image(W - 130, 126, has('life') ? 'life' : 'pk_life'));
       this.livesIcon.setScale(Math.min(1, 40 / this.livesIcon.height));
       this.teamLabel = this.add.text(W - 160, 126, 'TEAM', ts(18, '#ffd39a')).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100);
-      this.adminTag = fixed(this.add.text(W - 40, 162, 'ADMIN · SCORE NOT SAVED', ts(16, '#ff8080')).setOrigin(1, 0.5)).setVisible(this.adminUsed);
+      this.adminTag = fixed(this.add.text(W - 40, 162, 'ADMIN · SCORE NOT SAVED', ts(16, '#ff8080')).setOrigin(1, 0.5)).setVisible(false);
       this.coinIcon = fixed(this.add.image(W - 130, 200, 'pk_coin').setScale(0.6));
       this.coinText = fixed(this.add.text(W - 40, 200, '', ts(26, '#ffd23c')).setOrigin(1, 0.5).setShadow(0, 2, '#000', 6));
     }
@@ -577,12 +577,14 @@
       });
       this.livesText.setText('×' + this.teamLives);
       this.coinText.setText('+' + (this.coinsEarned || 0));
-      this.adminTag.setVisible(this.adminUsed);
+      this.adminTag.setVisible(false);
     }
 
     // ---------------------------------------------------------------- terrain
     buildTerrain() {
-      const { H, TILE: T } = CG.CONFIG, L = CG.DATA.level, gy = L.groundRow * T, k = (name) => name + '_' + L.theme;
+      const { H, TILE: T } = CG.CONFIG, L = CG.DATA.level, gy = L.groundRow * T;
+      // a story world's own tiles (`L.tiles`, e.g. g_top_w_jungle) when they are in, else the theme's
+      const k = (name) => (L.tiles && this.textures.exists(name + '_' + L.tiles) ? name + '_' + L.tiles : name + '_' + L.theme);
       const zone = (group, x, y, w, h) => {
         const z = this.add.zone(x + w / 2, y + h / 2, w, h);
         this.physics.add.existing(z, true);
@@ -596,11 +598,13 @@
       const has = (key) => this.textures.exists(key);
       const fit = (ts) => { const w = ts.texture.getSourceImage().width; if (w !== T) ts.setTileScale(T / w); return ts; };
       // water a little below the banks, darker as it gets deep, and slowly moving
+      const ownWater = L.tiles && has('water_' + L.tiles);            // a world's painted water needs no tint
       this.waterTs = [
-        fit(this.add.tileSprite(0, gy + 40, L.w * T, T, k('water')).setOrigin(0).setDepth(1).setTint(0xd8ecff)),
-        fit(this.add.tileSprite(0, gy + 40 + T, L.w * T, H - gy, k('water_deep')).setOrigin(0).setDepth(1).setTint(0x6f93bd)),
+        fit(this.add.tileSprite(0, gy + 40, L.w * T, T, k('water')).setOrigin(0).setDepth(1).setTint(ownWater ? 0xffffff : 0xd8ecff)),
+        fit(this.add.tileSprite(0, gy + 40 + T, L.w * T, H - gy, k('water_deep')).setOrigin(0).setDepth(1).setTint(ownWater ? 0xffffff : 0x6f93bd)),
       ];
       const variant = (name, i) => (has(k(name) + '_' + i) ? k(name) + '_' + i : k(name));
+      const nIn = has(k('g_in') + '_2') ? 3 : 2;                    // a world set has three fill tiles
       const tile = (x, y, key) => this.add.image(x, y, key).setOrigin(0).setDisplaySize(T + 0.5, T + 0.5).setDepth(2);
       // under a rock cliff the ground is all dirt (no grass line running through the rock)
       const underRock = new Set();
@@ -610,7 +614,7 @@
         for (let c = a; c < b; c++) {
           const edge = underRock.has(c) ? variant('g_in', c % 2) : c === a && has(k('g_left')) ? k('g_left') : c === b - 1 && has(k('g_right')) ? k('g_right') : variant('g_top', c % 3);
           tile(c * T, gy, edge);
-          for (let r = L.groundRow + 1; r < L.h; r++) tile(c * T, r * T, variant('g_in', (c + r) % 2));
+          for (let r = L.groundRow + 1; r < L.h; r++) tile(c * T, r * T, variant('g_in', (c + r) % nIn));
         }
       });
       // moving platforms: a ledge that slides back and forth (or up and down); riders move with it
@@ -629,7 +633,7 @@
         for (let i = 0; i < w; i++) {
           const edge = i === 0 && has(k('g_left')) ? k('g_left') : i === w - 1 && has(k('g_right')) ? k('g_right') : variant('g_top', (c + i) % 3);
           tile((c + i) * T, r * T, edge);
-          for (let rr = r + 1; rr < L.groundRow; rr++) tile((c + i) * T, rr * T, variant('g_in', (c + i + rr) % 2));
+          for (let rr = r + 1; rr < L.groundRow; rr++) tile((c + i) * T, rr * T, variant('g_in', (c + i + rr) % nIn));
         }
       });
       // cover: solid, stops every bullet, can be stood on. Painted cover (cover50.png) replaces the pixel boxes by key.
@@ -657,20 +661,21 @@
         let top = r * T, bottom = r * T + 20;
         const imgs = [];
         for (let i = 0; i < w; i++) {
-          const img = this.add.image((c + i) * T - 4, r * T - 4, k('ledge')).setOrigin(0).setDepth(2);
+          const ownBridge = kind === 'bridge' && has(k('bridge'));    // a world's painted bridge piece
+          const img = this.add.image((c + i) * T - 4, r * T - 4, ownBridge ? k('bridge') : k('ledge')).setOrigin(0).setDepth(2);
           imgs.push(img);
           if (img.width !== 16 * 4) img.setDisplaySize(T + 8, (T + 8) * img.height / img.width).setY(r * T - 10);   // painted ledge piece
           top = img.y + 4;
           bottom = Math.max(bottom, img.y + img.displayHeight * 0.8);
         }
         const z = zone(this.ledges, c * T, top, w * T, Math.max(20, bottom - top));
-        if (kind === 'bridge') { imgs.forEach((im) => im.setTint(0xd8c6a0)); this.bridges.push({ zone: z, imgs, x0: c * T, x1: (c + w) * T, top, state: 0 }); }
+        if (kind === 'bridge') { if (!has(k('bridge'))) imgs.forEach((im) => im.setTint(0xd8c6a0)); this.bridges.push({ zone: z, imgs, x0: c * T, x1: (c + w) * T, top, state: 0 }); }
       });
       // the fortress wall (duel arenas have none)
       const wc = L.boss.wallCol;
       if (wc >= L.w) return;
       zone(this.solids, wc * T, 0, (L.w - wc) * T, gy);
-      for (let c = wc; c < wc + 4; c++) for (let r = 0; r < L.groundRow; r++) tile(c * T, r * T, has(k('wall')) ? k('wall') : 'boss_wall');
+      for (let c = wc; c < wc + 4; c++) for (let r = 0; r < L.groundRow; r++) tile(c * T, r * T, has('boss_wall_' + L.tiles) ? 'boss_wall_' + L.tiles : has(k('wall')) ? k('wall') : 'boss_wall');
     }
 
     // is there something to stand on at this point?
@@ -989,7 +994,7 @@
         this.tweens.add({ targets: d, x: d.x + (e.flipX ? 60 : -60), duration: 300, ease: 'Quad.out' });
         this.tweens.add({ targets: d, alpha: 0, delay: 900, duration: 500, onComplete: () => d.destroy() });
       }
-      const left = { turret: 'e_wreck', core: 'boss_core_dead' }[e.type];     // wreckage stays behind
+      const left = { turret: 'e_wreck', core: CG.worldKey(this, 'boss_core_dead') }[e.type];     // wreckage stays behind
       if (left && this.textures.exists(left) && this.artScale[left]) {
         this.add.image(e.x, e.y, left).setOrigin(0.5, 1).setScale(this.artScale[left]).setDepth(7);
       }

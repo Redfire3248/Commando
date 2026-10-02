@@ -44,12 +44,16 @@ CG.Bot = (() => {
     const k = p.skill == null ? 0.6 : p.skill;
     if (s.shoot) {
       if (mem.seen === undefined) mem.seen = mem.t;
-      if (mem.t - mem.seen < (1 - k) * 40) s.shoot = false;                    // reaction time
-      else if (Math.random() > 0.45 + 0.55 * k) s.shoot = false;               // trigger discipline
+      if (mem.t - mem.seen < (1 - k) * 90) s.shoot = false;                    // reaction time
+      else if (Math.random() > 0.2 + 0.8 * k) s.shoot = false;                 // trigger discipline
     } else mem.seen = undefined;
-    if (Math.random() < (1 - k) * 0.12) { s.up = !s.up; s.down = false; }      // aim slips
+    if (Math.random() < (1 - k) * 0.35) { s.up = !s.up; s.down = Math.random() < 0.3; }   // aim slips
+    // a weak bot freezes up now and then (stands still for a moment) and wanders the wrong way
+    if (mem.freeze > mem.t) { s.left = s.right = false; s.jump = false; }
+    else if (Math.random() < (1 - k) * 0.02) mem.freeze = mem.t + 20 + Math.random() * 40 * (1 - k);
+    if (Math.random() < (1 - k) * 0.08) { const l = s.left; s.left = s.right; s.right = l; }
     if (k < 0.4) s.dash = false;
-    if (s.ability && Math.random() > 0.25 + 0.75 * k) s.ability = false;
+    if (s.ability && Math.random() > 0.1 + 0.9 * k) s.ability = false;
     return s;
   }
   function think(sc, p, mem) {

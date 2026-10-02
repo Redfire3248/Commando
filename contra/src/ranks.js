@@ -29,7 +29,7 @@ CG.Ranks = (() => {
     return { tier: TIERS[t], t, div, name: TIERS[t].name + ' ' + div, inDiv: rr % DIV, rr, idx };
   }
   // how well a bot of this rating plays, 0.15 (new Bronze) … 1 (Legend)
-  const skill = (rr) => Math.min(1, 0.15 + 0.85 * Math.min(rr, LEGEND_AT) / LEGEND_AT);
+  const skill = (rr) => Math.min(1, 0.02 + 0.98 * Math.pow(Math.min(Math.max(rr, 0), LEGEND_AT) / LEGEND_AT, 1.35));
 
   // the icon: painted art when it is in, else a shield in the tier's colour with its division as pips
   function icon(rr, px) {

@@ -12,28 +12,28 @@
 // Each stage is a run of hand-picked SECTIONS (see CG.Level.SECTIONS) followed by its boss:
 //   bg: which painted scene from backgrounds15.png (first lap, later laps)   brief: the line under the stage name
 CG.STORY = [
-  { name: 'JUNGLE', theme: 'jungle', bg: [1, 4], brief: 'Cross the jungle — the bridges blow up behind you — and break the defense wall',
+  { name: 'JUNGLE', tiles: 'w_jungle', theme: 'jungle', bg: [1, 4], brief: 'Cross the jungle — the bridges blow up behind you — and break the defense wall',
     sections: ['fight', 'river', 'hop', 'cliff', 'movers', 'climbwall', 'river', 'highcliff', 'islands', 'nest'],
     boss: { type: 'fortress', cannonRows: [5.5, 9.5], say: 'DESTROY THE DEFENSE WALL' } },
-  { name: 'BASE 1', theme: 'base', bg: [5, 8], brief: 'Break every wall core to open the way through the base',
+  { name: 'BASE 1', tiles: 'w_base1', theme: 'base', bg: [5, 8], brief: 'Break every wall core to open the way through the base',
     sections: ['gatehall', 'lift', 'cliff', 'gatehall', 'movers', 'highcliff', 'ravine', 'gatehall'],
     boss: { type: 'fortress', cannonRows: [4.5, 7.5, 10.5], say: 'DESTROY THE BASE CORE' } },
-  { name: 'WATERFALL', theme: 'jungle', bg: [2, 3], brief: 'Climb the falls — watch for falling rocks',
+  { name: 'WATERFALL', tiles: 'w_falls', theme: 'jungle', bg: [2, 3], brief: 'Climb the falls — watch for falling rocks',
     sections: ['falls', 'hop', 'climbwall', 'falls', 'movers', 'ravine', 'falls', 'lift'],
     boss: { type: 'statue', say: 'DESTROY THE ALIEN STATUE' } },
-  { name: 'BASE 2', theme: 'base', bg: [6, 12], brief: 'Deeper in: more walls, more guns',
+  { name: 'BASE 2', tiles: 'w_base2', theme: 'base', bg: [6, 12], brief: 'Deeper in: more walls, more guns',
     sections: ['gatehall', 'movers', 'highcliff', 'ravine', 'gatehall', 'lift', 'climbwall', 'gatehall'],
     boss: { type: 'fortress', cannonRows: [3.5, 6.5, 9.5], say: 'DESTROY THE TWIN CORE' } },
-  { name: 'SNOW FIELD', theme: 'snow', bg: [9, 10], brief: 'Cross the frozen field before the armour arrives',
+  { name: 'SNOW FIELD', tiles: 'w_snow', theme: 'snow', bg: [9, 10], brief: 'Cross the frozen field before the armour arrives',
     sections: ['river', 'hop', 'cliff', 'movers', 'islands', 'highcliff', 'ravine', 'climbwall', 'gauntlet'],
     boss: { type: 'tank', say: 'STOP THE ARMORED CARRIER' } },
-  { name: 'ENERGY ZONE', theme: 'base', bg: [11, 7], brief: 'Time your run past the fire jets',
+  { name: 'ENERGY ZONE', tiles: 'w_energy', theme: 'base', bg: [11, 7], brief: 'Time your run past the fire jets',
     sections: ['flames', 'lift', 'cliff', 'flames', 'movers', 'climbwall', 'flames', 'ravine'],
     boss: { type: 'giant', say: 'TAKE DOWN THE GIANT' } },
-  { name: 'HANGAR', theme: 'base', bg: [13, 12], brief: 'Mind the crushers — they come down hard',
+  { name: 'HANGAR', tiles: 'w_hangar', theme: 'base', bg: [13, 12], brief: 'Mind the crushers — they come down hard',
     sections: ['crushers', 'movers', 'highcliff', 'crushers', 'hop', 'lift', 'crushers', 'ravine'],
     boss: { type: 'fortress', cannonRows: [3.5, 6.5, 9.5], say: 'BREAK THE FINAL GATE' } },
-  { name: "ALIEN'S LAIR", theme: 'base', bg: [15, 14], brief: 'The source of it all. End it here',
+  { name: "ALIEN'S LAIR", tiles: 'w_alien', theme: 'base', bg: [15, 14], brief: 'The source of it all. End it here',
     sections: ['hive', 'hop', 'climbwall', 'hive', 'movers', 'highcliff', 'lift', 'ravine', 'hive'],
     boss: { type: 'heart', say: 'DESTROY THE ALIEN HEART' } },
 ];
@@ -97,7 +97,7 @@ CG.Level = {
   },
   // a story stage from its sections, in the format the Game scene reads
   build(def, li) {
-    const L = { name: def.name, theme: def.theme, bg: def.bg, brief: def.brief, story: li + 1, h: 17, groundRow: 14, handmade: true,
+    const L = { name: def.name, theme: def.theme, tiles: def.tiles, bg: def.bg, brief: def.brief, story: li + 1, h: 17, groundRow: 14, handmade: true,
       ledges: [], enemies: [], capsules: [], coins: [], coverCols: [], hazards: [], blocks: [], gaps: [], movers: [] };
     let c = 10;
     def.sections.forEach((name) => {

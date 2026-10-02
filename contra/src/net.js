@@ -265,6 +265,11 @@ CG.Net = {
     this.db.ref('leaderboard/' + uid + '/rr').set(rr).catch(() => {});
     return this.db.ref('users/' + uid + '/rr').set(rr);
   },
+  // admin: off the leaderboard, and kept off (their own game won't post it again)
+  async adminRemoveRank(uid) {
+    await this.db.ref('users/' + uid + '/lbHidden').set(true);
+    await this.db.ref('leaderboard/' + uid).remove();
+  },
   adminResetStats(uid) { return this.db.ref('users/' + uid + '/stats').remove(); },
   adminSetOwned(uid, ids) {
     const up = {};
@@ -409,6 +414,7 @@ CG.Net = {
   postRank() {
     if (!this.online || !this.profile) return;
     const p = this.profile;
+    if (p.lbHidden) return;                                     // taken off the leaderboard by the admin
     this.db.ref('leaderboard/' + this.uid).set({ name: p.username || p.name || '?', rr: p.rr || 0, title: p.title || 'recruit', banner: p.banner || 'steel' }).catch(() => {});
   },
   async leaderboard() {
@@ -465,7 +471,7 @@ CG.Net = {
       if (!pvp) (p.bots || []).forEach((agent) => { botN++; players.push({ id: 'bot' + botN, owner: this.uid, name: 'BOT ' + botN, agent, bot: true, rr: CG.Ranks.botRR(botN, CG.Profile.rr()) }); });
     }
     // duels: the people split into two teams, bots fill the empty places (the host runs the bots)
-    if (pvp) players = CG.Modes.teams(mode, players, () => { botN++; return { id: 'bot' + botN, owner: this.uid, name: 'BOT ' + botN, agent: CG.Modes.botAgent(), bot: true, rr: CG.Ranks.botRR(botN, CG.Profile.rr()) }; });
+    if (pvp) players = CG.Modes.teams(mode, players, () => { botN++; const rr = CG.Ranks.botRR(botN, CG.Profile.rr()); return { id: 'bot' + botN, owner: this.uid, name: 'BOT ' + botN, agent: CG.Modes.botAgent(rr), bot: true, rr }; });
     else players = players.slice(0, this.MAX);
     const ref = this.db.ref('matches').push();
     await ref.child('info').set({ host: this.uid, mode: pvp ? 'pvp' : mode.kind === 'horde' ? 'horde' : 'squad', pvp: pvp ? CG.Modes.settings(mode) : null,

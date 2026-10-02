@@ -36,6 +36,10 @@
         fontFamily: 'Rajdhani, sans-serif', fontSize: '22px', fontStyle: '700', color: this.color,
       }).setOrigin(0.5, 1).setDepth(30).setShadow(0, 2, '#000', 4);
       this.bar = scene.add.graphics().setDepth(30);
+      // the rank emblem in front of the name (painted emblem when it is in)
+      const rk = CG.Ranks.of(this.rr), rkey = 'rank_' + rk.tier.id + (rk.div ? '_' + rk.div : '');
+      this.rankImg = scene.textures.exists(rkey) ? scene.add.image(x, feetY - 160, rkey).setOrigin(1, 1).setDepth(30) : null;
+      if (this.rankImg) this.rankImg.setScale(26 / this.rankImg.height);
 
       const hp = this.agent.hp;
       Object.assign(this, {
@@ -66,14 +70,14 @@
 
     update(dt, inp) {
       this.lastInp = inp;
-      if (this.out) { this.tag.setVisible(false); this.bar.clear(); return; }
+      if (this.out) { this.tag.setVisible(false); if (this.rankImg) this.rankImg.setVisible(false); this.bar.clear(); return; }
       const ms = dt * 1000, C = this.C, b = this.body, sc = this.scene;
       const wasCd = this.abilityCd;
       for (const k of ['invT', 'barrierT', 'fireCd', 'dropT', 'abilityCd', 'stormT', 'domeT', 'dashT', 'adrenT', 'overT', 'mdashT', 'mdashCd', 'cloakT', 'magnetT', 'bootsT', 'aimT']) this[k] = Math.max(0, this[k] - ms);
       if (this.hack.dash) { this.mdashCd = 0; if (this.agent.dashAbility) { this.abilityCd = 0; this.abilityAt = 0; } }
       if (this.freeAbility) this.abilityCd = 0;
       if (wasCd > 0 && this.abilityCd <= 0) sc.abilityReady(this);
-      if (this.dead) { this.tag.setVisible(false); this.bar.clear(); return; }
+      if (this.dead) { this.tag.setVisible(false); if (this.rankImg) this.rankImg.setVisible(false); this.bar.clear(); return; }
 
       const onGround = this.onGround = b.blocked.down || b.touching.down;
       const dir = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
@@ -125,6 +129,12 @@
           sc.sparks.explode(6, b.center.x, b.bottom);
           CG.Sfx.play('jump');
         }
+      }
+      // admin FLY: no gravity, up / jump to rise, down to sink
+      if (this.hack.fly && this.mdashT <= 0 && this.dashT <= 0) {
+        b.allowGravity = false;
+        b.velocity.y = ((inp.down ? 1 : 0) - (inp.up || inp.jump ? 1 : 0)) * C.run * 1.2;
+        this.setProne(false);
       }
       if (inp.abilityPressed || (inp.dashPressed && this.agent.dashAbility)) this.useAbility();
 
@@ -264,6 +274,7 @@
       // nametag and hearts bar
       const top = b.bottom - 150;
       this.tag.setVisible(true).setPosition(b.center.x, top - 10);
+      if (this.rankImg) this.rankImg.setVisible(true).setPosition(b.center.x - this.tag.width / 2 - 4, top - 11);
       const g = this.bar, w = 64, x0 = b.center.x - w / 2;
       g.clear();
       g.fillStyle(0x000000, 0.6).fillRect(x0 - 2, top - 6, w + 4, 9);
@@ -296,7 +307,7 @@
       CG.Sfx.play('die');
       b.stop(); b.enable = false;
       this.shield.setVisible(false);
-      this.tag.setVisible(false); this.bar.clear();
+      this.tag.setVisible(false); if (this.rankImg) this.rankImg.setVisible(false); this.bar.clear();
       v.setFrame(this.art.anims.death[0]).setScale(this.art.scale * (this.art.anims.death[2] || 1));
       const fromX = Phaser.Math.Clamp(v.x, sc.cameras.main.scrollX + 30, sc.cameras.main.scrollX + CG.CONFIG.W - 30);
       v.setPosition(fromX, Math.min(v.y, CG.CONFIG.H - 120)).setAlpha(1);
@@ -340,7 +351,7 @@
     netDie() {
       const v = this.visual, sc = this.scene;
       this.dead = true;
-      this.tag.setVisible(false); this.bar.clear();
+      this.tag.setVisible(false); if (this.rankImg) this.rankImg.setVisible(false); this.bar.clear();
       v.setFrame(this.art.anims.death[0]).setScale(this.art.scale * (this.art.anims.death[2] || 1));
       sc.boom(v.x, v.y - 50, 14);
       sc.tweens.add({ targets: v, x: v.x - this.facing * 150, y: v.y - 90, angle: -this.facing * 60, duration: 420, ease: 'Quad.out' });
@@ -351,7 +362,7 @@
       this.visual.setAngle(0).setAlpha(1).setVisible(true);
     }
 
-    destroy() { this.tag.destroy(); this.bar.destroy(); }
+    destroy() { this.tag.destroy(); this.bar.destroy(); if (this.rankImg) this.rankImg.destroy(); }
   };
 
   // ------------------------------------------------------------------ enemies
@@ -379,11 +390,17 @@
     heart:  { tex: 'boss_heart', frames: true, hp: 120, body: [210, 210], ai: 'heart', fixed: true, center: true, boss: true, final: true, fireMs: 1900 },
   };
 
+  // a story world's own version of a picture (boss_core -> boss_core_w_base2) when it is in
+  CG.worldKey = (scene, key) => {
+    const w = CG.DATA.level && CG.DATA.level.tiles;
+    return w && scene.textures.exists(key + '_' + w) ? key + '_' + w : key;
+  };
+
   CG.Enemy = class extends Phaser.Physics.Arcade.Sprite {
     constructor(scene, type, x, y, extra) {
       const T = TYPES[type];
       const sheet = CG.CONFIG.SHEET_ART && T.sheet && scene.textures.exists(T.sheet);
-      super(scene, x, y, sheet ? T.sheet : T.tex, T.frames ? 0 : undefined);
+      super(scene, x, y, sheet ? T.sheet : T.boss && !T.frames ? CG.worldKey(scene, T.tex) : T.tex, T.frames ? 0 : undefined);
       scene.add.existing(this);
       scene.physics.add.existing(this);
       this.type = type; this.T = T; this.extra = extra; this.painted = sheet; this.fireT = 0;
@@ -403,7 +420,8 @@
       if (T.fixed) { this.body.allowGravity = false; this.body.moves = false; this.body.immovable = true; }
       this.cd2 = 900;
       if (T.ai === 'turret' || T.ai === 'tank') {
-        const bt = T.barrelTex && scene.textures.exists(T.barrelTex) && scene.artScale[T.barrelTex] ? T.barrelTex : 'e_barrel';
+        const wb = T.barrelTex && CG.worldKey(scene, T.barrelTex);
+        const bt = wb && scene.textures.exists(wb) && scene.artScale[wb] ? wb : 'e_barrel';
         this.barrel = scene.add.image(x, y, bt).setOrigin(0.12, 0.5).setDepth(9).setRotation(Math.PI);
         this.barrel.setScale((scene.artScale[bt] || 1) * (T.barrelScale || (T.boss && bt === 'e_barrel' ? 1.25 : 1)));
       }
@@ -509,8 +527,9 @@
           const cy = this.y - this.displayHeight * 0.5, a = Math.atan2(P.body.center.y - cy, P.body.center.x - this.x);
           for (const d of [-0.22, 0, 0.22]) sc.efire(this.x - 30, cy, a + d);
         }
-      } else if (T.ai === 'mouth') {                     // alien mouth: drops a bug now and then
+      } else if (T.ai === 'mouth') {                     // alien mouth: hangs from the top of the view, drops a bug now and then
         this.setScale(this.scaleX, this.scaleX * (1 + Math.sin(this.t * 6) * 0.04));
+        this.y = Math.min(0, sc.cameras.main.worldView.y) - 6 + this.displayHeight / 2;   // its top stays glued up there
         if (onScreen && this.cd <= 0) { this.cd = fireMs; sc.spawnEnemy('bug', this.x, this.y + 50); }
       } else if (T.ai === 'bug') {                       // hops toward the nearest soldier
         if (P) this.dir = P.body.center.x > this.x ? 1 : -1;
@@ -568,7 +587,11 @@
       this.hp -= n;
       if (this.hp > 0) CG.Sfx.play('hit');
       // the fortress core cracks at half health
-      if (this.type === 'core' && this.hp < this.maxHp / 2 && this.texture.key === 'boss_core' && this.scene.textures.exists('boss_core_dmg')) this.setTexture('boss_core_dmg');
+      const dmg = CG.worldKey(this.scene, 'boss_core_dmg');
+      if (this.type === 'core' && this.hp < this.maxHp / 2 && this.texture.key.indexOf('_dmg') < 0 && this.scene.textures.exists(dmg)) {
+        this.setTexture(dmg);
+        if (this.scene.artScale[dmg]) this.setScale(this.scene.artScale[dmg]);
+      }
       this.setTintFill(0xffffff);
       this.hurtT = 60;
       if (this.hp <= 0) this.scene.killEnemy(this);

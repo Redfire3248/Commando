@@ -9,13 +9,21 @@
 // A mode is a plain object: { kind: 'story' } | { kind: 'duels', size } | { kind: 'custom', arena, a, b, rounds, drops, together }
 //   | { kind: 'ffa', size } | { kind: 'horde' }
 CG.Modes = {
-  BOT_AGENTS: ['jax', 'duke'],                     // bots only ever play the two basic commandos
+  BOT_AGENTS: ['jax', 'duke'],                     // the bots you add play one of the two basic commandos
   TEAMS: [{ name: 'ALPHA', color: '#4da6ff' }, { name: 'BRAVO', color: '#ff5a4f' }],
   SIZES: [1, 2, 3],
   ROUNDS: [3, 5, 7],
   CUSTOM: { kind: 'custom', arena: 0, a: 2, b: 2, rounds: 5, drops: true, together: true },
 
-  botAgent() { return this.BOT_AGENTS[Math.floor(Math.random() * this.BOT_AGENTS.length)]; },
+  // a bot the game fills in: JAX or DUKE; from Gold (600 RR) up it sometimes brings another agent — up to 6 in 10 at the top
+  botAgent(rr) {
+    const other = Math.max(0, Math.min(0.6, ((rr || 0) - 600) / 2000));
+    if (Math.random() < other) {
+      const rest = CG.AGENTS.filter((a) => !this.BOT_AGENTS.includes(a.id));
+      return rest[Math.floor(Math.random() * rest.length)].id;
+    }
+    return this.BOT_AGENTS[Math.floor(Math.random() * this.BOT_AGENTS.length)];
+  },
   FFA_KILLS: 10,
   isPvp(m) { return !!m && m.kind !== 'story' && m.kind !== 'horde'; },
   sizes(m) { return m.kind === 'duels' ? [m.size, m.size] : m.kind === 'custom' ? [m.a, m.b] : null; },

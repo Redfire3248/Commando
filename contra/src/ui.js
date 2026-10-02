@@ -230,7 +230,7 @@ CG.UI = (() => {
           return `<div class="cslot ${x.me ? 'me' : ''}" style="--c:${a.color}">
             ${x.leader && humansIn() > 1 ? `<span class="crown">${ico('crown', '👑')}</span>` : ''}${removeBot(x)}
             <div class="cs-art" ${clickFig(x)}>${figure(a.id)}</div>
-            <b data-act="member" data-uid="${x.key}">${esc(x.name)}</b>
+            <b data-act="member" data-uid="${x.key}">${CG.Ranks.icon(x.rr || 0, 20)}${esc(x.name)}</b>
             ${x.me ? `<button class="btn small" data-act="locker">${ico('locker')}LOCKER</button>` : ''}
           </div>`;
         }).join('')}</div>`);
@@ -240,7 +240,7 @@ CG.UI = (() => {
         if (!x) return `<div class="fig empty ${botPick === col ? 'picking' : ''}"><div class="slot-in">${emptyInner(col)}</div><div class="pad"></div></div>`;
         const a = CG.AGENT[x.agent] || CG.AGENTS[0];
         return `<div class="fig ${x.me ? 'me' : ''} ${x.bot ? 'bot' : ''}" style="--c:${a.color}">
-          <div class="tag" data-act="member" data-uid="${x.key}">${crown(x)}<b>${esc(x.name)}</b></div>
+          <div class="tag" data-act="member" data-uid="${x.key}">${crown(x)}${CG.Ranks.icon(x.rr || 0, x.me ? 26 : 20)}<b>${esc(x.name)}</b></div>
           <div class="body ${col > mid ? 'flip' : ''}" ${clickFig(x)}>${figure(a.id)}</div>
           ${x.me ? '<div class="pad ring" data-act="locker"><svg viewBox="0 0 100 30" preserveAspectRatio="none"><ellipse cx="50" cy="15" rx="48" ry="13"/></svg></div>' : '<div class="pad"></div>'}
         </div>`;
@@ -397,7 +397,8 @@ CG.UI = (() => {
     $('lb-list').innerHTML = rows.slice(0, 100).map((r, i) => {
       const rk = CG.Ranks.of(r.rr || 0);
       return `<div class="lb-row ${r.uid === N().uid ? 'me' : ''}" style="--bn:${CG.Cosmetics.bannerCss(r.banner || 'steel')}"><span class="pos">${i + 1}</span>${CG.Ranks.icon(rk.rr, 26)}
-        <b>${esc(r.name || '?')}</b>${CG.Cosmetics.titleHtml(r.title)}<span class="grow"></span><b style="color:${rk.tier.color}">${rk.name}</b><small>${rk.rr} RR</small></div>`;
+        <b>${esc(r.name || '?')}</b>${CG.Cosmetics.titleHtml(r.title)}<span class="grow"></span><b style="color:${rk.tier.color}">${rk.name}</b><small>${rk.rr} RR</small>
+        ${N().isAdmin ? `<button class="btn small lb-x" data-act="lb-remove" data-uid="${esc(r.uid)}" data-name="${esc(r.name || '?')}">REMOVE</button>` : ''}</div>`;
     }).join('') || '<p class="sub center">Nobody ranked yet — play a duel!</p>';
   }
 
@@ -478,7 +479,7 @@ CG.UI = (() => {
     const me = { device: { type: 'any' }, agent: myAgent(), name: myName(), rr: CG.Profile.rr(), title: CG.Profile.title() };
     const bots = (p ? p.bots || [] : localBots).slice();
     const bot = (agent, i) => ({ device: { type: 'bot' }, agent, name: 'BOT ' + (i + 1), bot: true, rr: CG.Ranks.botRR(i + 1, CG.Profile.rr()) });
-    if (pvp()) openVersus(CG.Modes.teams(mode, [me], (n) => bot(bots[n] || CG.Modes.botAgent(), n)), home);
+    if (pvp()) openVersus(CG.Modes.teams(mode, [me], (n) => bot(bots[n] || CG.Modes.botAgent(CG.Ranks.botRR(n + 1, CG.Profile.rr())), n)), home);
     else play([me].concat(bots.map(bot)));
   }
   // ---------------------------------------------------------------- the VS screen (duels on this device)
@@ -589,7 +590,7 @@ CG.UI = (() => {
   }
   function gameOver(score, stage, opts) {
     opts = opts || {};
-    const best = localBest(), admin = !!opts.admin;
+    const best = localBest(), admin = false;          // admin games count like any other (the owner asked for it)
     if (!admin && score > best) store.set(BEST, String(score));
     if (!admin) N().submitScore(score);
     const coins = admin ? 0 : CG.Shop.coinsFor(score) + (opts.coins || 0);      // score coins + coins picked up
@@ -732,7 +733,7 @@ CG.UI = (() => {
     const kb = joined.filter((d) => d.type === 'kbA' || d.type === 'kbB');
     const person = (d, i) => ({ device: { type: kb.length === 1 && kb[0] === d ? 'kbAll' : d.type, index: d.index }, agent: d.agent, name: i === 0 ? myName() : 'P' + (i + 1) });
     const bots = joined.filter((d) => d.type === 'bot');
-    const bot = (n) => ({ device: { type: 'bot' }, agent: (bots[n] && bots[n].agent) || CG.Modes.botAgent(), name: 'BOT ' + (n + 1), bot: true, rr: CG.Ranks.botRR(n + 1, CG.Profile.rr()) });
+    const bot = (n) => ({ device: { type: 'bot' }, agent: (bots[n] && bots[n].agent) || CG.Modes.botAgent(CG.Ranks.botRR(n + 1, CG.Profile.rr())), name: 'BOT ' + (n + 1), bot: true, rr: CG.Ranks.botRR(n + 1, CG.Profile.rr()) });
     if (pvp()) openVersus(CG.Modes.teams(mode, humans.map(person), bot), () => show('lobby'));
     else play(humans.map(person).concat(bots.map((d, n) => bot(n))));
   }
@@ -984,6 +985,12 @@ CG.UI = (() => {
     'mode-open': () => { renderModes(); $('mode-pop').classList.remove('hidden'); },
     'mode-close': () => $('mode-pop').classList.add('hidden'),
     'mode-pick': pickMode,
+    'lb-remove': (uid) => {
+      const el = document.querySelector('[data-act="lb-remove"][data-uid="' + CSS.escape(uid) + '"]');
+      const name = (el && el.dataset.name) || 'this player';
+      if (!confirm('Remove ' + name + ' from the leaderboard? They stay off it.')) return;
+      run(() => N().adminRemoveRank(uid).then(renderLeaderboard), name + ' removed from the leaderboard');
+    },
     'starter-pick': (id) => run(() => CG.Profile.chooseStarter(id).then(() => {
       store.set(AGENT, id); N().setAgent(id);
       CG.Sfx.play('ability');

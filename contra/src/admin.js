@@ -126,7 +126,7 @@ CG.Admin = (() => {
       if (s.isClient) return '<p class="admin-tip">Online, only the host can use hacks.</p>';
       const HACKS = [['aim', '🎯 AUTO AIM', 'Shots lock on to the nearest target'], ['strafe', '↔ STRAFE', 'Keep facing forward while shooting and moving'],
         ['speed', '⚡ SPEED', 'Run 60% faster'], ['jump', '🦘 SUPER JUMP', 'Jump 45% higher'], ['oneshot', '💀 ONE SHOT', 'Every bullet kills'],
-        ['dash', '» INFINITE DASH', 'KITE dashes with no cooldown']];
+        ['dash', '» INFINITE DASH', 'KITE dashes with no cooldown'], ['fly', '🕊 FLY', 'No gravity: up / jump to rise, down to sink']];
       let h = `<div class="admin-row"><b>Whole game</b><button class="btn small ${s.physics.world.gravity.y < CG.CONFIG.GRAVITY ? 'on' : ''}" data-adm="lowgrav">🌙 LOW GRAVITY</button></div>`;
       s.players.forEach((p, i) => {
         if (p.remote) return;
