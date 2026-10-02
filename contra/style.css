@@ -846,7 +846,7 @@ img { -webkit-user-drag: none; user-drag: none; }
 #admin .admin-sec .btn { margin-left: 8px; font-size: 11px; padding: 3px 8px; }
 
 /* COMMAND now shows the whole squad like the lineup; the hover glow only on your own figure, no label */
-.lobby-c .stage { display: flex; padding: 0 3vw 3vh; }
+.lobby-c .stage { display: flex; align-items: flex-end; justify-content: center; padding: 0 3vw 3vh; }
 .fig.me .change-hint { display: none !important; }
 /* the roster panel gets the same cut corners as the other cards */
 .roster, .dossier { clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); }

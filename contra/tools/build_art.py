@@ -629,14 +629,39 @@ def build_idle():
     by_agent = dict(zip(IDLE_ORDER, rows))
     # prompt 16: three agents per image, one row each (assets/idle/idle1.png ... idle4.png); a row there wins over the
     # agent's row in idle.png — fewer agents per image come back at a much higher resolution
+    # These sheets are cut by their grid (10 columns, one row per agent): poses that touch, and effects drawn apart
+    # from the body (sparks, gas, a grenade in the air), stay in the frame whose cell they are in. Each frame keeps
+    # its place inside its cell, so a hop stays a hop.
+    global COLS, ROWS
+    cells_of = {}
     for name, ids in IDLE_GROUPS:
         g = load(os.path.join('idle', name))
         if g is None:
             continue
-        grows = sprite_rows(g)
-        print('  idle/' + name + ': sprites per row', [len(r) for r in grows], '(expected', len(ids), 'rows of 10)')
-        for aid, fr in zip(ids, grows):
-            by_agent[aid] = fr
+        keep = (COLS, ROWS)
+        COLS, ROWS = 10, len(ids)
+        try:
+            cells = cut_cells(g, grow=3)
+        finally:
+            COLS, ROWS = keep
+        cw, ch = g.shape[1] / 10, g.shape[0] / len(ids)
+        print('  idle/' + name + ':', [sum(1 for c in range(10) if r * 10 + c in cells) for r in range(len(ids))], 'frames per row')
+        for r, aid in enumerate(ids):
+            fr = []
+            for c in range(10):
+                if r * 10 + c not in cells:
+                    continue
+                crop, x0, y0 = cells[r * 10 + c]
+                fr.append((crop, int(x0 - c * cw), int(y0 - r * ch)))
+            if fr:
+                cells_of[aid] = (fr, int(cw), int(ch))
+    for aid, (fr, cw, ch) in cells_of.items():
+        sheet = Image.new('RGBA', (cw * len(fr), ch), (0, 0, 0, 0))
+        for i, (crop, dx, dy) in enumerate(fr):
+            sheet.alpha_composite(Image.fromarray(crop), (i * cw + max(0, min(dx, cw - crop.shape[1])), max(0, min(dy, ch - crop.shape[0]))))
+        k = max(1, -(-512 // ch))                      # whole-number enlargement to at least 512 px tall
+        out[aid] = {'path': save(blocky(sheet, ch * k), 'idle_' + aid), 'fw': cw * k, 'fh': ch * k, 'n': len(fr), 'loop': min(IDLE_LOOP, len(fr))}
+        by_agent.pop(aid, None)
     for aid, fr in by_agent.items():
         if len(fr) < 2 or aid in IDLE_SKIP:
             continue
