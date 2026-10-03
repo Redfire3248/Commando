@@ -141,23 +141,13 @@ CG.Admin = (() => {
       let h = `<p class="admin-tip">${fromDb ? 'These are live: changes reach every player at once.' : 'The shop is using the built-in list. Save once to put it in the database so you can edit it.'}</p>
         <div class="admin-row"><button class="btn small" data-adm="shop-reset">${fromDb ? 'RESET TO DEFAULTS' : 'SAVE THE BUILT-IN LIST'}</button></div>`;
       for (const it of items) {
-        if (it.kind === 'agent') {                      // agents: just the price and whether they are for sale
-          h += `<div class="admin-shop" data-id="${esc(it.id)}">
-            <input data-f="name" value="${esc(it.name)}"><input data-f="price" type="number" min="0" value="${esc(it.price)}">
-            <span><button class="btn small ${it.off ? '' : 'on'}" data-adm="shop-toggle" data-id="${esc(it.id)}">${it.off ? 'HIDDEN' : 'ON SALE'}</button></span>
-            <span class="admin-tip">agent</span><span></span>
-            <span><button class="btn small" data-adm="shop-save" data-id="${esc(it.id)}">SAVE</button></span></div>`;
-          continue;
-        }
+        // agents and looks: the name, the price and whether it is for sale (there are no perks to make)
         h += `<div class="admin-shop" data-id="${esc(it.id)}">
-          <input data-f="name" value="${esc(it.name)}" placeholder="Name"><input data-f="price" type="number" min="0" value="${esc(it.price)}">
+          <input data-f="name" value="${esc(it.name)}"><input data-f="price" type="number" min="0" value="${esc(it.price)}">
           <span><button class="btn small ${it.off ? '' : 'on'}" data-adm="shop-toggle" data-id="${esc(it.id)}">${it.off ? 'HIDDEN' : 'ON SALE'}</button></span>
-          <input data-f="icon" value="${esc(it.icon)}" placeholder="Icon">
-          <select data-f="effect">${CG.Shop.EFFECTS.map((e) => `<option ${e === it.effect ? 'selected' : ''}>${e}</option>`).join('')}</select>
-          <span><button class="btn small" data-adm="shop-save" data-id="${esc(it.id)}">SAVE</button> <button class="btn small" data-adm="shop-del" data-id="${esc(it.id)}">✕</button></span>
-          <textarea data-f="desc" rows="2">${esc(it.desc)}</textarea></div>`;
+          <span class="admin-tip">${esc(it.kind || '')}</span><span></span>
+          <span><button class="btn small" data-adm="shop-save" data-id="${esc(it.id)}">SAVE</button></span></div>`;
       }
-      h += `<div class="admin-sec">New item</div><div class="admin-row"><input id="adm-new-id" placeholder="id (e.g. armor)"><button class="btn small" data-adm="shop-add">ADD</button></div>`;
       return h;
     },
     // GIVE: pick an account, then click what it gets — agents, shop items, coins
@@ -194,7 +184,7 @@ CG.Admin = (() => {
           <button class="btn" data-adm="give-coins" data-n="-1000">−1000</button></div>
         <div class="admin-sec">Agents <button class="btn small" data-adm="give-all" data-kind="agent">UNLOCK ALL</button></div>
         <div class="admin-grid">${agents.map(({ a, it }) => tile(it.id, a.name, img(CG.PORTRAITS && CG.PORTRAITS[a.id]), !!own[it.id], it.price + ' coins in the shop')).join('')}</div>
-        <div class="admin-sec">Perks and gear <button class="btn small" data-adm="give-all" data-kind="item">GIVE ALL</button></div>
+        <div class="admin-sec">Looks <button class="btn small" data-adm="give-all" data-kind="item">GIVE ALL</button></div>
         <div class="admin-grid">${items.map((it) => tile(it.id, it.name, `<b class="give-icon">${esc(it.icon || '★')}</b>`, !!own[it.id], it.price + ' coins')).join('')}</div>
         <div class="admin-row"><button class="btn" data-adm="give-none">TAKE EVERYTHING BACK</button></div>`;
     },
@@ -285,9 +275,9 @@ CG.Admin = (() => {
     const row = document.querySelector(`.admin-shop[data-id="${CSS.escape(id)}"]`), it = CG.Shop.allItems().find((x) => x.id === id) || {};
     const v = (f) => row.querySelector(`[data-f="${f}"]`).value;
     const price = Math.max(0, parseInt(v('price'), 10) || 0);
-    if (it.kind === 'agent') return { name: v('name'), price, kind: 'agent', agent: it.agent, order: it.order || 20, off: !!it.off };
-    return { name: v('name'), price, icon: v('icon'), effect: v('effect'), desc: v('desc'),
-      kind: ['gold', 'star'].includes(v('effect')) ? 'cosmetic' : 'perk', order: it.order || 50, off: !!it.off };
+    const keep = Object.assign({}, it);
+    delete keep.id;
+    return Object.assign(keep, { name: v('name'), price, order: it.order || 50, off: !!it.off });
   };
   // the shop tab writes a full list the first time (so later edits only change one item)
   const ensureDb = () => (CG.Shop.db && Object.keys(CG.Shop.db).length ? Promise.resolve() : CG.Net.adminResetShop());
@@ -296,11 +286,6 @@ CG.Admin = (() => {
     'shop-save': (d) => ensureDb().then(() => CG.Net.adminSetItem(d.id, shopRow(d.id))),
     'shop-toggle': (d) => ensureDb().then(() => { const it = shopRow(d.id); it.off = !it.off; return CG.Net.adminSetItem(d.id, it); }),
     'shop-del': (d) => ensureDb().then(() => CG.Net.adminRemoveItem(d.id)),
-    'shop-add': () => {
-      const id = ($('adm-new-id').value || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
-      if (!id) return Promise.reject(new Error('Type an id'));
-      return ensureDb().then(() => CG.Net.adminSetItem(id, { name: 'New item', desc: '', price: 500, kind: 'perk', effect: 'hp', icon: '★', order: 60 }));
-    },
     coins: (d) => CG.Net.adminGiveCoins(d.uid, +d.n).then(() => { users = null; }),
     // the GIVE board (changes are copied into the cached account so the board updates at once)
     announce: () => { const t = ($('give-msg').value || '').trim(); return t ? CG.Net.adminAnnounce(t).then(() => { $('give-msg').value = ''; }) : Promise.reject(new Error('Type a message')); },

@@ -124,7 +124,7 @@
         b.allowGravity = true;
         if (dir && !(this.hack.strafe && inp.shoot)) this.facing = dir;          // strafe hack: keep facing while shooting
         this.setProne(onGround && inp.down && !dir);
-        const run = dir * C.run * this.agent.speed * (this.adrenT > 0 ? 1.35 : 1) * (this.perkSpeed || 1) * (this.hack.speed ? 1.6 : 1);
+        const run = dir * C.run * this.agent.speed * (this.adrenT > 0 ? 1.35 : 1) * (this.hack.speed ? 1.6 : 1);
         if (this.launchT > 0) { this.launchT -= ms; b.velocity.x += (run - b.velocity.x) * Math.min(1, dt * 2); }   // thrown by a blast: drift, don't snap
         else b.velocity.x = this.prone ? 0 : run;
         if (onGround) this.airJumps = this.agent.id === 'kite' ? 2 : 1;          // passive: KITE jumps three times
@@ -186,7 +186,7 @@
     }
 
     useAbility() {
-      const ab = this.agent.ability, sc = this.scene, full = ab.cd * (this.perkCd || 1);
+      const ab = this.agent.ability, sc = this.scene, full = ab.cd;
       if (!(this.abilityCd >= 0)) this.abilityCd = full;                    // never a broken (NaN) cooldown
       if (this.abilityCd > 0 || !this.alive) return false;
       // a second lock on the real clock: whatever happens to the game's time (pauses, lag, a hidden tab), the ability

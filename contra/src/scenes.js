@@ -228,15 +228,10 @@
       // one pool of lives for the whole team: 3 for one player, 2 more for each extra player
       this.teamLives = this.cfg.teamLives !== null && this.cfg.teamLives !== undefined ? this.cfg.teamLives : C.lives + 2 * (this.players.length - 1);
       this.adminUsed = !!this.cfg.adminUsed;
-      // shop perks for this device's account holder (player 1 here, or my own soldier online)
-      // (guests too: their perks are saved on the device). Duels and free-for-all are fair: only the looks apply there.
-      const owned = CG.Shop.effects();
-      const fx = this.cfg.mode === 'pvp' ? { gold: owned.gold, star: owned.star } : owned;
+      // this device's account holder gets their looks (no perks: buying never makes anyone stronger)
       const mine = this.cfg.online ? this.players.find((p) => p.owner === CG.Net.uid && !p.bot) : this.players.find((p) => !p.bot && !p.remote);
       if (mine) {
-        CG.Shop.apply(mine, fx);
         if (!this.cfg.online) { mine.bulletColor = CG.Cosmetics.lookColor('bullet', CG.Profile.bullet()); mine.bulletFx = CG.Cosmetics.bulletFx(CG.Profile.bullet()); mine.bulletArt = CG.Cosmetics.bulletArt(CG.Profile.bullet()); mine.nameColor = CG.Cosmetics.lookColor('namec', CG.Profile.namec()); }
-        if (fx.life && !this.cfg.online && (this.cfg.teamLives === null || this.cfg.teamLives === undefined)) this.teamLives++;
       }
       // name colours (story / horde / co-op — duels keep the team colours so you can tell the sides apart)
       if (!this.pvp) this.players.forEach((p) => { if (p.nameColor && p.nameColor !== 'rainbow') p.tag.setColor(p.nameColor); });
@@ -563,7 +558,7 @@
     }
     updateAbilitySlots() {
       for (const s of this.slots || []) {
-        const p = s.p, ab = p.agent.ability, cd = p.abilityCd, full = ab.cd * (p.perkCd || 1);
+        const p = s.p, ab = p.agent.ability, cd = p.abilityCd, full = ab.cd;
         s.c.setAlpha(p.out ? 0.35 : 1);
         s.glow.setVisible(cd <= 0 && p.alive);
         s.sweep.clear();
@@ -1797,7 +1792,7 @@
       });
       if (this.touchPlayer && CG.Touch.enabled) {
         const p = this.touchPlayer;
-        CG.Touch.cooldown(p.abilityCd / (p.agent.ability.cd * (p.perkCd || 1)), p.abilityCd, p.mdashCd / 3200);
+        CG.Touch.cooldown(p.abilityCd / p.agent.ability.cd, p.abilityCd, p.mdashCd / 3200);
       }
       this.scoreText.setText(String(this.score).padStart(7, '0'));
     }

@@ -967,7 +967,7 @@ CG.UI = (() => {
     }
     $('shop-items').className = 'shop-grid';
     const cosmetic = (k) => ['cosmetic', 'banner', 'title', 'bullet', 'namec'].includes(k);
-    $('shop-items').innerHTML = CG.Shop.items().filter((it) => it.kind !== 'agent' && (shopTab === 'perks' ? !cosmetic(it.kind) : cosmetic(it.kind))).map((it) => {
+    $('shop-items').innerHTML = CG.Shop.items().filter((it) => it.kind !== 'agent' && cosmetic(it.kind)).map((it) => {
       const own = CG.Shop.owned(it.id);
       if (['banner', 'title', 'bullet', 'namec'].includes(it.kind)) {
         const pic = it.kind === 'banner' ? `<div class="swatch big" style="--bn:${CG.Cosmetics.bannerCss(it.look)}"></div>`
@@ -1134,7 +1134,7 @@ CG.UI = (() => {
     'touch-swap': () => { CG.Touch.opts.swap = !CG.Touch.opts.swap; CG.Touch.save(); renderSettings(); toast(CG.Touch.opts.swap ? 'Controls swapped: move with your right hand' : 'Controls back to normal'); },
     'keys-preset': (v) => { CG.Keys.preset(v); renderSettings(); toast(v === 'right' ? 'Right hand only — tip: switch Auto fire on too' : 'Standard keys'); },
     'touch-auto': () => { CG.Touch.opts.autofire = !CG.Touch.opts.autofire; CG.Touch.save(); CG.Touch.syncButtons(); renderSettings(); },
-    'shop-tab': (t) => { shopTab = t; renderShop(); },
+    'shop-tab': (t) => { shopTab = t === 'perks' ? 'cosmetic' : t; renderShop(); },
     'shop-agents': () => { shopTab = 'agents'; show('shop'); },
     // unlock an agent from wherever its button is (home, agent select, shop)
     'buy-agent': (id) => {
