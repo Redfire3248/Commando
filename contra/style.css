@@ -1165,3 +1165,35 @@ body:not(.playing) #game { filter: blur(3px) brightness(.92); transform: scale(1
   background: #e8302a; color: #fff; font: 800 11px/18px Rajdhani, sans-serif; font-style: normal; text-align: center; border: 2px solid #0b0f13;
   animation: badgePop .35s cubic-bezier(.2, 1.6, .4, 1) both; pointer-events: none; }
 @keyframes badgePop { from { transform: scale(0); } }
+
+/* ---------- bullet colours + name colours ---------- */
+.bullet-sample { display: inline-flex; gap: 5px; align-items: center; padding: 6px 2px; }
+.bullet-sample i { width: 16px; height: 6px; border-radius: 3px; background: var(--bc); box-shadow: 0 0 0 1px rgba(0, 0, 0, .6); }
+.bullet-sample.rainbow i:nth-child(1) { background: #ff4a4a; } .bullet-sample.rainbow i:nth-child(2) { background: #4ae06a; } .bullet-sample.rainbow i:nth-child(3) { background: #4a9dff; }
+.name-sample { font: 700 17px Rajdhani, sans-serif; color: #fff; text-shadow: 1px 1px 0 #000; }
+.name-sample.rainbow { background: linear-gradient(90deg, #ff4a4a, #ffd23c, #4ae06a, #4ad8ff, #c46bff, #ff4a4a); background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; animation: rainbowSlide 3s linear infinite; }
+@keyframes rainbowSlide { to { background-position: 200% 0; } }
+.look-samples { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 8px; }
+.look-tile small { color: var(--dim); font-size: 11px; }
+
+/* name colour tiles: the name itself is the preview (not overridden by the tile's text colour) */
+.look-tile .name-sample { display: block; max-width: 100%; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
+.look-tile .name-sample.rainbow { color: transparent; }
+/* the BULLETS / NAMES preview: agent, name over it, shots flying out */
+.look-stage { position: relative; display: flex; align-items: center; gap: 0; height: 190px; margin: 10px auto 0; max-width: 560px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .15), rgba(0, 0, 0, .45)); border-bottom: 3px solid rgba(255, 255, 255, .12); overflow: hidden; }
+.look-stage .ls-fig { position: relative; flex: none; width: 160px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+.look-stage .ls-fig .name-sample { font-size: 18px; margin-bottom: 4px; }
+.look-stage .ls-body { height: 140px; display: flex; align-items: flex-end; }
+.look-stage .ls-body .idle, .look-stage .ls-body > img { height: 100%; }
+.look-stage .ls-shots { position: absolute; left: 150px; right: 0; top: 108px; height: 8px; }
+.look-stage .ls-shots i { position: absolute; left: 0; width: 22px; height: 7px; border-radius: 4px; background: var(--bc); box-shadow: 0 0 0 1px rgba(0, 0, 0, .6);
+  animation: shotFly 1.2s linear infinite; }
+.look-stage .ls-shots i:nth-child(2) { animation-delay: .4s; } .look-stage .ls-shots i:nth-child(3) { animation-delay: .8s; }
+.look-stage .ls-shots.rainbow i { animation: shotFly 1.2s linear infinite, shotHue 1.2s linear infinite; background: #ff4a4a; }
+.look-stage .ls-shots.rainbow i:nth-child(2) { animation-delay: .4s, .4s; } .look-stage .ls-shots.rainbow i:nth-child(3) { animation-delay: .8s, .8s; }
+@keyframes shotFly { from { transform: translateX(0); opacity: 1; } 90% { opacity: 1; } to { transform: translateX(380px); opacity: 0; } }
+@keyframes shotHue { from { filter: hue-rotate(0deg); } to { filter: hue-rotate(360deg); } }
+@media (max-height: 520px) { .look-stage { height: 120px; } .look-stage .ls-body { height: 84px; } .look-stage .ls-shots { top: 66px; } }
+.look-stage { width: min(560px, 90vw); }

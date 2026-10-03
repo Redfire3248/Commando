@@ -26,7 +26,7 @@ CG.Online = {
     this.mid = mid; this.info = info; this.host = info.host === N.uid;
     const local = CG.UI.localDevice();
     const players = info.players.map((p) => ({
-      id: p.id, owner: p.owner, name: p.name, agent: p.agent, bot: !!p.bot, team: p.team, rr: p.rr || 0,
+      id: p.id, owner: p.owner, name: p.name, agent: p.agent, bot: !!p.bot, team: p.team, rr: p.rr || 0, bullet: p.bullet, namec: p.namec,
       device: p.owner !== N.uid ? { type: 'remote' } : p.bot ? { type: 'bot' } : local,
     }));
     CG.UI.playOnline({ players, online: { mid, host: this.host }, mode: info.mode || 'squad', pvp: info.pvp || null, arena: info.arena });

@@ -86,6 +86,8 @@ CG.UI = (() => {
     const ids = CG.AGENTS.filter((a) => CG.Shop.hasAgent(a.id)).map((a) => 'a:' + a.id);
     for (const id in CG.Cosmetics.BANNERS) if (CG.Cosmetics.has('banner', id)) ids.push('b:' + id);
     for (const id in CG.Cosmetics.TITLES) if (CG.Cosmetics.has('title', id)) ids.push('t:' + id);
+    for (const id in CG.Cosmetics.BULLETS) if (CG.Cosmetics.has('bullet', id)) ids.push('u:' + id);
+    for (const id in CG.Cosmetics.NAMES) if (CG.Cosmetics.has('namec', id)) ids.push('n:' + id);
     return ids;
   }
   function seenLooks() { try { return JSON.parse(store.get(SEEN_LOOKS, 'null')); } catch (e) { return null; } }
@@ -514,7 +516,7 @@ CG.UI = (() => {
     if (!isLead()) return;
     if (humansIn() > 1) { run(() => net.startMatch(null, mode), '', 'party-msg'); return; }
     // alone: a game on this device with your bots (duels: bots fill both teams)
-    const me = { device: { type: 'any' }, agent: myAgent(), name: myName(), rr: CG.Profile.rr(), title: CG.Profile.title() };
+    const me = { device: { type: 'any' }, agent: myAgent(), name: myName(), rr: CG.Profile.rr(), title: CG.Profile.title(), bullet: CG.Profile.bullet(), namec: CG.Profile.namec() };
     const bots = (p ? p.bots || [] : localBots).slice();
     const bot = (agent, i) => ({ device: { type: 'bot' }, agent, name: 'BOT ' + (i + 1), bot: true, rr: CG.Ranks.botRR(i + 1, CG.Profile.rr()) });
     if (pvp()) openVersus(CG.Modes.teams(mode, [me], (n) => bot(bots[n] || CG.Modes.botAgent(CG.Ranks.botRR(n + 1, CG.Profile.rr())), n)), home);
@@ -821,19 +823,33 @@ CG.UI = (() => {
   }
   // banners and titles this account has, with the one in use first
   function renderLooks() {
-    const kind = lockerTab, list = kind === 'banner' ? CG.Cosmetics.BANNERS : CG.Cosmetics.TITLES;
-    const cur = kind === 'banner' ? CG.Profile.banner() : CG.Profile.title();
+    const kind = lockerTab, list = CG.Cosmetics.LISTS[kind];
+    const cur = { banner: CG.Profile.banner(), title: CG.Profile.title(), bullet: CG.Profile.bullet(), namec: CG.Profile.namec() }[kind];
     const ids = Object.keys(list).filter((id) => CG.Cosmetics.has(kind, id));
     const a = CG.AGENT[myAgent()] || CG.AGENTS[0];
+    // banners / titles: the profile card; bullets / names: the agent firing, with the name over it
     $('sel-main').innerHTML = `<div class="look-preview">
-      <div class="pf-banner" style="--bn:${CG.Cosmetics.bannerCss(CG.Profile.banner())}"><div class="pf-fig">${figure(a.id)}</div>
+      ${kind === 'bullet' || kind === 'namec' ? lookPreview() : `<div class="pf-banner" style="--bn:${CG.Cosmetics.bannerCss(CG.Profile.banner())}"><div class="pf-fig">${figure(a.id)}</div>
         <div class="pf-id"><div class="pf-name">${esc(myName())}</div><div class="pf-title" style="color:${CG.Cosmetics.titleColor(CG.Profile.title())}">${esc(CG.Cosmetics.titleName(CG.Profile.title()))}</div>
-        <div class="pf-rank">${CG.Ranks.chip(CG.Profile.rr(), { rr: true, px: 30 })}</div></div></div>
-      <p class="sel-note">Your banner and title show on your profile (VIEW PROFILE) and on the leaderboard. More in the SHOP — some are earned.</p></div>`;
+        <div class="pf-rank">${CG.Ranks.chip(CG.Profile.rr(), { rr: true, px: 30 })}</div></div></div>`}
+      <p class="sel-note">${kind === 'bullet' ? 'Your shots in this colour — everyone sees it, online too.' : kind === 'namec' ? 'Your name over your agent in this colour (duels keep the team colours).' : 'Your banner and title show on your profile (VIEW PROFILE) and on the leaderboard.'} More in the SHOP — some are earned.</p></div>`;
     $('agent-cards').innerHTML = ids.map((id) => kind === 'banner'
       ? `<button class="tile look-tile ${id === cur ? 'look' : ''}" data-act="equip-look" data-uid="${id}"><span class="swatch" style="--bn:${CG.Cosmetics.bannerCss(id)}"></span><b>${list[id].name}</b><span class="marks">${id === cur ? '<i style="background:var(--acc)">✔</i>' : ''}</span></button>`
-      : `<button class="tile look-tile title-tile ${id === cur ? 'look' : ''}" data-act="equip-look" data-uid="${id}"><b style="color:${list[id].color}">${list[id].name}</b><span class="marks">${id === cur ? '<i style="background:var(--acc)">✔</i>' : ''}</span></button>`).join('');
+      : kind === 'bullet'
+        ? `<button class="tile look-tile ${id === cur ? 'look' : ''}" data-act="equip-look" data-uid="${id}">${CG.Cosmetics.bulletHtml(id)}<b>${list[id].name}</b><span class="marks">${id === cur ? '<i style="background:var(--acc)">✔</i>' : ''}</span></button>`
+        : kind === 'namec'
+          ? `<button class="tile look-tile title-tile ${id === cur ? 'look' : ''}" data-act="equip-look" data-uid="${id}">${CG.Cosmetics.nameHtml(id, esc(myName()))}<small>${list[id].name}</small><span class="marks">${id === cur ? '<i style="background:var(--acc)">✔</i>' : ''}</span></button>`
+          : `<button class="tile look-tile title-tile ${id === cur ? 'look' : ''}" data-act="equip-look" data-uid="${id}"><b style="color:${list[id].color}">${list[id].name}</b><span class="marks">${id === cur ? '<i style="background:var(--acc)">✔</i>' : ''}</span></button>`).join('');
     $('select-slots').innerHTML = '';
+  }
+  // the BULLETS / NAMES preview: your agent with the name over it in its colour, firing shots in the bullet colour
+  function lookPreview() {
+    const a = CG.AGENT[myAgent()] || CG.AGENTS[0], bc = CG.Cosmetics.lookColor('bullet', CG.Profile.bullet());
+    const shot = bc === 'rainbow' ? 'rainbow' : '';
+    return `<div class="look-stage">
+      <div class="ls-fig">${CG.Cosmetics.nameHtml(CG.Profile.namec(), esc(myName()))}<div class="ls-body">${figure(a.id)}</div></div>
+      <div class="ls-shots ${shot}" style="--bc:${bc && bc !== 'rainbow' ? bc : '#ffe9a0'}"><i></i><i></i><i></i></div>
+    </div>`;
   }
   function openLocker() {
     markLooksSeen();
@@ -949,13 +965,17 @@ CG.UI = (() => {
       return;
     }
     $('shop-items').className = 'shop-grid';
-    const cosmetic = (k) => ['cosmetic', 'banner', 'title'].includes(k);
+    const cosmetic = (k) => ['cosmetic', 'banner', 'title', 'bullet', 'namec'].includes(k);
     $('shop-items').innerHTML = CG.Shop.items().filter((it) => it.kind !== 'agent' && (shopTab === 'perks' ? !cosmetic(it.kind) : cosmetic(it.kind))).map((it) => {
       const own = CG.Shop.owned(it.id);
-      if (it.kind === 'banner' || it.kind === 'title') {
+      if (['banner', 'title', 'bullet', 'namec'].includes(it.kind)) {
+        const pic = it.kind === 'banner' ? `<div class="swatch big" style="--bn:${CG.Cosmetics.bannerCss(it.look)}"></div>`
+          : it.kind === 'bullet' ? `<div class="title-preview">${CG.Cosmetics.bulletHtml(it.look)}</div>`
+            : it.kind === 'namec' ? `<div class="title-preview">${CG.Cosmetics.nameHtml(it.look, esc(myName()))}</div>`
+              : `<div class="title-preview">${esc(CG.Cosmetics.titleName(it.look))}</div>`;
         return `<div class="shop-item look-item ${own ? 'owned' : ''}" style="--c:#c878ff">
-          ${it.kind === 'banner' ? `<div class="swatch big" style="--bn:${CG.Cosmetics.bannerCss(it.look)}"></div>` : `<div class="title-preview">${esc(CG.Cosmetics.titleName(it.look))}</div>`}
-          <div class="top"><div><b>${esc(it.name)}</b><div class="kind">${it.kind}</div></div></div>
+          ${pic}
+          <div class="top"><div><b>${esc(it.name)}</b><div class="kind">${{ bullet: 'bullet colour', namec: 'name colour' }[it.kind] || it.kind}</div></div></div>
           ${own ? '<div class="owned-tag">✔ OWNED · equip in the LOCKER</div>' : `<div class="row"><span class="price"><span class="coin"></span>${it.price}</span>
             <button class="btn small primary" data-act="buy" data-uid="${esc(it.id)}" ${c < it.price ? 'disabled' : ''}>BUY</button></div>`}</div>`;
       }

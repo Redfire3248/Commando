@@ -19,6 +19,9 @@
       this.skill = CG.Ranks.skill(this.rr);
       this.owner = opts.owner || null;
       this.shots = 0;
+      // cosmetics: the colour of this soldier's shots and name (null = standard; 'rainbow' cycles)
+      this.bulletColor = CG.Cosmetics.lookColor('bullet', opts.bullet);
+      this.nameColor = CG.Cosmetics.lookColor('namec', opts.namec);
       this.color = CG.PLAYER_COLORS[idx % CG.PLAYER_COLORS.length];
       this.phys = scene.add.zone(x, feetY - PH / 2, PW, PH);
       scene.physics.add.existing(this.phys);
@@ -274,6 +277,7 @@
       // nametag and hearts bar
       const top = b.bottom - 150;
       this.tag.setVisible(true).setPosition(b.center.x, top - 10);
+      if (this.nameColor === 'rainbow' && !this.scene.pvp) this.tag.setColor(Phaser.Display.Color.HSVToRGB((this.scene.time.now / 1500) % 1, 0.65, 1).rgba);
       if (this.rankImg) this.rankImg.setVisible(true).setPosition(b.center.x - this.tag.width / 2 - 4, top - 11);
       const g = this.bar, w = 64, x0 = b.center.x - w / 2;
       g.clear();

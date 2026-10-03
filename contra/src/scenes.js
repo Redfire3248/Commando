@@ -220,8 +220,11 @@
       const mine = this.cfg.online ? this.players.find((p) => p.owner === CG.Net.uid && !p.bot) : this.players.find((p) => !p.bot && !p.remote);
       if (mine) {
         CG.Shop.apply(mine, fx);
+        if (!this.cfg.online) { mine.bulletColor = CG.Cosmetics.lookColor('bullet', CG.Profile.bullet()); mine.nameColor = CG.Cosmetics.lookColor('namec', CG.Profile.namec()); }
         if (fx.life && !this.cfg.online && (this.cfg.teamLives === null || this.cfg.teamLives === undefined)) this.teamLives++;
       }
+      // name colours (story / horde / co-op — duels keep the team colours so you can tell the sides apart)
+      if (!this.pvp) this.players.forEach((p) => { if (p.nameColor && p.nameColor !== 'rainbow') p.tag.setColor(p.nameColor); });
       this.touchPlayer = this.players.find((p) => p.device && (p.device.type === 'touch' || p.device.type === 'any'));
       if (this.touchPlayer) CG.Touch.setAbility(this.touchPlayer.agent);
       // only an agent with the Tac Dash gets the DASH button
@@ -862,8 +865,12 @@
       b.blast = !!(player && player.blast); b.ice = !!(player && player.ice);
       if (player && player.pierce) b.pierce = 2;
       b.fire = !!(player && player.fire); b.shock = !!(player && player.shock);
+      // the shooter's bullet colour (cosmetic, seen by everyone); then the cloak's red on top
+      const bc = player && player.bulletColor;
+      if (bc === 'rainbow') b.setTintFill(Phaser.Display.Color.HSVToRGB((this.time.now / 700) % 1, 0.7, 1).color);
+      else if (bc) b.setTintFill(parseInt(bc.slice(1), 16));
+      else b.clearTint();
       if (player && player.cloakT > 0 && !ghost) { b.dmg *= 3; player.cloakT = 0; b.setTint(0xff6a7a); }      // out of the cloak: triple damage
-      if (player && player.perkGold) b.setTint(0xffd27a); else b.clearTint();
       if (player && player.stormT > 0 && this.anims.exists('fx_storm')) {
         const f = this.add.sprite(x, y, 'fx_storm', 0).setOrigin(0, 0.5).setRotation(a).setScale(0.35).setDepth(12);
         f.play('fx_storm');

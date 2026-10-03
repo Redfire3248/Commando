@@ -9,8 +9,6 @@ CG.Shop = {
     boots:  { name: 'Light Boots', desc: 'Run 8% faster.', price: 500, kind: 'perk', effect: 'speed', icon: '👟', order: 3 },
     tags:   { name: 'Spare Dog Tag', desc: 'Your squad starts every game with one more life.', price: 900, kind: 'perk', effect: 'life', icon: '🏷', order: 4 },
     drop:   { name: 'Drop Shield', desc: 'Start every stage with a 6 second shield.', price: 700, kind: 'perk', effect: 'shield', icon: '🛡', order: 5 },
-    gold:   { name: 'Golden Rounds', desc: 'Your bullets glow gold.', price: 300, kind: 'cosmetic', effect: 'gold', icon: '✨', order: 6 },
-    elite:  { name: 'Elite Tag', desc: 'A gold star next to your name in game.', price: 250, kind: 'cosmetic', effect: 'star', icon: '★', order: 7 },
   },
   // Agents: a new account picks ONE starter, JAX or DUKE (STARTERS); every other agent — the other starter too — is
   // bought here (kind 'agent'). Bots may use any agent.
@@ -37,7 +35,8 @@ CG.Shop = {
     const src = this.db && Object.keys(this.db).length ? this.db : this.DEFAULTS;
     return Object.assign({}, this.AGENT_ITEMS, CG.Cosmetics.shopItems(), src);
   },
-  items() { return this.allItems().filter((it) => it.off !== true); },
+  // (the old Golden Rounds / Elite Tag items — effect gold / star — became bullet and name colours: hidden here)
+  items() { return this.allItems().filter((it) => it.off !== true && it.effect !== 'gold' && it.effect !== 'star'); },
   allItems() {
     const src = this.source();
     return Object.keys(src).map((id) => Object.assign({ id }, src[id])).sort((a, b) => (a.order || 99) - (b.order || 99));

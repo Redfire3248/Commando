@@ -95,13 +95,38 @@ CG.Cosmetics = (() => {
     hollow:   { name: 'GHOST OF THE JUNGLE', price: 500, color: '#4fe0d0' },
     boss:     { name: 'THE BOSS', price: 900, color: '#c46bff' },
   };
+  // the colour of your shots (shown to everyone, online too) — 'rainbow' cycles through every colour
+  const BULLETS = {
+    std:     { name: 'Standard', free: true, color: null },
+    gold:    { name: 'Golden Rounds', price: 300, color: '#ffd23c', legacy: 'gold' },
+    red:     { name: 'Tracer Red', price: 250, color: '#ff4a3a' },
+    frost:   { name: 'Frost White', price: 350, color: '#eaf8ff' },
+    plasma:  { name: 'Plasma Blue', price: 400, color: '#4ad8ff' },
+    toxic:   { name: 'Toxic Green', price: 400, color: '#9dff4a' },
+    void:    { name: 'Void Purple', price: 500, color: '#c060ff' },
+    rainbow: { name: 'Rainbow', price: 900, color: 'rainbow' },
+    legend:  { name: 'Legend Fire', earn: 'Reach LEGEND', rr: 1800, color: '#ff3a1a' },
+  };
+  // the colour of your name over your agent (in story / horde / co-op; duels keep the team colours)
+  const NAMES = {
+    std:     { name: 'Standard', free: true, color: null },
+    gold:    { name: 'Elite Gold', price: 250, color: '#ffd23c', legacy: 'elite' },
+    crimson: { name: 'Crimson', price: 200, color: '#ff4a4a' },
+    cyan:    { name: 'Cyan', price: 200, color: '#4ae0ff' },
+    lime:    { name: 'Lime', price: 200, color: '#8cff4a' },
+    violet:  { name: 'Violet', price: 300, color: '#c46bff' },
+    rainbow: { name: 'Rainbow', price: 800, color: 'rainbow' },
+  };
+  const LISTS = { banner: BANNERS, title: TITLES, bullet: BULLETS, namec: NAMES };
   const itemId = (kind, id) => kind + '_' + id;
-  // what this account may equip: free ones, bought ones (shop item `banner_<id>` / `title_<id>`), earned ones
+  // what this account may equip: free ones, bought ones (shop item `<kind>_<id>`), earned ones
   function has(kind, id, prof) {
-    const list = kind === 'banner' ? BANNERS : TITLES, x = list[id];
+    const list = LISTS[kind] || TITLES, x = list[id];
     if (!x) return false;
     if (x.free) return true;
     const p = prof || CG.Net.profile || CG.Profile.local();
+    // the old shop's Golden Rounds / Elite Tag count as the new gold bullets / gold name
+    if (x.legacy && p.owned && p.owned[x.legacy]) return true;
     if (x.price) return !!(p.owned && p.owned[itemId(kind, id)]);
     const stats = p.stats || {}, rr = p.rr || 0;
     if (x.rr) return rr >= x.rr;
@@ -122,9 +147,22 @@ CG.Cosmetics = (() => {
     let o = 30;
     for (const id in BANNERS) if (BANNERS[id].price) out[itemId('banner', id)] = { name: BANNERS[id].name + ' banner', kind: 'banner', look: id, price: BANNERS[id].price, order: o++ };
     for (const id in TITLES) if (TITLES[id].price) out[itemId('title', id)] = { name: '“' + TITLES[id].name + '”', kind: 'title', look: id, price: TITLES[id].price, order: o++ };
+    for (const id in BULLETS) if (BULLETS[id].price) out[itemId('bullet', id)] = { name: BULLETS[id].name, kind: 'bullet', look: id, price: BULLETS[id].price, order: o++ };
+    for (const id in NAMES) if (NAMES[id].price) out[itemId('namec', id)] = { name: NAMES[id].name + ' name', kind: 'namec', look: id, price: NAMES[id].price, order: o++ };
     return out;
   }
-  return { BANNERS, TITLES, has, bannerCss, titleName, titleColor, titleHtml, shopItems };
+  // a colour as CSS ('rainbow' becomes a moving gradient class)
+  const lookColor = (kind, id) => ((LISTS[kind] || {})[id] || {}).color || null;
+  // a little row of three shots in this colour (shop, locker)
+  const bulletHtml = (id) => {
+    const c = lookColor('bullet', id);
+    return `<span class="bullet-sample ${c === 'rainbow' ? 'rainbow' : ''}" style="--bc:${c && c !== 'rainbow' ? c : '#ffe9a0'}"><i></i><i></i><i></i></span>`;
+  };
+  const nameHtml = (id, text) => {
+    const c = lookColor('namec', id);
+    return `<span class="name-sample ${c === 'rainbow' ? 'rainbow' : ''}" style="${c && c !== 'rainbow' ? 'color:' + c : ''}">${text}</span>`;
+  };
+  return { BANNERS, TITLES, BULLETS, NAMES, LISTS, has, bannerCss, titleName, titleColor, titleHtml, shopItems, lookColor, bulletHtml, nameHtml };
 })();
 
 // This account's rank, stats and look — the database profile when signed in, else kept on this device.
@@ -136,6 +174,8 @@ CG.Profile = {
   rr() { return this.get().rr || 0; },
   banner() { return this.get().banner || 'steel'; },
   title() { return this.get().title || 'recruit'; },
+  bullet() { return this.get().bullet || 'std'; },
+  namec() { return this.get().namec || 'std'; },
   // a finished match: RR change and stats added (signed in: to the database, else on this device)
   record(res) {
     const apply = (p) => {

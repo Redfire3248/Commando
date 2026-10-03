@@ -323,7 +323,7 @@ CG.Net = {
 
   me() {
     const p = this.profile;
-    return { name: p.username || p.name, agent: CG.UI.myAgent(), rr: p.rr || 0, banner: p.banner || 'steel', title: p.title || 'recruit', at: firebase.database.ServerValue.TIMESTAMP };
+    return { name: p.username || p.name, agent: CG.UI.myAgent(), rr: p.rr || 0, banner: p.banner || 'steel', title: p.title || 'recruit', bullet: p.bullet || 'std', namec: p.namec || 'std', at: firebase.database.ServerValue.TIMESTAMP };
   },
 
   async createParty() {
@@ -466,7 +466,8 @@ CG.Net = {
       const p = pid === this.partyId ? this.party : (await this.db.ref('parties/' + pid).get()).val();
       if (!p) continue;
       Object.keys(p.members || {}).sort((a, b) => (p.members[a].at || 0) - (p.members[b].at || 0)).forEach((uid) => {
-        players.push({ id: uid, owner: uid, name: p.members[uid].name, agent: p.members[uid].agent || 'razor', rr: p.members[uid].rr || 0 });
+        const m = p.members[uid];
+        players.push({ id: uid, owner: uid, name: m.name, agent: m.agent || 'razor', rr: m.rr || 0, bullet: m.bullet || 'std', namec: m.namec || 'std' });
       });
       if (!pvp) (p.bots || []).forEach((agent) => { botN++; players.push({ id: 'bot' + botN, owner: this.uid, name: 'BOT ' + botN, agent, bot: true, rr: CG.Ranks.botRR(botN, CG.Profile.rr()) }); });
     }
