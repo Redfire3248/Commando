@@ -1197,3 +1197,8 @@ body:not(.playing) #game { filter: blur(3px) brightness(.92); transform: scale(1
 @keyframes shotHue { from { filter: hue-rotate(0deg); } to { filter: hue-rotate(360deg); } }
 @media (max-height: 520px) { .look-stage { height: 120px; } .look-stage .ls-body { height: 84px; } .look-stage .ls-shots { top: 66px; } }
 .look-stage { width: min(560px, 90vw); }
+
+/* D-pad diagonals: the corners between two arrows are pressable (up-right, down-left …) */
+#dpad .dg { position: absolute; width: 30%; height: 30%; border-radius: 50%; border: 2px dashed rgba(255, 255, 255, .22); box-sizing: border-box; }
+#dpad .ul { left: 2%; top: 2%; } #dpad .ur { right: 2%; top: 2%; } #dpad .dl { left: 2%; bottom: 2%; } #dpad .dr { right: 2%; bottom: 2%; }
+#dpad .dg.on { background: rgba(255, 154, 60, .45); border-style: solid; border-color: #ffd39a; }

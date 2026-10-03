@@ -95,19 +95,21 @@
   }
   // The movement control stays where it is (Settings → MOVE CONTROLS places it):
   //   'stick' — a circle joystick: put a thumb on it and push the knob the way to go
-  //   'dpad'  — four separate arrow BUTTONS: only the arrow under a finger counts (nothing between them); a second
-  //             finger on another arrow adds it (▲ + ▶ = up-right); sliding onto another arrow switches to it
+  //   'dpad'  — a 3 x 3 pad of buttons: the arrows are one direction each, the CORNERS between two arrows are the
+  //             diagonals (between ▲ and ▶ = up-right), the middle is nothing; slide from one to another to turn
   const mover = () => (T.opts.style === 'stick' ? stick : pad);
   function arrowAt(x, y) {
-    for (const k in arrows) {
-      const r = arrows[k].getBoundingClientRect(), m = r.width * 0.12;
-      if (x >= r.left - m && x <= r.right + m && y >= r.top - m && y <= r.bottom + m) return k;
-    }
-    return null;
+    const r = pad.getBoundingClientRect(), m = r.width * 0.06;
+    if (x < r.left - m || x > r.right + m || y < r.top - m || y > r.bottom + m) return null;
+    const col = Math.max(0, Math.min(2, Math.floor((x - r.left) / (r.width / 3))));
+    const row = Math.max(0, Math.min(2, Math.floor((y - r.top) / (r.height / 3))));
+    return [['up+left', 'up', 'up+right'], ['left', null, 'right'], ['down+left', 'down', 'down+right']][row][col];
   }
   function syncArrows() {
-    const held = new Set(arrowFingers.values()), s = T.s;
+    const held = new Set([...arrowFingers.values()].filter(Boolean).flatMap((v) => v.split('+'))), s = T.s;
     for (const k in arrows) { s[k] = held.has(k); arrows[k].classList.toggle('on', held.has(k)); }
+    const fv = [...arrowFingers.values()];                       // light the corner pad of a diagonal
+    for (const [cls, v] of [['ul', 'up+left'], ['ur', 'up+right'], ['dl', 'down+left'], ['dr', 'down+right']]) pad.querySelector('.' + cls).classList.toggle('on', fv.includes(v));
     if (s.left && s.right) s.left = s.right = false;           // opposite arrows cancel out
     if (s.up && s.down) s.up = s.down = false;
     pad.classList.toggle('on', arrowFingers.size > 0);
