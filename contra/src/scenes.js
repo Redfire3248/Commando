@@ -235,7 +235,7 @@
       const mine = this.cfg.online ? this.players.find((p) => p.owner === CG.Net.uid && !p.bot) : this.players.find((p) => !p.bot && !p.remote);
       if (mine) {
         CG.Shop.apply(mine, fx);
-        if (!this.cfg.online) { mine.bulletColor = CG.Cosmetics.lookColor('bullet', CG.Profile.bullet()); mine.bulletFx = CG.Cosmetics.bulletFx(CG.Profile.bullet()); mine.nameColor = CG.Cosmetics.lookColor('namec', CG.Profile.namec()); }
+        if (!this.cfg.online) { mine.bulletColor = CG.Cosmetics.lookColor('bullet', CG.Profile.bullet()); mine.bulletFx = CG.Cosmetics.bulletFx(CG.Profile.bullet()); mine.bulletArt = CG.Cosmetics.bulletArt(CG.Profile.bullet()); mine.nameColor = CG.Cosmetics.lookColor('namec', CG.Profile.namec()); }
         if (fx.life && !this.cfg.online && (this.cfg.teamLives === null || this.cfg.teamLives === undefined)) this.teamLives++;
       }
       // name colours (story / horde / co-op — duels keep the team colours so you can tell the sides apart)
@@ -938,12 +938,19 @@
       if (player && player.pierce) b.pierce = 2;
       b.fire = !!(player && player.fire); b.shock = !!(player && player.shock);
       b.fx = (player && player.bulletFx) || null; b.fxT = 0; b.fxX = b.fxY = undefined;
-      if (b.fx) b.setScale(b.scaleX * 1.15);
+      if (b.fx && !(player && player.bulletArt)) b.setScale(b.scaleX * 1.15);
       // the shooter's bullet colour (cosmetic, seen by everyone); then the cloak's red on top
       const bc = player && player.bulletColor;
       if (bc === 'rainbow') b.setTintFill(Phaser.Display.Color.HSVToRGB((this.time.now / 700) % 1, 0.7, 1).color);
       else if (bc) b.setTintFill(parseInt(bc.slice(1), 16));
       else b.clearTint();
+      // a painted bullet (bullets.png): its own sprite, untinted, the same hit box
+      const art = player && player.bulletArt;
+      if (art && this.textures.exists(art)) {
+        const k = this.artScale[art] || 0.15;
+        b.setTexture(art).clearTint().setScale(k);
+        b.body.setSize(16 / k, 16 / k, true);
+      }
       if (player && player.cloakT > 0 && !ghost) { b.dmg *= 3; player.cloakT = 0; b.setTint(0xff6a7a); }      // out of the cloak: triple damage
       if (player && player.stormT > 0 && this.anims.exists('fx_storm')) {
         const f = this.add.sprite(x, y, 'fx_storm', 0).setOrigin(0, 0.5).setRotation(a).setScale(0.35).setDepth(12);

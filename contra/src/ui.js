@@ -849,7 +849,7 @@ CG.UI = (() => {
     const shot = fx ? 'fx fx-' + fx : bc === 'rainbow' ? 'rainbow' : '';
     return `<div class="look-stage">
       <div class="ls-fig">${CG.Cosmetics.nameHtml(CG.Profile.namec(), esc(myName()))}<div class="ls-body">${figure(a.id)}</div></div>
-      <div class="ls-shots ${shot}" style="--bc:${bc && bc !== 'rainbow' ? bc : '#ffe9a0'}"><i></i><i></i><i></i></div>
+      <div class="ls-shots ${shot}${CG.Cosmetics.bulletArt(CG.Profile.bullet()) ? ' fx painted' : ''}" style="--bc:${bc && bc !== 'rainbow' ? bc : '#ffe9a0'}">${[0, 1, 2].map(() => '<i' + CG.Cosmetics.shotArt(CG.Profile.bullet()) + '></i>').join('')}</div>
     </div>`;
   }
   function openLocker() {

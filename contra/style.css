@@ -1240,3 +1240,7 @@ body:not(.playing) #game { filter: blur(3px) brightness(.92); transform: scale(1
 /* the title on a banner sits on its own dark plate, so it reads on any banner */
 .pf-banner .pf-title { align-self: flex-start; background: rgba(0, 0, 0, .62); padding: 3px 10px; border-radius: 3px; text-shadow: none; }
 .look-tile b { overflow-wrap: anywhere; }
+/* painted bullets (bullets.png): the sprite itself, no pill */
+.bullet-sample.fx i.art { width: 34px; height: 18px; top: 0; border-radius: 0; box-shadow: none !important; image-rendering: pixelated; }
+.look-stage .ls-shots.painted i { width: 46px; height: 24px; top: -8px; border-radius: 0; box-shadow: none !important; image-rendering: pixelated; }
+.bullet-sample.fx i.art::before, .ls-shots.painted i::before { right: 70%; }

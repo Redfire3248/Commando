@@ -108,20 +108,20 @@ CG.Cosmetics = (() => {
   // (`fx`) also leave a trail as they fly: drawn in code, no art needed (TRAILS in scenes.js, .fx-<kind> in style.css)
   const BULLETS = {
     std:     { name: 'Standard', free: true, color: null },
-    gold:    { name: 'Golden Rounds', price: 300, color: '#ffd23c', legacy: 'gold' },
+    gold:    { name: 'Golden Rounds', price: 300, color: '#ffd23c', legacy: 'gold', art: 'bul_gold' },
     red:     { name: 'Tracer Red', price: 250, color: '#ff4a3a' },
     frost:   { name: 'Frost White', price: 350, color: '#eaf8ff' },
     plasma:  { name: 'Plasma Blue', price: 400, color: '#4ad8ff' },
     toxic:   { name: 'Toxic Green', price: 400, color: '#9dff4a' },
     void:    { name: 'Void Purple', price: 500, color: '#c060ff' },
     rainbow: { name: 'Rainbow', price: 900, color: 'rainbow' },
-    comet:   { name: 'Comet', price: 1100, color: '#9af0ff', fx: 'trail' },
-    sakura:  { name: 'Sakura', price: 1200, color: '#ffb0d8', fx: 'petals' },
-    dragon:  { name: "Dragon's Breath", price: 1500, color: '#ffa02a', fx: 'flame' },
-    thunder: { name: 'Thunder', price: 1500, color: '#fff27a', fx: 'zap' },
-    galaxy:  { name: 'Galaxy', price: 1800, color: '#c08aff', fx: 'stars' },
-    blackhole: { name: 'Black Hole', price: 2200, color: '#2a0a4a', fx: 'void' },
-    legend:  { name: 'Legend Fire', earn: 'Reach LEGEND', rr: CG.Ranks.LEGEND_AT, color: '#ff3a1a', fx: 'ember' },
+    comet:   { name: 'Comet', price: 1100, color: '#9af0ff', fx: 'trail', art: 'bul_comet' },
+    sakura:  { name: 'Sakura', price: 1200, color: '#ffb0d8', fx: 'petals', art: 'bul_sakura' },
+    dragon:  { name: "Dragon's Breath", price: 1500, color: '#ffa02a', fx: 'flame', art: 'bul_dragon' },
+    thunder: { name: 'Thunder', price: 1500, color: '#fff27a', fx: 'zap', art: 'bul_thunder' },
+    galaxy:  { name: 'Galaxy', price: 1800, color: '#c08aff', fx: 'stars', art: 'bul_galaxy' },
+    blackhole: { name: 'Black Hole', price: 2200, color: '#2a0a4a', fx: 'void', art: 'bul_blackhole' },
+    legend:  { name: 'Legend Fire', earn: 'Reach LEGEND', rr: CG.Ranks.LEGEND_AT, color: '#ff3a1a', fx: 'ember', art: 'bul_legend' },
   };
   // the colour of your name over your agent (in story / horde / co-op; duels keep the team colours)
   const NAMES = {
@@ -170,17 +170,22 @@ CG.Cosmetics = (() => {
   // a colour as CSS ('rainbow' becomes a moving gradient class)
   const lookColor = (kind, id) => ((LISTS[kind] || {})[id] || {}).color || null;
   const bulletFx = (id) => (BULLETS[id] && BULLETS[id].fx) || null;
+  // the bullet's own sprite from bullets.png (prompt 26) when it is in: the texture key, or its file for the menus
+  const bulletArt = (id) => { const k = BULLETS[id] && BULLETS[id].art; return k && CG.DATA.art && CG.DATA.art.images && CG.DATA.art.images[k] ? k : null; };
+  const bulletImg = (id) => { const k = bulletArt(id); return k ? CG.DATA.art.images[k] : null; };
+  // one painted shot (inline !important beats the colour rules of the .fx-<kind> styles)
+  const shotArt = (id) => { const src = bulletImg(id); return src ? ` class="art" style="background:url('${src}') right center / contain no-repeat !important"` : ''; };
   // a little row of three shots in this colour (shop, locker) — a fancy one is one shot with its trail
   const bulletHtml = (id) => {
     const c = lookColor('bullet', id), fx = bulletFx(id);
-    if (fx) return `<span class="bullet-sample fx fx-${fx}" style="--bc:${c}"><i></i></span>`;
+    if (fx || bulletArt(id)) return `<span class="bullet-sample fx ${fx ? 'fx-' + fx : ''}" style="--bc:${c}"><i${shotArt(id)}></i></span>`;
     return `<span class="bullet-sample ${c === 'rainbow' ? 'rainbow' : ''}" style="--bc:${c && c !== 'rainbow' ? c : '#ffe9a0'}"><i></i><i></i><i></i></span>`;
   };
   const nameHtml = (id, text) => {
     const c = lookColor('namec', id);
     return `<span class="name-sample ${c === 'rainbow' ? 'rainbow' : ''}" style="${c && c !== 'rainbow' ? 'color:' + c : ''}">${text}</span>`;
   };
-  return { BANNERS, TITLES, BULLETS, NAMES, LISTS, has, bannerCss, titleName, titleColor, titleHtml, shopItems, lookColor, bulletFx, bulletHtml, nameHtml };
+  return { BANNERS, TITLES, BULLETS, NAMES, LISTS, has, bannerCss, titleName, titleColor, titleHtml, shopItems, lookColor, bulletFx, bulletArt, shotArt, bulletHtml, nameHtml };
 })();
 
 // This account's rank, stats and look — the database profile when signed in, else kept on this device.

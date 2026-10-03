@@ -331,7 +331,15 @@ CG.DATA.art = {
   "rope_piece": "assets/atlas/rope_piece.png",
   "rope_coil": "assets/atlas/rope_coil.png",
   "fx_grab_1": "assets/atlas/fx_grab_1.png",
-  "fx_grab_2": "assets/atlas/fx_grab_2.png"
+  "fx_grab_2": "assets/atlas/fx_grab_2.png",
+  "bul_comet": "assets/atlas/bul_comet.png",
+  "bul_sakura": "assets/atlas/bul_sakura.png",
+  "bul_dragon": "assets/atlas/bul_dragon.png",
+  "bul_thunder": "assets/atlas/bul_thunder.png",
+  "bul_galaxy": "assets/atlas/bul_galaxy.png",
+  "bul_blackhole": "assets/atlas/bul_blackhole.png",
+  "bul_legend": "assets/atlas/bul_legend.png",
+  "bul_gold": "assets/atlas/bul_gold.png"
  },
  "sheets": {
   "commandos": {
@@ -670,7 +678,15 @@ CG.DATA.art = {
   "hook_closed": 0.1445,
   "rope_coil": 0.2509,
   "fx_grab_1": 0.4286,
-  "fx_grab_2": 0.4573
+  "fx_grab_2": 0.4573,
+  "bul_comet": 0.1728,
+  "bul_sakura": 0.1605,
+  "bul_dragon": 0.1786,
+  "bul_thunder": 0.1707,
+  "bul_galaxy": 0.1718,
+  "bul_blackhole": 0.1486,
+  "bul_legend": 0.1676,
+  "bul_gold": 0.1129
  },
  "players": [
   {
@@ -1704,7 +1720,15 @@ CG.DATA.art = {
   "pk_longer",
   "pk_armor",
   "pk_dcoins",
-  "pk_danger"
+  "pk_danger",
+  "bul_comet",
+  "bul_sakura",
+  "bul_dragon",
+  "bul_thunder",
+  "bul_galaxy",
+  "bul_blackhole",
+  "bul_legend",
+  "bul_gold"
  ],
  "backgrounds": {
   "jungle": {

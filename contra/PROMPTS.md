@@ -754,3 +754,23 @@ ROW 4 — mode cards and a power-up:
 
 ## 25 — Grappling hook + rope → `assets/hook.png` (4 × 2) — IN
 Hook open / closed, rope piece (stacked into the rope), rope coil, HOOK + ROPE icons, splash-grab 1 / 2 (`build_hook()`).
+
+## 26 — Bullet skins → `assets/bullets.png` (4 × 2) — IN
+
+Sliced by `build_bullets()` → `bul_comet`, `bul_sakura`, `bul_dragon`, `bul_thunder`, `bul_galaxy`, `bul_blackhole`, `bul_legend`, `bul_gold` (`BULLETS[..].art` in ranks.js; the code trails still fly behind them).
+
+```text
+Create this image from scratch, do not ask for a reference image. A pixel-art sprite sheet of 8 bullet projectiles for a retro run-and-gun game, laid out in a grid of 4 columns × 2 rows, each cell 256 × 256 pixels. Transparent background (real alpha transparency, no checkerboard pattern, no background colour, no frame or grid lines). Every projectile flies to the RIGHT, sits centred in its cell, is about 120 px long and 40–60 px tall, has crisp pixel edges and a 2-pixel dark outline. No glow halos, no text, no shadows.
+
+Row 1:
+1. COMET — an icy cyan-white ball head with a short tapered tail behind it.
+2. SAKURA — a bright pink cherry-blossom petal shaped like a dart, with two tiny petals trailing.
+3. DRAGON'S BREATH — an orange-yellow fireball with flickering flame tongues at the back.
+4. THUNDER — a jagged yellow-white lightning bolt shaped like an arrowhead.
+
+Row 2:
+5. GALAXY — a purple-violet orb with tiny white and pink stars inside it.
+6. BLACK HOLE — a near-black sphere with a thin bright violet ring around it.
+7. LEGEND FIRE — a deep red and gold flaming bullet with ember sparks at the back.
+8. SPARE — a classic gold rifle round (for later).
+```

@@ -22,6 +22,7 @@
       // cosmetics: the colour of this soldier's shots and name (null = standard; 'rainbow' cycles)
       this.bulletColor = CG.Cosmetics.lookColor('bullet', opts.bullet);
       this.bulletFx = CG.Cosmetics.bulletFx(opts.bullet);                 // fancy bullets leave a trail
+      this.bulletArt = CG.Cosmetics.bulletArt(opts.bullet);               // ... and have their own sprite (bullets.png)
       this.nameColor = CG.Cosmetics.lookColor('namec', opts.namec);
       this.color = CG.PLAYER_COLORS[idx % CG.PLAYER_COLORS.length];
       this.phys = scene.add.zone(x, feetY - PH / 2, PW, PH);
