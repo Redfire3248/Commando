@@ -79,8 +79,38 @@ CG.UI = (() => {
   const N = () => CG.Net;
 
   let enterT = null, shownAt = 0;
+  // red number badges on the top tabs: FRIENDS = friend requests + squad invites waiting, LOCKER = agents / banners /
+  // titles you have not looked at yet (seen when the locker opens)
+  const SEEN_LOOKS = 'commando.seenlooks';
+  function haveLooks() {
+    const ids = CG.AGENTS.filter((a) => CG.Shop.hasAgent(a.id)).map((a) => 'a:' + a.id);
+    for (const id in CG.Cosmetics.BANNERS) if (CG.Cosmetics.has('banner', id)) ids.push('b:' + id);
+    for (const id in CG.Cosmetics.TITLES) if (CG.Cosmetics.has('title', id)) ids.push('t:' + id);
+    return ids;
+  }
+  function seenLooks() { try { return JSON.parse(store.get(SEEN_LOOKS, 'null')); } catch (e) { return null; } }
+  function markLooksSeen() { store.set(SEEN_LOOKS, JSON.stringify(haveLooks())); badges(); }
+  function badges() {
+    const net = N();
+    const friends = net.online ? Object.keys(net.requests || {}).length + Object.keys(net.invites || {}).length : 0;
+    let seen = seenLooks();
+    if (!seen) { markLooksSeenQuiet(); seen = haveLooks(); }                // first time: nothing counts as new
+    const locker = haveLooks().filter((id) => !seen.includes(id)).length;
+    const set = (act, n) => {
+      const b = document.querySelector('.topnav [data-act="' + act + '"]');
+      if (!b) return;
+      let el = b.querySelector('.badge');
+      if (!n) { if (el) el.remove(); return; }
+      if (!el) { el = document.createElement('i'); el.className = 'badge'; b.appendChild(el); }
+      el.textContent = n > 9 ? '9+' : n;
+    };
+    set('friends', friends);
+    set('locker', locker);
+  }
+  function markLooksSeenQuiet() { store.set(SEEN_LOOKS, JSON.stringify(haveLooks())); }
   function show(id) {
     shownAt = Date.now();
+    if (booted) setTimeout(badges, 0);
     const fresh = id && id !== current;
     current = id;
     $('profile').classList.add('hidden');                     // a new screen closes the profile card and member menu
@@ -136,6 +166,7 @@ CG.UI = (() => {
 
   function netChanged() {
     if (!booted) return;
+    badges();
     const net = N();
     if (current === 'login') {
       if (net.online) home(); else renderLogin();
@@ -305,19 +336,30 @@ CG.UI = (() => {
       },
     };
   })();
-  // a new version on the server: the game's own files changed since this page loaded (checked every 2 minutes)
+  // a new version on the server. GitHub Pages serves every file from many servers that each give it a different ETag,
+  // so headers can't tell; instead the live site asks GitHub for the newest commit (changes only on a real update)
+  // and waits two minutes for Pages to publish it before saying so. On a local server: the files' contents.
   (() => {
-    const files = ['../index.html', 'src/ui.js', 'src/scenes.js', 'src/entities.js', 'style.css'];
-    const stamp = () => Promise.all(files.map((f) => fetch(f, { method: 'HEAD', cache: 'no-store' })
-      .then((r) => r.headers.get('etag') || r.headers.get('last-modified') || r.headers.get('content-length') || '').catch(() => null)))
-      .then((v) => (v.includes(null) ? null : v.join('|')));
-    let first = null;
+    const pages = /\.github\.io$/.test(location.hostname);
+    const hash = (t) => { let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return String(h); };
+    const stamp = pages
+      ? () => fetch('https://api.github.com/repos/Redfire3248/Commando/commits/main', { headers: { Accept: 'application/vnd.github.sha' }, cache: 'no-store' })
+        .then((r) => (r.ok ? r.text() : null)).catch(() => null)
+      : () => Promise.all(['../index.html', 'src/ui.js', 'src/scenes.js'].map((f) => fetch(f, { cache: 'no-store' }).then((r) => (r.ok ? r.text() : null)).catch(() => null)))
+        .then((v) => (v.includes(null) ? null : hash(v.join('|'))));
+    let first = null, seenAt = 0;
     const check = () => stamp().then((v) => {
       if (!v) return;
-      if (first === null) first = v;
-      else if (v !== first) notices.update();
+      if (first === null) { first = v; return; }
+      if (v === first) return;
+      if (!seenAt) seenAt = Date.now();
+      if (!pages || Date.now() - seenAt > 120000) notices.update();       // Pages needs a moment to publish it
     });
-    if (location.protocol.startsWith('http')) { check(); setInterval(check, 120000); document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); }); }
+    if (location.protocol.startsWith('http')) {
+      check();
+      setInterval(check, pages ? 180000 : 120000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+    }
   })();
 
   // ---------------------------------------------------------------- a squad member's options, profile cards
@@ -794,6 +836,7 @@ CG.UI = (() => {
     $('select-slots').innerHTML = '';
   }
   function openLocker() {
+    markLooksSeen();
     lookAt = Math.max(0, CG.AGENTS.findIndex((a) => a.id === myAgent()));
     setLockerTab('agents');
     show('select');
@@ -944,7 +987,10 @@ CG.UI = (() => {
     $('touch-auto').classList.toggle('on', !!o.autofire);
     document.querySelectorAll('#settings .online-only').forEach((b) => b.classList.toggle('hidden', !N().online));
     $('shake-btn').textContent = shakeOn() ? 'ON' : 'OFF';
-    [$('sound-btn'), $('shake-btn'), $('touch-auto')].forEach((b) => b.classList.toggle('on', b.textContent === 'ON'));
+    $('touch-swap').textContent = o.swap ? 'ON' : 'OFF';
+    const km = CG.Keys.get(), rightHand = Object.keys(CG.Keys.RIGHT_HAND).every((k) => JSON.stringify(km[k]) === JSON.stringify(CG.Keys.RIGHT_HAND[k]));
+    document.querySelectorAll('[data-act="keys-preset"]').forEach((b) => b.classList.toggle('on', (b.dataset.uid === 'right') === rightHand));
+    [$('sound-btn'), $('shake-btn'), $('touch-auto'), $('touch-swap')].forEach((b) => b.classList.toggle('on', b.textContent === 'ON'));
     const u = N().user;
     $('set-account').textContent = N().online ? 'Signed in' + (u && u.email ? ' as ' + u.email : '') + ' — progress saved to your account' : 'Guest — saved on this device only';
     document.querySelectorAll('[data-act="set-tab"]').forEach((b) => b.classList.toggle('on', b.dataset.uid === setTab));
@@ -1064,6 +1110,8 @@ CG.UI = (() => {
     'set-tab': (t) => { setTab = t; renderSettings(); },
     'touch-style': (v) => { CG.Touch.opts.style = v; CG.Touch.save(); renderSettings(); },
     'touch-size': (v) => { CG.Touch.opts.size = +v; CG.Touch.save(); renderSettings(); },
+    'touch-swap': () => { CG.Touch.opts.swap = !CG.Touch.opts.swap; CG.Touch.save(); renderSettings(); toast(CG.Touch.opts.swap ? 'Controls swapped: move with your right hand' : 'Controls back to normal'); },
+    'keys-preset': (v) => { CG.Keys.preset(v); renderSettings(); toast(v === 'right' ? 'Right hand only — tip: switch Auto fire on too' : 'Standard keys'); },
     'touch-auto': () => { CG.Touch.opts.autofire = !CG.Touch.opts.autofire; CG.Touch.save(); CG.Touch.syncButtons(); renderSettings(); },
     'shop-tab': (t) => { shopTab = t; renderShop(); },
     'shop-agents': () => { shopTab = 'agents'; show('shop'); },

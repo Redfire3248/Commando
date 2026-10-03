@@ -23,13 +23,20 @@
       try { localStorage.setItem('commando.keys', JSON.stringify(m)); } catch (e) { /* */ }
     },
     reset() { try { localStorage.removeItem('commando.keys'); } catch (e) { /* */ } },
+    // easy on a weak left hand: everything on the right side of the keyboard — arrows to move, the keys beside them
+    // for the rest (with Auto fire on, shooting needs no key at all)
+    RIGHT_HAND: { left: [[37, '←']], right: [[39, '→']], up: [[38, '↑']], down: [[40, '↓']], shoot: [[191, '/']], jump: [[13, 'ENTER']],
+      ability: [[190, '.']], dash: [[188, ',']] },
+    preset(name) {
+      try { localStorage.setItem('commando.keys', JSON.stringify(name === 'right' ? this.RIGHT_HAND : {})); } catch (e) { /* */ }
+    },
     label(action) { return this.get()[action].map((k) => k[1]).join(' / '); },
   };
 
   const T = CG.Touch = {
     enabled: false,
     s: { left: false, right: false, up: false, down: false, shoot: false, jump: false, ability: false, dash: false },
-    opts: { style: 'dpad', size: 1, autofire: false, pos: {} },          // pos: where each button was moved to (Settings)
+    opts: { style: 'dpad', size: 1, autofire: false, swap: false, pos: {} },   // pos: where each control was moved to; swap: mirrored
   };
   try { Object.assign(T.opts, JSON.parse(localStorage.getItem('commando.touch')) || {}); } catch (e) { /* defaults */ }
   T.save = () => { try { localStorage.setItem('commando.touch', JSON.stringify(T.opts)); } catch (e) { /* */ } T.apply(); };
@@ -37,18 +44,23 @@
   function enable() { T.enabled = true; }
   if (window.matchMedia && matchMedia('(pointer: coarse)').matches) enable();
   window.addEventListener('touchstart', enable, { passive: true, once: true });
-  T.show = (on) => { T.shown = !!(on && T.enabled); root.classList.toggle('hidden', !(on && T.enabled)); if (!on) releaseAll(); };
+  T.show = (on) => { T.shown = !!(on && T.enabled); root.classList.toggle('hidden', !(on && T.enabled)); if (!on) releaseAll(); else T.apply(); };
   // control size: the chosen size, a bit smaller on short phone screens so the buttons leave room to see
   T.apply = () => {
     root.classList.toggle('dpad-mode', T.opts.style === 'dpad');
     const fit = Math.max(0.62, Math.min(1, window.innerHeight / 520));
     root.style.setProperty('--ts', (T.opts.size * fit).toFixed(3));
     // buttons the player moved: placed by their centre, as a share of the screen
-    const pos = T.opts.pos || {};
+    // SWAP SIDES (Settings → Touch, for a weak left hand): every control mirrored left ↔ right
+    const pos = T.opts.pos || {}, swap = !!T.opts.swap;
+    const place = (b, at) => Object.assign(b.style, { left: 'calc(' + (at.x * 100).toFixed(2) + 'vw - ' + b.offsetWidth / 2 + 'px)', top: 'calc(' + (at.y * 100).toFixed(2) + 'vh - ' + b.offsetHeight / 2 + 'px)', right: 'auto', bottom: 'auto', margin: '0' });
     document.querySelectorAll('#btns [data-btn], #b-pause, #stick, #dpad').forEach((b) => {
       const id = b.dataset.btn || (b.id === 'b-pause' ? 'pause' : b.id), at = pos[id];
-      if (at) Object.assign(b.style, { left: 'calc(' + (at.x * 100).toFixed(2) + 'vw - ' + b.offsetWidth / 2 + 'px)', top: 'calc(' + (at.y * 100).toFixed(2) + 'vh - ' + b.offsetHeight / 2 + 'px)', right: 'auto', bottom: 'auto', margin: '0' });
-      else Object.assign(b.style, { left: '', top: '', right: '', bottom: '', margin: '' });
+      Object.assign(b.style, { left: '', top: '', right: '', bottom: '', margin: '' });
+      if (at) { place(b, swap ? { x: 1 - at.x, y: at.y } : at); return; }
+      if (!swap) return;
+      const r = b.getBoundingClientRect();                       // where it sits normally, mirrored
+      if (r.width) place(b, { x: 1 - (r.left + r.width / 2) / innerWidth, y: (r.top + r.height / 2) / innerHeight });
     });
   };
   // Settings → MOVE BUTTONS: the controls show over a dimmed screen and each one can be dragged to a new place
@@ -155,7 +167,8 @@
     if (!drag || e.pointerId !== drag.pid) return;
     e.stopImmediatePropagation();
     T.opts.pos = T.opts.pos || {};
-    T.opts.pos[drag.id] = { x: Math.max(0.03, Math.min(0.97, e.clientX / innerWidth)), y: Math.max(0.05, Math.min(0.95, e.clientY / innerHeight)) };
+    const fx = Math.max(0.03, Math.min(0.97, e.clientX / innerWidth));
+    T.opts.pos[drag.id] = { x: T.opts.swap ? 1 - fx : fx, y: Math.max(0.05, Math.min(0.95, e.clientY / innerHeight)) };   // stored unmirrored
     T.apply();
   }, true);
   root.addEventListener('pointerup', (e) => { if (drag && e.pointerId === drag.pid) { drag = null; T.save(); e.stopImmediatePropagation(); } }, true);
@@ -273,6 +286,7 @@
         let s = { left: false, right: false, up: false, down: false, shoot: false, jump: false, ability: false, dash: false };
         if (d.type === 'any') {                     // online: this device's keyboard, mouse, first gamepad and touch screen
           s = Object.assign(this.readKeys('kbAll'), {});
+          if (CG.Touch.opts.autofire) s.shoot = true;              // Auto fire works with the keyboard too
           const t = CG.Touch.s;
           for (const k in s) s[k] = s[k] || !!t[k];
           const pad = pads[0];
@@ -284,6 +298,7 @@
           // an online teammate: their own game moves them, so no input here
         } else if (this.maps[d.type]) {
           s = this.readKeys(d.type);
+          if (d.type === 'kbAll' && CG.Touch.opts.autofire) s.shoot = true;
         } else if (d.type === 'touch') {
           Object.assign(s, CG.Touch.s);
         } else if (d.type === 'pad') {

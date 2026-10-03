@@ -9,32 +9,33 @@
 // Stages repeat after the last one, harder each time round.
 // STORY MODE: the eight stages of the classic campaign, in order — the jungle and its defense wall, the first
 // base, the waterfall climb, the second base, the snow field, the energy zone, the hangar and the alien lair.
-// Each stage is a run of hand-picked SECTIONS (see CG.Level.SECTIONS) followed by its boss:
+// Each stage is a run of hand-picked SECTIONS (see CG.Level.SECTIONS) followed by its boss. Every world has its OWN
+// sections (none is shared between two worlds), so each stage plays differently, not just looks different:
 //   bg: which painted scene from backgrounds15.png (first lap, later laps)   brief: the line under the stage name
 CG.STORY = [
   { name: 'JUNGLE', tiles: 'w_jungle', theme: 'jungle', bg: [1, 4], brief: 'Cross the jungle — the bridges blow up behind you — and break the defense wall',
-    sections: ['fight', 'river', 'hop', 'cliff', 'movers', 'climbwall', 'river', 'highcliff', 'islands', 'nest'],
+    sections: ['fight', 'river', 'canopy', 'bridge', 'swamp', 'river', 'canopy', 'nest'],
     boss: { type: 'fortress', cannonRows: [5.5, 9.5], say: 'DESTROY THE DEFENSE WALL' } },
   { name: 'BASE 1', tiles: 'w_base1', theme: 'base', bg: [5, 8], brief: 'Break every wall core to open the way through the base',
-    sections: ['gatehall', 'lift', 'cliff', 'gatehall', 'movers', 'highcliff', 'ravine', 'gatehall'],
+    sections: ['gatehall', 'catwalk', 'alley', 'gatehall', 'tower', 'catwalk', 'gatehall'],
     boss: { type: 'fortress', cannonRows: [4.5, 7.5, 10.5], say: 'DESTROY THE BASE CORE' } },
   { name: 'WATERFALL', tiles: 'w_falls', theme: 'jungle', bg: [2, 3], brief: 'Climb the falls — watch for falling rocks',
-    sections: ['falls', 'hop', 'climbwall', 'falls', 'movers', 'ravine', 'falls', 'lift'],
+    sections: ['falls', 'cascade', 'climbwall', 'boulders', 'cascade', 'falls'],
     boss: { type: 'statue', say: 'DESTROY THE ALIEN STATUE' } },
   { name: 'BASE 2', tiles: 'w_base2', theme: 'base', bg: [6, 12], brief: 'Deeper in: more walls, more guns',
-    sections: ['gatehall', 'movers', 'highcliff', 'ravine', 'gatehall', 'lift', 'climbwall', 'gatehall'],
+    sections: ['lockdown', 'pistons', 'turretrow', 'highcliff', 'lockdown', 'pistons', 'drones', 'lockdown'],
     boss: { type: 'fortress', cannonRows: [3.5, 6.5, 9.5], say: 'DESTROY THE TWIN CORE' } },
   { name: 'SNOW FIELD', tiles: 'w_snow', theme: 'snow', bg: [9, 10], brief: 'Cross the frozen field before the armour arrives',
-    sections: ['river', 'hop', 'cliff', 'movers', 'islands', 'highcliff', 'ravine', 'climbwall', 'gauntlet'],
+    sections: ['gauntlet', 'icefloes', 'cliff', 'islands', 'ravine', 'icefloes', 'gauntlet'],
     boss: { type: 'tank', say: 'STOP THE ARMORED CARRIER' } },
   { name: 'ENERGY ZONE', tiles: 'w_energy', theme: 'base', bg: [11, 7], brief: 'Time your run past the fire jets',
-    sections: ['flames', 'lift', 'cliff', 'flames', 'movers', 'climbwall', 'flames', 'ravine'],
+    sections: ['flames', 'hop', 'heatpipes', 'lift', 'flames', 'heatpipes'],
     boss: { type: 'giant', say: 'TAKE DOWN THE GIANT' } },
   { name: 'HANGAR', tiles: 'w_hangar', theme: 'base', bg: [13, 12], brief: 'Mind the crushers — they come down hard',
-    sections: ['crushers', 'movers', 'highcliff', 'crushers', 'hop', 'lift', 'crushers', 'ravine'],
+    sections: ['crushers', 'cargo', 'movers', 'crushers', 'runway', 'cargo'],
     boss: { type: 'fortress', cannonRows: [3.5, 6.5, 9.5], say: 'BREAK THE FINAL GATE' } },
   { name: "ALIEN'S LAIR", tiles: 'w_alien', theme: 'base', bg: [15, 14], brief: 'The source of it all. End it here',
-    sections: ['hive', 'hop', 'climbwall', 'hive', 'movers', 'highcliff', 'lift', 'ravine', 'hive'],
+    sections: ['hive', 'organs', 'ribcage', 'spawnpit', 'organs', 'hive'],
     boss: { type: 'heart', say: 'DESTROY THE ALIEN HEART' } },
 ];
 
@@ -86,6 +87,41 @@ CG.Level = {
     // a lift up to a high ledge route over a pit, then down again
     lift: (s) => ({ w: 24, gaps: [[s + 4, s + 20]], movers: [[s + 2, 13, 2, 0, 6, 4.2]], ledges: [[s + 6, 7, 4], [s + 12, 7, 4], [s + 18, 10, 3]],
       enemies: [['rifle', s + 8, 7], ['rifle', s + 14, 7], ['runner', s + 22]], coins: [[s + 10, 5], [s + 11, 5]] }),
+    // ---- one world's own pieces ----
+    // JUNGLE: the treetop route (riflemen up in the canopy) and a swamp of low stepping stones
+    canopy: (s) => ({ w: 22, ledges: [[s + 2, 11, 3], [s + 6, 8, 4], [s + 11, 6, 4], [s + 16, 8, 4]], covers: [s + 20],
+      enemies: [['rifle', s + 7, 8], ['rifle', s + 12, 6], ['grenadier', s + 17, 8], ['runner', s + 9], ['runner', s + 15]], coins: [[s + 12, 4], [s + 13, 4]] }),
+    swamp: (s) => ({ w: 22, gaps: [[s + 2, s + 20]], ledges: [[s + 3, 13, 2], [s + 7, 12, 3], [s + 12, 13, 2], [s + 16, 12, 3]],
+      enemies: [['drone', s + 9], ['drone', s + 15], ['runner', s + 21]], coins: [[s + 8, 10], [s + 17, 10]] }),
+    // BASE 1: a long catwalk with riflemen over a floor of gun turrets
+    catwalk: (s) => ({ w: 22, ledges: [[s + 1, 11, 2], [s + 4, 8, 14]], covers: [s + 2, s + 19],
+      enemies: [['rifle', s + 6, 8], ['rifle', s + 12, 8], ['grenadier', s + 16, 8], ['turret', s + 9], ['turret', s + 15], ['runner', s + 20]], coins: [[s + 10, 6], [s + 11, 6]] }),
+    // WATERFALL: lifts that rise and slide across the cascade; a run under falling boulders
+    cascade: (s) => ({ w: 24, gaps: [[s + 2, s + 22]], movers: [[s + 3, 13, 2, 0, 5, 3.6], [s + 9, 8, 3, 5, 0, 3.4], [s + 17, 13, 2, 0, 5, 3.8]],
+      ledges: [[s + 6, 8, 2], [s + 14, 8, 2], [s + 20, 10, 2]], enemies: [['drone', s + 8], ['rifle', s + 14, 8], ['drone', s + 18]], coins: [[s + 11, 6], [s + 12, 6]] }),
+    boulders: (s) => ({ w: 20, hazards: [['rocks', s + 2, s + 18]], covers: [s + 6, s + 13], enemies: [['runner', s + 9], ['rifle', s + 16], ['grenadier', s + 18]] }),
+    // BASE 2: sealed rooms full of drones, pistons rising over a pit, a gallery of turrets on ledges
+    lockdown: (s) => ({ w: 20, covers: [s + 4], enemies: [['drone', s + 6], ['drone', s + 11], ['turret', s + 9], ['rifle', s + 14], ['gate', s + 18]] }),
+    pistons: (s) => ({ w: 22, gaps: [[s + 2, s + 20]], movers: [[s + 3, 12, 2, 0, 3, 2.6], [s + 7, 10, 2, 0, 3, 2.2], [s + 11, 12, 2, 0, 4, 2.8], [s + 15, 10, 2, 0, 3, 2.4]],
+      enemies: [['drone', s + 10], ['runner', s + 21]], coins: [[s + 11, 6]] }),
+    turretrow: (s) => ({ w: 20, ledges: [[s + 3, 11, 3], [s + 9, 9, 3], [s + 15, 11, 3]], covers: [s + 7, s + 13],
+      enemies: [['turret', s + 4, 11], ['turret', s + 10, 9], ['turret', s + 16, 11], ['runner', s + 12], ['runner', s + 18]] }),
+    // SNOW FIELD: ice floes drifting across freezing water
+    icefloes: (s) => ({ w: 26, gaps: [[s + 2, s + 24]], movers: [[s + 3, 13, 3, 5, 0, 3.2], [s + 12, 12, 3, 5, 0, 3.6]], ledges: [[s + 9, 12, 2], [s + 18, 12, 2], [s + 21, 13, 2]],
+      enemies: [['drone', s + 10], ['drone', s + 19], ['runner', s + 25]], coins: [[s + 9, 10], [s + 18, 10]] }),
+    // ENERGY ZONE: high heat pipes over fire jets — time the jump between bursts
+    heatpipes: (s) => ({ w: 22, hazards: [['flame', s + 6], ['flame', s + 13]], ledges: [[s + 2, 11, 3], [s + 6, 8, 4], [s + 12, 8, 4], [s + 17, 11, 3]],
+      enemies: [['rifle', s + 7, 8], ['rifle', s + 13, 8], ['runner', s + 20]], coins: [[s + 10, 6], [s + 11, 6]] }),
+    // HANGAR: stacks of cargo to climb; a runway swept by drones
+    cargo: (s) => ({ w: 20, blocks: [[s + 3, 12, 2], [s + 6, 10, 3], [s + 11, 12, 2], [s + 14, 9, 3]],
+      enemies: [['rifle', s + 7, 10], ['rifle', s + 15, 9], ['runner', s + 10], ['runner', s + 18]], coins: [[s + 15, 7], [s + 16, 7]] }),
+    runway: (s) => ({ w: 22, covers: [s + 5, s + 12, s + 18], enemies: [['drone', s + 4], ['drone', s + 9], ['drone', s + 14], ['grenadier', s + 16], ['runner', s + 20]] }),
+    // ALIEN'S LAIR: organ islands over acid under spitting mouths, a ribcage of bone pillars, a spawning pit
+    organs: (s) => ({ w: 22, gaps: [[s + 2, s + 20]], ledges: [[s + 3, 12, 3], [s + 8, 11, 3], [s + 13, 12, 3], [s + 17, 11, 2]],
+      enemies: [['mouth', s + 9], ['mouth', s + 15], ['runner', s + 21]], coins: [[s + 9, 9]] }),
+    ribcage: (s) => ({ w: 22, blocks: [[s + 3, 11, 1], [s + 7, 9, 1], [s + 11, 7, 1], [s + 15, 9, 1], [s + 19, 11, 1]],
+      ledges: [[s + 5, 10, 1], [s + 9, 8, 1], [s + 13, 8, 1], [s + 17, 10, 1]], enemies: [['grenadier', s + 11, 7], ['bug', s + 8], ['bug', s + 14], ['runner', s + 21]], coins: [[s + 11, 5]] }),
+    spawnpit: (s) => ({ w: 18, covers: [s + 3, s + 14], enemies: [['mouth', s + 5], ['mouth', s + 9], ['mouth', s + 13], ['bug', s + 7], ['bug', s + 11], ['grenadier', s + 16]] }),
     // a wide ravine: two rocks and a bridge in the middle that gives way
     ravine: (s) => ({ w: 18, gaps: [[s + 3, s + 15]], ledges: [[s + 4, 11, 2], [s + 8, 10, 3, 'bridge'], [s + 13, 11, 2]],
       enemies: [['rifle', s + 16], ['drone', s + 9]], coins: [[s + 9, 8]] }),

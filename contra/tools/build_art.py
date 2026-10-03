@@ -969,6 +969,17 @@ def solid_crop(a, name):
     return a[s:e + 1, x0:x1 + 1], 0.0
 
 
+def ledge_crop(a):
+    """A ledge piece is laid in a row: cut its rounded / faded ends so the pieces meet (rows are kept whole)."""
+    solid = a[..., 3] > 200
+    rows = [i for i in range(solid.shape[0]) if solid[i].mean() > 0.5]
+    if not rows:
+        return a
+    band = solid[rows[0]:rows[-1] + 1]
+    cols = [i for i, v in enumerate(band.mean(0)) if v > 0.6]
+    return a[:, cols[0]:cols[-1] + 1] if cols else a
+
+
 def fit_scale(img, size):
     side, px = size
     return round(px / (img.width if side == 'w' else img.height), 4)
@@ -994,7 +1005,9 @@ def build_worlds():
                         continue
                     key = world_key(name, world)
                     crop = cells[i][0]
-                    if not name.startswith('ledge'):
+                    if name.startswith('ledge'):
+                        crop = ledge_crop(crop)
+                    else:
                         crop, surf = solid_crop(crop, name)
                         if surf:
                             manifest.setdefault('surf', {})[key] = surf
@@ -1010,7 +1023,10 @@ def build_worlds():
                     i = r * COLS + c
                     if i not in cells:
                         continue
-                    img = Image.fromarray(cells[i][0])
+                    crop = cells[i][0]
+                    if name == 'boss_wall':                      # stacked into one big wall: no soft edge, no gaps
+                        crop = solid_crop(crop, 'g_in')[0]
+                    img = Image.fromarray(crop)
                     key = name + '_w_' + world
                     manifest['images'][key] = save(img, key)
                     if name in BOSS_SIZE:

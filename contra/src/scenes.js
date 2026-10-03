@@ -602,13 +602,17 @@
 
       // water fills the bottom of the stage; the ground pieces cover it
       const has = (key) => this.textures.exists(key);
-      const fit = (ts) => { const w = ts.texture.getSourceImage().width; if (w !== T) ts.setTileScale(T / w); return ts; };
+      // a water tile is drawn 2 tiles wide (measured on the tile itself, not on the strip's own canvas)
+      const fit = (ts) => { const w = (ts.displayTexture || ts.texture).getSourceImage().width; ts.setTileScale((2 * T) / w); return ts; };
       // water a little below the banks, darker as it gets deep, and slowly moving
       const ownWater = L.tiles && has('water_' + L.tiles);            // a world's painted water needs no tint
       const ownDeep = L.tiles && has('water_deep_' + L.tiles);
+      // only one screen wide and pinned to the camera (the pattern scrolls with the world in update) — a strip as long
+      // as the stage was a 15 000 px canvas redrawn every frame
+      const ww = CG.CONFIG.W + 4 * T;
       this.waterTs = [
-        fit(this.add.tileSprite(0, gy + 40, L.w * T, T, k('water')).setOrigin(0).setDepth(1).setTint(ownWater ? 0xffffff : 0xd8ecff)),
-        fit(this.add.tileSprite(0, gy + 40 + T, L.w * T, H - gy, ownWater && !ownDeep ? k('water') : k('water_deep')).setOrigin(0).setDepth(1)
+        fit(this.add.tileSprite(-2 * T, gy + 40, ww, 2 * T, k('water')).setOrigin(0).setDepth(1).setScrollFactor(0, 1).setTint(ownWater ? 0xffffff : 0xd8ecff)),
+        fit(this.add.tileSprite(-2 * T, gy + 40 + 2 * T, ww, H - gy, ownWater && !ownDeep ? k('water') : k('water_deep')).setOrigin(0).setDepth(1).setScrollFactor(0, 1)
           .setTint(ownDeep ? 0xffffff : ownWater ? 0x8a8a9a : 0x6f93bd)),
       ];
       const variant = (name, i) => (has(k(name) + '_' + i) ? k(name) + '_' + i : k(name));
@@ -1478,7 +1482,8 @@
       this.players.forEach((p, i) => (p.remote ? this.net.applyPlayer(p, dt) : p.update(dt, ins[i])));
       if (this.net) this.net.tick(dt);
 
-      // the camera follows whoever is furthest ahead, and never goes back
+      // the camera follows the squad and never goes back: it moves on as the front player runs, but only as far as the
+      // player furthest BEHIND allows (they stay on screen) — nobody is dragged along, an AFK player holds the screen
       const alive = this.players.filter((p) => !p.dead && !p.out && (!p.remote || p.netSeen));
       if (this.pvp) {
         this.camX = 0;
@@ -1494,7 +1499,8 @@
       } else if (this.isClient) {
         if (this.netCamX !== undefined) this.camX += (this.netCamX - this.camX) * (1 - Math.exp(-8 * dt));
       } else if (alive.length) {
-        let target = Math.min(Math.max(...alive.map((p) => p.body.center.x)) - this.viewW * 0.42, this.bossCamX);
+        const xs = alive.map((p) => p.body.center.x);
+        let target = Math.min(Math.max(...xs) - this.viewW * 0.42, Math.min(...xs) - 90, this.bossCamX);
         for (const e of this.enemies.getChildren()) if (e.active && e.T.solid && e.x > this.camX) target = Math.min(target, e.x + 140 - this.viewW);
         if (target > this.camX) this.camX += (target - this.camX) * (1 - Math.exp(-7 * dt));
       }
@@ -1555,7 +1561,8 @@
 
       CG.Hazards.update(this, dt);
       this.updateMovers();
-      for (const w of this.waterTs || []) w.tilePositionX += dt * 22;
+      this.flowX = (this.flowX || 0) + dt * 22;                    // the water drifts slowly and moves with the world
+      for (const w of this.waterTs || []) w.tilePositionX = (cam.scrollX - 2 * T + this.flowX) / w.tileScaleX;
       if (this.syncCams) this.syncCams();
       this.updateHud();
       this.updateDomes();

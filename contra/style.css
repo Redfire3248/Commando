@@ -1154,3 +1154,14 @@ body:not(.playing) #game { filter: blur(3px) brightness(.92); transform: scale(1
 /* the D-pad is four separate buttons: no round joystick base behind them */
 #dpad { background: none; border: 0; border-radius: 0; opacity: .9; }
 #dpad .dp { border-radius: 12px; }
+/* the gear art has its own round frame: no box around it */
+.set-corner { background: none; border: 0; clip-path: none; padding: 0; width: 48px; height: 48px; transition: transform .15s; }
+.set-corner:hover { background: none; transform: rotate(30deg) scale(1.06); }
+@media (max-height: 520px) { .set-corner { width: 38px; height: 38px; padding: 0; } }
+
+/* red number badges on the top tabs */
+.topnav button { position: relative; }
+.topnav .badge { position: absolute; top: 2px; right: 2px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px;
+  background: #e8302a; color: #fff; font: 800 11px/18px Rajdhani, sans-serif; font-style: normal; text-align: center; border: 2px solid #0b0f13;
+  animation: badgePop .35s cubic-bezier(.2, 1.6, .4, 1) both; pointer-events: none; }
+@keyframes badgePop { from { transform: scale(0); } }
