@@ -751,3 +751,6 @@ ROW 4 — mode cards and a power-up:
 (15) LOCAL CO-OP (orange): two game controllers side by side.
 (16) OVERDRIVE (gold): a gold star burst with a lightning bolt through it.
 ```
+
+## 25 — Grappling hook + rope → `assets/hook.png` (4 × 2) — IN
+Hook open / closed, rope piece (stacked into the rope), rope coil, HOOK + ROPE icons, splash-grab 1 / 2 (`build_hook()`).

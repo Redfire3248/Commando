@@ -325,7 +325,13 @@ CG.DATA.art = {
   "ab_jax": "assets/atlas/ab_jax.png",
   "ab_duke": "assets/atlas/ab_duke.png",
   "px_sentry": "assets/atlas/px_sentry.png",
-  "pk_overdrive": "assets/atlas/pk_overdrive.png"
+  "pk_overdrive": "assets/atlas/pk_overdrive.png",
+  "hook_open": "assets/atlas/hook_open.png",
+  "hook_closed": "assets/atlas/hook_closed.png",
+  "rope_piece": "assets/atlas/rope_piece.png",
+  "rope_coil": "assets/atlas/rope_coil.png",
+  "fx_grab_1": "assets/atlas/fx_grab_1.png",
+  "fx_grab_2": "assets/atlas/fx_grab_2.png"
  },
  "sheets": {
   "commandos": {
@@ -659,7 +665,12 @@ CG.DATA.art = {
   "boss_heli": 0.8427,
   "px_gren": 0.4853,
   "px_drone": 0.2932,
-  "pk_overdrive": 0.3243
+  "pk_overdrive": 0.3243,
+  "hook_open": 0.1451,
+  "hook_closed": 0.1445,
+  "rope_coil": 0.2509,
+  "fx_grab_1": 0.4286,
+  "fx_grab_2": 0.4573
  },
  "players": [
   {
@@ -1871,7 +1882,9 @@ CG.DATA.art = {
   "ranks": "assets/atlas/ui_ranks.png",
   "ffa": "assets/atlas/ui_ffa.png",
   "horde": "assets/atlas/ui_horde.png",
-  "coop": "assets/atlas/ui_coop.png"
+  "coop": "assets/atlas/ui_coop.png",
+  "hook": "assets/atlas/ui_hook.png",
+  "rope": "assets/atlas/ui_rope.png"
  },
  "surf": {
   "g_top_w_jungle": 0.2047,

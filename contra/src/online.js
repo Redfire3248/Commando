@@ -154,7 +154,7 @@ CG.Online = {
       x: r(b.center.x), y: r(b.bottom), vx: r(b.velocity.x), vy: r(b.velocity.y), f: p.facing, ax: +p.aimX.toFixed(2), ay: +p.aimY.toFixed(2),
       pr: p.prone ? 1 : 0, g: p.onGround ? 1 : 0, hp: p.hp, mx: p.maxHp, d: p.dead ? 1 : 0, o: p.out ? 1 : 0,
       sh: p.shots || 0, sp: (p.spread || p.stormT > 0) ? 1 : 0, st: p.stormT > 0 ? 1 : 0, dm: p.domeT > 0 ? 1 : 0, ds: p.dashT > 0 ? 1 : 0,
-      ck: p.cloakT > 0 ? 1 : 0,
+      ck: p.cloakT > 0 ? 1 : 0, wt: p.inWater ? 1 : 0,
     };
   },
 
@@ -176,6 +176,7 @@ CG.Online = {
     p.wasDash = !!s.ds;
     p.stormT = s.st ? 1000 : 0;
     p.cloakT = s.ck ? 1000 : 0;
+    if (CG.Rescue.enabled(sc)) CG.Rescue.remote(p, s.wt);              // sinking in their game: HELP! here, ROPE for me
     // ease toward the reported position (plus a little of its velocity, as the report is already a moment old)
     const tx = s.x + s.vx * 0.05, ty = s.y + s.vy * 0.05;
     const k = 1 - Math.exp(-14 * dt);
@@ -238,6 +239,7 @@ CG.Online = {
   broadcast(m) {
     const sc = this.scene, N = CG.Net;
     if (!sc || !m || m.from === N.uid || Date.now() - (m.at || 0) > 8000) return;
+    if (m.t === 'rope') { CG.Rescue.ropeFromNet(sc, m); return; }     // a teammate threw me the rope
     if (m.t === 'phit') {                                // a duel: someone's ability hit my soldier
       const p = sc.players.find((q) => q.netId === m.id && q.owner === N.uid);
       if (p && p.alive) { p.lastHitBy = sc.players.find((q) => q.netId === m.by) || null; p.hit(m.n || 1); }

@@ -81,6 +81,8 @@
       if (this.freeAbility) this.abilityCd = 0;
       if (wasCd > 0 && this.abilityCd <= 0) sc.abilityReady(this);
       if (this.dead) { this.tag.setVisible(false); if (this.rankImg) this.rankImg.setVisible(false); this.bar.clear(); return; }
+      // story: sinking in the water, being pulled out, or playing the rope bar for a teammate (rescue.js)
+      if (CG.Rescue.update(this, dt, inp)) return;
 
       const onGround = this.onGround = b.blocked.down || b.touching.down;
       const dir = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
@@ -164,6 +166,7 @@
       if (this.phys.x < minX) { this.phys.x = minX; if (b.velocity.x < 0) b.velocity.x = 0; }
       if (this.phys.x > maxX) { this.phys.x = maxX; if (b.velocity.x > 0) b.velocity.x = 0; }
       if (b.top < view.y + 4) { this.phys.y += view.y + 4 - b.top; if (b.velocity.y < 0) b.velocity.y = 0; }
+      if (b.top > CG.DATA.level.groundRow * CG.CONFIG.TILE + 20 && CG.Rescue.falls(this)) return;   // story: sink, hook / rope
       if (b.top > CG.CONFIG.H + 60) { sc.splash(b.center.x); this.die(); return; }   // fell in the water
 
       const storm = this.stormT > 0, spread = this.spread || storm;
@@ -302,6 +305,7 @@
     // A death uses one of the team's shared lives. With none left this player is out until the stage ends.
     die() {
       if (!this.alive) return;
+      CG.Rescue.reset(this);
       const sc = this.scene, b = this.body, v = this.visual;
       if (this.god) { this.hp = this.maxHp; return; }
       this.dead = true; this.hp = 0; this.rapid = false; this.spread = false; this.barrierT = 0; this.stormT = 0; this.domeT = 0; this.dashT = 0; this.adrenT = 0;
@@ -339,6 +343,7 @@
       const sc = this.scene, T = CG.CONFIG.TILE;
       const col = sc.pvp ? Math.floor((sc.ffa ? sc.ffaSpawnX(this) : sc.teamSpawn(this.idx)) / T) : CG.Level.safeCol((sc.cameras.main.scrollX + 260 + this.idx * 90) / T);
       this.lastHitBy = null;
+      CG.Rescue.reset(this);
       this.dead = false; this.out = false; this.invT = this.C.respawnInvMs; this.fireCd = 0; this.hp = this.maxHp;
       this.setProne(false);
       this.body.enable = true;
