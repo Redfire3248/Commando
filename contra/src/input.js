@@ -226,6 +226,16 @@
     b.classList.toggle('has-icon', !!icon);
     b.textContent = icon ? '' : 'SKILL';
   };
+  // a picture shown over a button for a moment (the water rescue: ROPE on SKILL, HOOK on JUMP); null takes it away
+  T.overlay = (btn, uiName) => {
+    const b = btns[btn];
+    if (!b) return;
+    const url = uiName && UIICON[uiName] ? new URL(UIICON[uiName], document.baseURI).href : null;
+    let o = b.querySelector('.tb-over');
+    if (!url) { if (o) o.remove(); return; }
+    if (!o) { o = document.createElement('i'); o.className = 'tb-over'; b.appendChild(o); }
+    o.style.backgroundImage = 'url("' + url + '")';
+  };
   let lastSecs = -1;
   T.cooldown = (f, msLeft, dashF) => {
     const b = btns.ability;

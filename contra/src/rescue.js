@@ -185,9 +185,17 @@ CG.Rescue = (() => {
 
   // ---------------------------------------------------------------- every frame, for each local player
   // returns true when this player's normal update should be skipped (sinking, pulled out, playing the rope bar)
+  // the touch buttons tell this device's player what to press: ROPE on SKILL, HOOK / ROPE on JUMP during the bar
+  function buttons(p, q) {
+    if (p !== p.scene.touchPlayer) return;
+    const skill = q && !p.mini ? 'rope' : null, jump = p.mini ? p.mini.kind : null;
+    if (p.btnSkill !== skill) { p.btnSkill = skill; CG.Touch.overlay('ability', skill); }
+    if (p.btnJump !== jump) { p.btnJump = jump; CG.Touch.overlay('jump', jump); }
+  }
   function update(p, dt, inp) {
     const sc = p.scene, b = p.body;
     if (!enabled(sc)) return false;
+    if (!p.bot && !p.remote) buttons(p, p.inWater || p.pull ? null : sinkingNear(p));
     const hideTag = () => { p.tag.setVisible(false); if (p.rankImg) p.rankImg.setVisible(false); p.bar.clear(); };
     if (p.pull) { tickPull(p, dt); p.sync(dt); hideTag(); return true; }
     if (p.inWater) {
@@ -231,6 +239,7 @@ CG.Rescue = (() => {
   // a new life: everything back
   function reset(p) {
     endMini(p); help(p, false); hint(p, false);
+    if (p.scene && p === p.scene.touchPlayer) { p.btnSkill = p.btnJump = null; CG.Touch.overlay('ability', null); CG.Touch.overlay('jump', null); }
     if (p.pull) { if (p.pull.rope) p.pull.rope.destroy(); if (p.pull.hook) p.pull.hook.destroy(); p.pull = null; }
     p.inWater = false; p.hookUsed = false; p.ropeAt = 0;
     if (p.visual) p.visual.clearTint();
