@@ -1,7 +1,8 @@
 // Ranks and profile cosmetics.
 //
-// RANKS: rank rating (RR) climbs and falls with your results, 100 RR a division, three divisions a tier:
-//   BRONZE 1-3 · SILVER 1-3 · GOLD 1-3 · PLATINUM 1-3 · DIAMOND 1-3 · MASTER 1-3 · LEGEND (no divisions, from 1800 RR)
+// RANKS: rank rating (RR) climbs and falls with your results, three divisions a tier, and every tier asks MORE RR a
+// division than the one below it (SIZES): BRONZE 60 · SILVER 75 · GOLD 90 · PLATINUM 105 · DIAMOND 125 · MASTER 145
+//   BRONZE 1-3 (0) · SILVER (180) · GOLD (405) · PLATINUM (675) · DIAMOND (990) · MASTER (1365) · LEGEND (1800, no divisions)
 //   Duels and free-for-all: a win +18…28, a loss −12…20 (more when you beat someone ranked above you).
 //   Story: +4 a stage cleared. Horde: +2 a wave from wave 3. Custom games, local co-op with friends, admin use: unranked.
 // Bots get a rank close to yours (random, within about a division either side) and play as well as that rank.
@@ -20,13 +21,21 @@ CG.Ranks = (() => {
     { id: 'master', name: 'MASTER', color: '#c46bff', dark: '#46157a' },
     { id: 'legend', name: 'LEGEND', color: '#ff5a5a', dark: '#6b0f14' },
   ];
-  const DIV = 100, LEGEND_AT = 6 * 3 * DIV;               // 1800
+  const SIZES = [60, 75, 90, 105, 125, 145];               // RR a division, tier by tier
+  const STARTS = [];
+  let LEGEND_AT = 0;
+  SIZES.forEach((n, t) => { STARTS[t] = LEGEND_AT; LEGEND_AT += 3 * n; });   // 1800
+  const DIV = SIZES[0];
+  // where a division starts (t = tier index, div 1-3)
+  const divStart = (t, div) => (t >= 6 ? LEGEND_AT : STARTS[t] + ((div || 1) - 1) * SIZES[t]);
 
   function of(rr) {
     rr = Math.max(0, Math.round(rr || 0));
-    if (rr >= LEGEND_AT) return { tier: TIERS[6], t: 6, div: 0, name: 'LEGEND', inDiv: rr - LEGEND_AT, rr, idx: 18 };
-    const idx = Math.floor(rr / DIV), t = Math.floor(idx / 3), div = (idx % 3) + 1;
-    return { tier: TIERS[t], t, div, name: TIERS[t].name + ' ' + div, inDiv: rr % DIV, rr, idx };
+    if (rr >= LEGEND_AT) return { tier: TIERS[6], t: 6, div: 0, name: 'LEGEND', inDiv: rr - LEGEND_AT, size: 0, rr, idx: 18 };
+    let t = 5;
+    while (t > 0 && rr < STARTS[t]) t--;
+    const size = SIZES[t], d = Math.min(2, Math.floor((rr - STARTS[t]) / size));
+    return { tier: TIERS[t], t, div: d + 1, name: TIERS[t].name + ' ' + (d + 1), inDiv: rr - STARTS[t] - d * size, size, rr, idx: t * 3 + d };
   }
   // how well a bot of this rating plays, 0.15 (new Bronze) … 1 (Legend)
   const skill = (rr) => Math.min(1, 0.02 + 0.98 * Math.pow(Math.min(Math.max(rr, 0), LEGEND_AT) / LEGEND_AT, 1.35));
@@ -49,7 +58,7 @@ CG.Ranks = (() => {
   function chip(rr, opts) {
     opts = opts || {};
     const r = of(rr);
-    return `<span class="rank-chip" style="--rc:${r.tier.color}">${icon(rr, opts.px)}<b>${r.name}</b>${opts.rr ? `<small>${r.rr >= LEGEND_AT ? r.rr - LEGEND_AT + ' RR' : r.inDiv + ' / 100'}</small>` : ''}</span>`;
+    return `<span class="rank-chip" style="--rc:${r.tier.color}">${icon(rr, opts.px)}<b>${r.name}</b>${opts.rr ? `<small>${r.rr >= LEGEND_AT ? r.rr - LEGEND_AT + ' RR' : r.inDiv + ' / ' + r.size}</small>` : ''}</span>`;
   }
 
   // bots: each bot slot gets a fixed offset for this session, so a bot keeps its rank while you look at it
@@ -65,7 +74,7 @@ CG.Ranks = (() => {
     return won ? Math.round(23 + 5 * gap) : -Math.round(16 - 4 * gap);
   }
 
-  return { TIERS, DIV, LEGEND_AT, of, skill, icon, chip, botRR, fightDelta };
+  return { TIERS, DIV, SIZES, STARTS, LEGEND_AT, divStart, of, skill, icon, chip, botRR, fightDelta };
 })();
 
 CG.Cosmetics = (() => {
@@ -89,13 +98,14 @@ CG.Cosmetics = (() => {
     survivor: { name: 'SURVIVOR', earn: 'Reach wave 10 in Horde', check: (s) => (s.wave || 0) >= 10, color: '#ffd23c' },
     duelist:  { name: 'DUELIST', earn: 'Win 10 duels', check: (s) => (s.wins || 0) >= 10, color: '#ff5a4f' },
     hunter:   { name: 'SHARPSHOOTER', earn: '100 flanks', check: (s) => (s.heads || 0) >= 100, color: '#ff6ad5' },
-    golden:   { name: 'GOLDEN GUN', earn: 'Reach GOLD', rr: 600, color: '#ffcc3a' },
-    diamond:  { name: 'DIAMOND HANDS', earn: 'Reach DIAMOND', rr: 1200, color: '#8aa8ff' },
-    legend:   { name: 'LIVING LEGEND', earn: 'Reach LEGEND', rr: 1800, color: '#ff4a4a' },
+    golden:   { name: 'GOLDEN GUN', earn: 'Reach GOLD', rr: CG.Ranks.divStart(2, 1), color: '#ffcc3a' },
+    diamond:  { name: 'DIAMOND HANDS', earn: 'Reach DIAMOND', rr: CG.Ranks.divStart(4, 1), color: '#8aa8ff' },
+    legend:   { name: 'LIVING LEGEND', earn: 'Reach LEGEND', rr: CG.Ranks.LEGEND_AT, color: '#ff4a4a' },
     hollow:   { name: 'GHOST OF THE JUNGLE', price: 500, color: '#4fe0d0' },
     boss:     { name: 'THE BOSS', price: 900, color: '#c46bff' },
   };
-  // the colour of your shots (shown to everyone, online too) — 'rainbow' cycles through every colour
+  // the colour of your shots (shown to everyone, online too) — 'rainbow' cycles through every colour. The fancy ones
+  // (`fx`) also leave a trail as they fly: drawn in code, no art needed (TRAILS in scenes.js, .fx-<kind> in style.css)
   const BULLETS = {
     std:     { name: 'Standard', free: true, color: null },
     gold:    { name: 'Golden Rounds', price: 300, color: '#ffd23c', legacy: 'gold' },
@@ -105,7 +115,13 @@ CG.Cosmetics = (() => {
     toxic:   { name: 'Toxic Green', price: 400, color: '#9dff4a' },
     void:    { name: 'Void Purple', price: 500, color: '#c060ff' },
     rainbow: { name: 'Rainbow', price: 900, color: 'rainbow' },
-    legend:  { name: 'Legend Fire', earn: 'Reach LEGEND', rr: 1800, color: '#ff3a1a' },
+    comet:   { name: 'Comet', price: 1100, color: '#9af0ff', fx: 'trail' },
+    sakura:  { name: 'Sakura', price: 1200, color: '#ffb0d8', fx: 'petals' },
+    dragon:  { name: "Dragon's Breath", price: 1500, color: '#ffa02a', fx: 'flame' },
+    thunder: { name: 'Thunder', price: 1500, color: '#fff27a', fx: 'zap' },
+    galaxy:  { name: 'Galaxy', price: 1800, color: '#c08aff', fx: 'stars' },
+    blackhole: { name: 'Black Hole', price: 2200, color: '#2a0a4a', fx: 'void' },
+    legend:  { name: 'Legend Fire', earn: 'Reach LEGEND', rr: CG.Ranks.LEGEND_AT, color: '#ff3a1a', fx: 'ember' },
   };
   // the colour of your name over your agent (in story / horde / co-op; duels keep the team colours)
   const NAMES = {
@@ -153,16 +169,18 @@ CG.Cosmetics = (() => {
   }
   // a colour as CSS ('rainbow' becomes a moving gradient class)
   const lookColor = (kind, id) => ((LISTS[kind] || {})[id] || {}).color || null;
-  // a little row of three shots in this colour (shop, locker)
+  const bulletFx = (id) => (BULLETS[id] && BULLETS[id].fx) || null;
+  // a little row of three shots in this colour (shop, locker) — a fancy one is one shot with its trail
   const bulletHtml = (id) => {
-    const c = lookColor('bullet', id);
+    const c = lookColor('bullet', id), fx = bulletFx(id);
+    if (fx) return `<span class="bullet-sample fx fx-${fx}" style="--bc:${c}"><i></i></span>`;
     return `<span class="bullet-sample ${c === 'rainbow' ? 'rainbow' : ''}" style="--bc:${c && c !== 'rainbow' ? c : '#ffe9a0'}"><i></i><i></i><i></i></span>`;
   };
   const nameHtml = (id, text) => {
     const c = lookColor('namec', id);
     return `<span class="name-sample ${c === 'rainbow' ? 'rainbow' : ''}" style="${c && c !== 'rainbow' ? 'color:' + c : ''}">${text}</span>`;
   };
-  return { BANNERS, TITLES, BULLETS, NAMES, LISTS, has, bannerCss, titleName, titleColor, titleHtml, shopItems, lookColor, bulletHtml, nameHtml };
+  return { BANNERS, TITLES, BULLETS, NAMES, LISTS, has, bannerCss, titleName, titleColor, titleHtml, shopItems, lookColor, bulletFx, bulletHtml, nameHtml };
 })();
 
 // This account's rank, stats and look — the database profile when signed in, else kept on this device.

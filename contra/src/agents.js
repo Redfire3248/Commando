@@ -30,7 +30,7 @@ CG.AGENTS = [
   },
   {
     id: 'jax', name: 'JAX', role: 'Grenadier', color: '#4d8dff', hp: 5, speed: 1, classic: true, fallback: 'commandos', fallbackWho: 0,
-    ability: { name: 'Frag Grenade', desc: 'Lob a grenade that blows apart everything around where it lands.', cd: 7000, damage: 8, radius: 190 },
+    ability: { name: 'Frag Grenade', desc: 'Lob a grenade that blows apart everything around where it lands. Hold UP to throw it straight up: the blast fires you forward (a grenade jump).', cd: 7000, damage: 8, radius: 190 },
   },
   {
     id: 'duke', name: 'DUKE', role: 'Brawler', color: '#ff4d4d', hp: 5, speed: 1, classic: true, fallback: 'commandos', fallbackWho: 1,

@@ -1208,3 +1208,35 @@ body:not(.playing) #game { filter: blur(3px) brightness(.92); transform: scale(1
   image-rendering: pixelated; animation: overPulse .8s ease-in-out infinite; pointer-events: none; }
 @keyframes overPulse { 50% { transform: scale(1.08); border-color: #fff3b0; } }
 
+
+/* ---------- fancy bullets (CG.Cosmetics.BULLETS[..].fx): one shot with its trail in the shop / locker tiles and the preview ---------- */
+.bullet-sample.fx { position: relative; display: block; width: 74px; height: 18px; padding: 0; }
+.bullet-sample.fx i, .look-stage .ls-shots.fx i { width: 16px; height: 8px; border-radius: 4px; background: var(--bc); box-shadow: 0 0 0 1px rgba(0, 0, 0, .55); }
+.bullet-sample.fx i { position: absolute; right: 4px; top: 5px; }
+.look-stage .ls-shots.fx i { width: 22px; height: 9px; }
+.bullet-sample.fx i::before, .ls-shots.fx i::before { content: ''; position: absolute; right: 100%; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.fx-trail i::before { width: 56px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--bc) 75%, transparent)); }
+.fx-petals i::before { width: 54px; height: 16px;
+  background: radial-gradient(ellipse 4px 2.5px at 10% 30%, #ffd8ea 98%, transparent), radial-gradient(ellipse 4px 2.5px at 35% 75%, #ff8ac0 98%, transparent),
+    radial-gradient(ellipse 4px 2.5px at 62% 25%, #ffb0d8 98%, transparent), radial-gradient(ellipse 4px 2.5px at 88% 65%, #ffd8ea 98%, transparent); }
+.fx-flame i, .fx-ember i { background: radial-gradient(circle at 75% 50%, #fff6c0 0 25%, var(--bc) 62%); }
+.fx-flame i::before, .fx-ember i::before { width: 46px; height: 12px; border-radius: 50% 0 0 50%;
+  background: linear-gradient(90deg, transparent, rgba(255, 60, 20, .55) 45%, rgba(255, 170, 40, .9)); animation: fxFlick .18s steps(2) infinite alternate; }
+.fx-ember i::before { background: linear-gradient(90deg, transparent, rgba(160, 0, 0, .6) 40%, rgba(255, 60, 20, .95)); }
+.fx-zap i::before { width: 44px; height: 12px; background: #fff27a; animation: fxFlick .12s steps(2) infinite alternate;
+  clip-path: polygon(0 50%, 20% 10%, 35% 70%, 52% 15%, 68% 80%, 84% 25%, 100% 45%, 100% 60%, 84% 42%, 68% 98%, 52% 32%, 35% 88%, 20% 28%, 0 62%); }
+.fx-stars i::before { width: 56px; height: 14px; animation: fxTwinkle .5s steps(2) infinite alternate;
+  background: radial-gradient(circle at 12% 30%, #fff 0 1.5px, transparent 2px), radial-gradient(circle at 30% 70%, #7ae8ff 0 1.5px, transparent 2px),
+    radial-gradient(circle at 50% 35%, #ff8ad8 0 2px, transparent 2.5px), radial-gradient(circle at 72% 65%, #fff 0 1.5px, transparent 2px),
+    radial-gradient(circle at 90% 40%, #c08aff 0 2px, transparent 2.5px), linear-gradient(90deg, transparent, rgba(192, 138, 255, .45)); }
+.fx-void i { background: #14051f !important; box-shadow: 0 0 0 2px #9a4aff !important; }
+.fx-void i::before { width: 46px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, transparent, rgba(138, 58, 255, .75)); }
+@keyframes fxFlick { to { transform: translateY(-50%) scaleY(.7); opacity: .8; } }
+@keyframes fxTwinkle { to { opacity: .55; } }
+
+/* locker look tiles: the one in use keeps its place (no jump) and gets the accent outline all round */
+.sel-tiles .look-tile { --c: var(--acc); }
+.sel-tiles .tile.look-tile.look { transform: none; border-color: var(--acc); }
+/* the title on a banner sits on its own dark plate, so it reads on any banner */
+.pf-banner .pf-title { align-self: flex-start; background: rgba(0, 0, 0, .62); padding: 3px 10px; border-radius: 3px; text-shadow: none; }
+.look-tile b { overflow-wrap: anywhere; }

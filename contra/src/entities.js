@@ -21,6 +21,7 @@
       this.shots = 0;
       // cosmetics: the colour of this soldier's shots and name (null = standard; 'rainbow' cycles)
       this.bulletColor = CG.Cosmetics.lookColor('bullet', opts.bullet);
+      this.bulletFx = CG.Cosmetics.bulletFx(opts.bullet);                 // fancy bullets leave a trail
       this.nameColor = CG.Cosmetics.lookColor('namec', opts.namec);
       this.color = CG.PLAYER_COLORS[idx % CG.PLAYER_COLORS.length];
       this.phys = scene.add.zone(x, feetY - PH / 2, PW, PH);
@@ -52,6 +53,7 @@
         pierce: false, blast: false, double: false, ice: false,
         mdashT: 0, mdashCd: 0, airDashed: false, hack: {},
         cloakT: 0, poundPending: false, fire: false, shock: false, magnetT: 0, bootsT: 0, aimT: 0, armor: 0,
+        pw: {},                                           // timed bullet power-ups: kind -> ms left
       });
     }
 
@@ -77,6 +79,7 @@
       const ms = dt * 1000, C = this.C, b = this.body, sc = this.scene;
       const wasCd = this.abilityCd;
       for (const k of ['invT', 'barrierT', 'fireCd', 'dropT', 'abilityCd', 'stormT', 'domeT', 'dashT', 'adrenT', 'overT', 'mdashT', 'mdashCd', 'cloakT', 'magnetT', 'bootsT', 'aimT']) this[k] = Math.max(0, this[k] - ms);
+      for (const k in this.pw) { this.pw[k] -= ms; if (this.pw[k] <= 0) { delete this.pw[k]; this[k] = false; } }
       if (this.hack.dash) { this.mdashCd = 0; if (this.agent.dashAbility) { this.abilityCd = 0; this.abilityAt = 0; } }
       if (this.freeAbility) this.abilityCd = 0;
       if (wasCd > 0 && this.abilityCd <= 0) sc.abilityReady(this);
@@ -308,10 +311,9 @@
       CG.Rescue.reset(this);
       const sc = this.scene, b = this.body, v = this.visual;
       if (this.god) { this.hp = this.maxHp; return; }
-      this.dead = true; this.hp = 0; this.rapid = false; this.spread = false; this.barrierT = 0; this.stormT = 0; this.domeT = 0; this.dashT = 0; this.adrenT = 0;
-      this.pierce = this.blast = this.double = this.ice = false; this.overT = 0;
-      this.fire = this.shock = false; this.magnetT = this.bootsT = this.aimT = this.cloakT = 0; this.armor = 0; this.poundPending = false;
-      if (this.armorMax) { this.maxHp -= this.armorMax; this.armorMax = 0; }
+      this.clearPowers();
+      this.dead = true; this.hp = 0; this.stormT = 0; this.domeT = 0; this.dashT = 0; this.adrenT = 0;
+      this.cloakT = 0; this.armor = 0; this.poundPending = false;
       CG.Sfx.play('die');
       b.stop(); b.enable = false;
       this.shield.setVisible(false);
@@ -337,6 +339,16 @@
         if (respawn) this.respawn();
         else { this.out = true; v.setVisible(false); sc.checkOver(); }
       });
+    }
+
+    // a bullet power-up that runs out (rapid, spread, pierce, blast, double, ice, fire, shock)
+    givePower(kind, ms) { this[kind] = true; this.pw[kind] = ms; }
+    // every power-up off: a death, a new duel round
+    clearPowers() {
+      this.rapid = this.spread = this.pierce = this.blast = this.double = this.ice = this.fire = this.shock = false;
+      this.barrierT = this.overT = this.magnetT = this.bootsT = this.aimT = 0;
+      this.pw = {};
+      if (this.armorMax) { this.maxHp -= this.armorMax; this.armorMax = 0; this.hp = Math.min(this.hp, this.maxHp); }
     }
 
     respawn() {

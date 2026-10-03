@@ -122,6 +122,7 @@
       return {
         set: (v) => { disconnect.push([path, v]); return Promise.resolve(); },
         remove: () => { disconnect.push([path, null]); return Promise.resolve(); },
+        cancel: () => { for (let i = disconnect.length - 1; i >= 0; i--) if (disconnect[i][0] === path) disconnect.splice(i, 1); return Promise.resolve(); },
       };
     }
   }

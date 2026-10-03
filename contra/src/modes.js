@@ -15,14 +15,17 @@ CG.Modes = {
   ROUNDS: [3, 5, 7],
   CUSTOM: { kind: 'custom', arena: 0, a: 2, b: 2, rounds: 5, drops: true, together: true },
 
-  // a bot the game fills in: JAX or DUKE; from Gold (600 RR) up it sometimes brings another agent — up to 6 in 10 at the top
+  // the strong picks a good bot brings: GHOST (flanks x3, cloak), KITE (three jumps + dash), RAZOR (fast fire + storm),
+  // VOLT (stunning arc), HAMMER (stunning pound)
+  META: ['ghost', 'kite', 'razor', 'volt', 'hammer'],
+  // a bot the game fills in: below Gold JAX or DUKE; through Gold more and more often one of the strong picks;
+  // from Platinum up ONLY the strong picks
   botAgent(rr) {
-    const other = Math.max(0, Math.min(0.6, ((rr || 0) - 600) / 2000));
-    if (Math.random() < other) {
-      const rest = CG.AGENTS.filter((a) => !this.BOT_AGENTS.includes(a.id));
-      return rest[Math.floor(Math.random() * rest.length)].id;
-    }
-    return this.BOT_AGENTS[Math.floor(Math.random() * this.BOT_AGENTS.length)];
+    rr = rr || 0;
+    const gold = CG.Ranks.divStart(2, 1), plat = CG.Ranks.divStart(3, 1);
+    const strong = rr >= plat ? 1 : Math.max(0, (rr - gold) / (plat - gold));
+    const list = Math.random() < strong ? this.META.filter((id) => CG.AGENT[id]) : this.BOT_AGENTS;
+    return list[Math.floor(Math.random() * list.length)];
   },
   FFA_KILLS: 10,
   isPvp(m) { return !!m && m.kind !== 'story' && m.kind !== 'horde'; },

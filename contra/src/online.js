@@ -17,6 +17,11 @@
 // Someone leaving does not end the match: a player whose game stops reporting for 3 s is taken out (in a duel the
 // other side wins when a whole side is gone); if the HOST goes, the next person still here (lowest uid) takes over —
 // their game turns the enemy puppets into real enemies and carries on from where the host left it.
+// ONE host at a time: everyone follows info/host. A host that was only away (a phone app switch, a dropped connection)
+// finds someone else in info/host when it comes back and steps down — its own enemies go, the new host's come back
+// as puppets — and snapshots written by anyone but info/host are ignored. (Two games each running their own enemies
+// is what made a kill on one screen not count on the other.)
+// Quitting tells everyone (`quit`): that person's soldier and bots disappear at once with "<NAME> HAS QUIT".
 CG.Online = {
   mid: null, info: null, scene: null, host: false,
 
@@ -41,23 +46,34 @@ CG.Online = {
     this.scene = scene;
     this.base = N.db.ref('matches/' + this.mid);
     this.ps = {}; this.snap = null; this.snapNew = false; this.sendT = 0; this.snapT = 0; this.seq = 0;
-    this.offs = [];
-    const on = (ref, ev, fn) => { ref.on(ev, fn); this.offs.push(() => ref.off(ev, fn)); };
+    this.offs = []; this.tickAt = Date.now(); this.hostLeftAt = 0; this.evOff = null;
+    const on = (ref, ev, fn) => { ref.on(ev, fn); const off = () => ref.off(ev, fn); this.offs.push(off); return off; };
     on(this.base.child('p'), 'value', (s) => { this.ps = s.val() || {}; });
     on(this.base.child('bc').limitToLast(20), 'child_added', (s) => this.broadcast(s.val()));
     on(this.base.child('info/ended'), 'value', (s) => {
       const v = s.val();
-      if (!v || this.host) return;
-      if (v === 'host-left') this.migrate(); else this.ended(v);
+      if (!v) { this.hostLeftAt = 0; return; }
+      if (v === 'host-left') {
+        // the host's connection dropped (or it quit): a host that is still here clears it; everyone else waits a
+        // moment for its snapshots — only when they stop too does someone take over (a blip is not a leave)
+        if (this.host) { if (this.scene && !this.scene.over) { this.base.child('info/ended').set(null).catch(() => {}); this.armHost(); } }
+        else this.hostLeftAt = Date.now();
+        return;
+      }
+      if (!this.host) this.ended(v);
     });
+    on(this.base.child('info/host'), 'value', (s) => this.hostIs(s.val()));
     this.on = on;
-    if (this.host) {
-      on(this.base.child('ev'), 'child_added', (s) => { this.event(s.val()); s.ref.remove(); });
-      this.base.child('info/ended').onDisconnect().set('host-left');
-    } else {
-      on(this.base.child('s'), 'value', (s) => { if (s.val()) { this.snap = JSON.parse(s.val()); this.snapNew = true; this.snapAt = Date.now(); } });
-      this.snapAt = Date.now();
-    }
+    if (this.host) this.listenEvents();
+    // everyone hears the snapshots (a host that steps down needs them at once); only the real host's count
+    on(this.base.child('s'), 'value', (s) => {
+      if (!s.val() || this.host) return;
+      const snap = JSON.parse(s.val());
+      if (snap.h && this.info && snap.h !== this.info.host) return;       // an old host that has not noticed yet
+      this.snap = snap; this.snapNew = true; this.snapAt = Date.now();
+      this.goneHost = null;                                               // the host is alive: a later silence is a new one
+    });
+    this.snapAt = Date.now();
     for (const p of scene.players) if (p.owner === N.uid) this.base.child('p/' + p.netId).onDisconnect().remove();
     this.puppets = {}; this.pickups = {};
     // the ready check: frozen until GO
@@ -110,8 +126,13 @@ CG.Online = {
   leave() {
     const N = CG.Net;
     if (!this.mid) return;
+    // tell everyone first: my soldier and my bots vanish from their screens straight away
+    if (this.scene && !this.scene.over) {
+      const mine = this.scene.players.filter((p) => p.owner === N.uid);
+      this.shout('quit', { ids: mine.map((p) => p.netId), name: (mine.find((p) => !p.bot) || {}).name || '' });
+    }
     if (this.host) this.base.child('info/ended').set(this.scene && !this.scene.over ? 'host-left' : 'done').catch(() => {});
-    else if (this.scene) for (const p of this.scene.players) if (p.owner === N.uid) this.base.child('p/' + p.netId).remove().catch(() => {});
+    if (this.scene) for (const p of this.scene.players) if (p.owner === N.uid) this.base.child('p/' + p.netId).remove().catch(() => {});
     this.detach();
     this.mid = null; this.info = null;
     if (N.isLeader) N.backToLobby();
@@ -138,6 +159,18 @@ CG.Online = {
   tick(dt) {
     const sc = this.scene, N = CG.Net;
     if (!sc) return;
+    // this game was asleep (phone app switch, hidden tab): nobody else is "gone" just because this game stopped
+    // looking — give the snapshots a moment to arrive, and a host checks it is still the host before writing
+    const now = Date.now();
+    if (now - this.tickAt > 2000) {
+      this.snapAt = now; this.hostLeftAt = 0;
+      for (const p of sc.players) p.goneAt = 0;
+      if (this.host) {
+        this.verifying = true;
+        this.base.child('info/host').get().then((s) => { this.verifying = false; this.hostIs(s.val(), true); }).catch(() => { this.verifying = false; });
+      }
+    }
+    this.tickAt = now;
     this.sendT -= dt * 1000; this.snapT -= dt * 1000;
     if (this.sendT <= 0) {
       this.sendT = 70;
@@ -145,35 +178,49 @@ CG.Online = {
       for (const p of sc.players) if (p.owner === N.uid) up['p/' + p.netId] = JSON.stringify(this.playerState(p));
       this.base.update(up).catch(() => {});
     }
-    if (this.host && this.snapT <= 0) {
+    if (this.host && this.snapT <= 0 && !this.verifying) {
       this.snapT = 100;
       this.base.child('s').set(JSON.stringify(this.snapshot())).catch(() => {});
     }
     if (!this.host && this.snapNew) { this.snapNew = false; this.applySnapshot(); }
-    // nothing from the host for 6 seconds: they are gone — someone takes over
-    if (!this.host && Date.now() - this.snapAt > 6000) { this.migrate(); return; }
+    // the host is gone: its connection closed and no snapshot for 2 s, or nothing at all from it for 6 s — someone takes over
+    const quiet = now - this.snapAt;
+    if (!this.host && ((this.hostLeftAt && quiet > 2000) || quiet > 6000)) { this.migrate(); return; }
     if (!this.host) this.movePuppets(dt);
-    if (this.host) this.leftCheck();
+    this.leftCheck();
   },
 
   // ---------------------------------------------------------------- someone left
   // host: a person whose soldier stopped reporting for 3 s has left — out of the match (a duel side that is gone loses)
+  // every game: a soldier whose game stopped reporting for 3 s is gone from this screen too; one that was only away
+  // (it reports again) comes back — unless that person QUIT
   leftCheck() {
     const sc = this.scene, now = Date.now();
     for (const p of sc.players) {
-      if (!p.remote || p.left || p.bot) continue;
-      if (this.ps[p.netId]) { p.goneAt = 0; continue; }
+      if (!p.remote) continue;
+      const raw = this.ps[p.netId];
+      if (p.left) { if (!p.quit && raw && raw !== p.leftRaw) this.rejoin(p); continue; }
+      if (raw) { p.goneAt = 0; continue; }
       if (!p.netSeen) continue;
       if (!p.goneAt) p.goneAt = now;
       else if (now - p.goneAt > 3000) this.dropPlayer(p);
     }
   },
-  dropPlayer(p) {
-    const sc = this.scene;
-    p.left = true; p.out = true;
+  hidePlayer(p) {
     p.visual.setVisible(false); p.tag.setVisible(false); if (p.rankImg) p.rankImg.setVisible(false); p.bar.clear();
+    if (p.shield) p.shield.setVisible(false);
+  },
+  dropPlayer(p, quit) {
+    const sc = this.scene;
+    if (p.left) return;
+    const c = p.body ? { x: p.body.center.x, y: p.body.center.y } : null;
+    p.left = true; p.out = true; p.leftRaw = this.ps[p.netId];
+    if (quit) p.quit = true;
+    CG.Rescue.reset(p);
+    if (c && p.visual.visible) sc.sparks.explode(16, c.x, c.y);          // a puff where they stood
+    this.hidePlayer(p);
     if (p.body) p.body.enable = false;
-    if (sc.feedLine) sc.feedLine(p.name + ' LEFT THE MATCH'); else sc.say(p.name + ' LEFT', 1400);
+    if (!p.bot) sc.notice(p.name + (quit ? ' HAS QUIT' : ' LOST CONNECTION'), quit ? '#ff6a5a' : '#ffd23c');
     if (sc.pvp && !sc.ffa && !sc.over && this.host) {                         // a duel: a side with nobody left loses
       for (const t of [0, 1]) {
         if (sc.players.some((q) => q.team === t && !q.left)) continue;
@@ -182,6 +229,13 @@ CG.Online = {
       }
     }
     if (this.host && !sc.pvp) sc.checkOver();
+  },
+  // a soldier that was only away is back
+  rejoin(p) {
+    const sc = this.scene;
+    p.left = false; p.out = false; p.goneAt = 0; p.leftRaw = undefined;
+    if (p.body) p.body.enable = true;
+    if (!p.bot) sc.notice(p.name + ' IS BACK', '#7cff8a');
   },
   // the host is gone: the person still here with the lowest uid becomes the host, everyone else follows them
   migrate() {
@@ -195,17 +249,53 @@ CG.Online = {
     this.info.host = here[0];
     for (const p of sc.players) if (p.owner === old && !p.left) this.dropPlayer(p);       // the old host's soldier and bots go
     const who = (this.info.players.find((q) => q.owner === here[0] && !q.bot) || {}).name || 'A PLAYER';
-    sc.say('HOST LEFT — ' + who + ' TAKES OVER', 1800);
-    this.snapAt = Date.now();
+    sc.notice('HOST LEFT — ' + who + ' TAKES OVER', '#ffd23c');
+    this.snapAt = Date.now(); this.hostLeftAt = 0;
     if (here[0] === N.uid) this.becomeHost();
   },
+  // info/host changed (or was read again): follow it
+  hostIs(uid, fromRead) {
+    const sc = this.scene, N = CG.Net;
+    if (!uid || !sc || !this.info) return;
+    if (fromRead && this.host && uid !== N.uid && Date.now() - (this.claimedAt || 0) < 5000) return;     // a read older than my own take-over
+    const was = this.info.host;
+    this.info.host = uid;
+    if (uid === N.uid) { if (!this.host) this.becomeHost(); return; }
+    if (this.host) this.stepDown();
+    else if (was !== uid) { this.goneHost = was; this.snapAt = Date.now(); this.hostLeftAt = 0; }
+  },
+  // this game thought it was the host but someone else is: hand over — its own enemies and pick-ups go (the real
+  // host's snapshot brings the real ones back as puppets) and its hits are sent to the host again
+  stepDown() {
+    const sc = this.scene;
+    this.host = false; sc.isClient = true;
+    if (this.evOff) { this.evOff(); this.evOff = null; }
+    const od = this.base.child('info/ended').onDisconnect();
+    if (od.cancel) od.cancel().catch(() => {});
+    for (const e of sc.enemies.getChildren().slice()) e.destroy();
+    sc.pickups.children.iterate((k) => { if (k) sc.time.delayedCall(0, () => k.destroy()); });
+    sc.ebullets.children.iterate((x) => { if (x && x.active) sc.kill(x); });
+    this.puppets = {}; this.pickups = {};
+    this.snap = null; this.snapNew = false; this.snapAt = Date.now();
+  },
+  listenEvents() {
+    if (this.evOff) return;
+    this.evOff = this.on(this.base.child('ev'), 'child_added', (s) => { this.event(s.val()); s.ref.remove(); });
+    this.armHost();
+  },
+  armHost() { this.base.child('info/ended').onDisconnect().set('host-left'); },
   becomeHost() {
     const sc = this.scene, N = CG.Net, W = CG.CONFIG.W;
-    this.host = true; sc.isClient = false;
+    this.host = true; sc.isClient = false; this.hostLeftAt = 0; this.claimedAt = Date.now();
+    this.info.host = N.uid;
     this.base.child('info/host').set(N.uid).catch(() => {});
     this.base.child('info/ended').set(null).catch(() => {});
-    this.base.child('info/ended').onDisconnect().set('host-left');
-    this.on(this.base.child('ev'), 'child_added', (s) => { this.event(s.val()); s.ref.remove(); });
+    this.listenEvents();
+    // new enemies and pick-ups get ids after the ones already out there
+    let top = sc.netSeq || 0;
+    sc.enemies.getChildren().forEach((e) => { top = Math.max(top, e.netId || 0); });
+    sc.pickups.children.iterate((k) => { if (k) top = Math.max(top, k.netId || 0); });
+    sc.netSeq = top + 1000;
     // the enemies on screen become real ones (they were puppets the old host moved)
     for (const id in this.puppets) {
       const e = this.puppets[id];
@@ -230,13 +320,14 @@ CG.Online = {
       pr: p.prone ? 1 : 0, g: p.onGround ? 1 : 0, hp: p.hp, mx: p.maxHp, d: p.dead ? 1 : 0, o: p.out ? 1 : 0,
       sh: p.shots || 0, sp: (p.spread || p.stormT > 0) ? 1 : 0, st: p.stormT > 0 ? 1 : 0, dm: p.domeT > 0 ? 1 : 0, ds: p.dashT > 0 ? 1 : 0,
       ck: p.cloakT > 0 ? 1 : 0, wt: p.inWater ? 1 : 0,
+      q: ++this.seq,                                     // always new: a soldier standing still still shows it is here
     };
   },
 
   // move a teammate whose game is on another device to where it says they are
   applyPlayer(p, dt) {
     const raw = this.ps[p.netId];
-    if (!raw) { p.visual.setVisible(false); p.tag.setVisible(false); p.bar.clear(); return; }
+    if (!raw || p.left) { this.hidePlayer(p); return; }
     const s = typeof raw === 'string' ? JSON.parse(raw) : raw, sc = this.scene, b = p.body;
     p.netSeen = true;
     p.facing = s.f; p.aimX = s.ax; p.aimY = s.ay; p.onGround = !!s.g; p.hp = s.hp; p.maxHp = s.mx;
@@ -282,14 +373,16 @@ CG.Online = {
     sc.ebullets.children.iterate((x) => { if (x && x.active) b.push([r(x.x), r(x.y), r(x.body.velocity.x), r(x.body.velocity.y)]); });
     sc.ebombs.children.iterate((x) => { if (x && x.active) m.push([r(x.x), r(x.y), r(x.body.velocity.x), r(x.body.velocity.y)]); });
     sc.pickups.children.iterate((x) => { if (x && x.active) k.push([x.netId, x.kind, r(x.x), r(x.y)]); });
-    return { st: sc.cfg.stage, sc: sc.score, lv: sc.teamLives, cx: r(sc.camX), bo: sc.bossOn ? 1 : 0, cl: sc.cleared ? 1 : 0, ov: sc.over ? 1 : 0, e, b, m, k,
+    // t: always new, so the database sees a change even when nothing on screen moved (an unchanged value fires no
+    // update, and a client hearing nothing for 6 s would think the host had gone)
+    return { h: CG.Net.uid, t: Date.now(), st: sc.cfg.stage, sc: sc.score, lv: sc.teamLives, cx: r(sc.camX), bo: sc.bossOn ? 1 : 0, cl: sc.cleared ? 1 : 0, ov: sc.over ? 1 : 0, e, b, m, k,
       cb: [...sc.brokenCovers], kd: sc.kills || null, rd: sc.round || 0, win: sc.duelWinner === undefined ? null : sc.duelWinner, wv: sc.wave || 0 };
   },
 
   // events from the other players' games
   event(ev) {
     const sc = this.scene;
-    if (!sc || !ev) return;
+    if (!sc || !ev || !this.host) return;
     if (ev.t === 'hit') {
       const e = sc.enemies.getChildren().find((x) => x.active && x.netId === ev.id);
       if (e) e.damage(ev.n || 1);
@@ -314,6 +407,17 @@ CG.Online = {
   broadcast(m) {
     const sc = this.scene, N = CG.Net;
     if (!sc || !m || m.from === N.uid || Date.now() - (m.at || 0) > 8000) return;
+    if (m.t === 'quit') {                                // someone quit: their soldier and bots vanish now
+      for (const id of m.ids || []) { const p = sc.players.find((q) => q.netId === id && q.remote); if (p) this.dropPlayer(p, true); }
+      if (this.info && m.from === this.info.host && !this.host) this.migrate();
+      return;
+    }
+    if (m.t === 'flankfx') {                             // my shot flanked someone in their game: the impact frame here too
+      const v = sc.players.find((q) => q.netId === m.id);
+      sc.impactFrame(m.x, m.y, v && v.visual.visible ? v.visual : null);
+      if (sc.players.some((q) => q.netId === m.by && q.owner === N.uid && !q.bot)) sc.heads++;
+      return;
+    }
     if (m.t === 'rope') { CG.Rescue.ropeFromNet(sc, m); return; }     // a teammate threw me the rope
     if (m.t === 'phit') {                                // a duel: someone's ability hit my soldier
       const p = sc.players.find((q) => q.netId === m.id && q.owner === N.uid);

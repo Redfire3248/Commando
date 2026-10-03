@@ -6,6 +6,17 @@
   // sliced (they are short wide strips, so each is drawn at a fixed height and repeated sideways).
   // backgrounds15.png: one full scene per stage. Each stage theme has a few; every time the stages repeat the
   // next one is used. (Numbers are the panels in reading order.)
+  // fancy bullets (a cosmetic, CG.Cosmetics.BULLETS[..].fx): what each kind leaves behind as it flies
+  const TRAILS = {
+    // `step`: a continuous streak, one particle every `step` px along the bullet's path; else a few every `every` ms
+    trail:  { tex: 'fx_dot', step: 5, cfg: { lifespan: 200, speed: 0, scale: { start: 0.7, end: 0 }, alpha: { start: 0.85, end: 0 }, tint: [0x7ae8ff, 0xc8f4ff, 0x4ac8ff] } },
+    flame:  { tex: 'fx_dot', step: 8, cfg: { lifespan: { min: 180, max: 360 }, speed: { min: 20, max: 80 }, angle: { min: 230, max: 310 }, gravityY: -260, scale: { start: 0.85, end: 0 }, alpha: { start: 1, end: 0 }, tint: [0xffe066, 0xff9a1a, 0xff4a10, 0xff6a00] } },
+    ember:  { tex: 'fx_dot', step: 8, cfg: { lifespan: { min: 220, max: 460 }, speed: { min: 30, max: 110 }, angle: { min: 200, max: 340 }, gravityY: -180, scale: { start: 0.8, end: 0 }, alpha: { start: 1, end: 0 }, tint: [0xffd23c, 0xff3a1a, 0xc80a0a, 0x8a0000] } },
+    zap:    { tex: 'spark', every: 14, n: 3, cfg: { lifespan: { min: 90, max: 200 }, speed: { min: 160, max: 360 }, scale: { start: 1.2, end: 0 }, blendMode: 'ADD', tint: [0xffffff, 0xfff27a, 0x9ad8ff] } },
+    stars:  { tex: 'fx_star', every: 34, n: 1, cfg: { lifespan: { min: 500, max: 900 }, speed: { min: 8, max: 40 }, rotate: { min: 0, max: 360 }, scale: { start: 0.8, end: 0 }, alpha: { start: 1, end: 0 }, blendMode: 'ADD', tint: [0xffffff, 0xc08aff, 0x7ae8ff, 0xff8ad8] } },
+    petals: { tex: 'fx_petal', every: 40, n: 1, cfg: { lifespan: { min: 700, max: 1100 }, speedX: { min: -50, max: 30 }, speedY: { min: -20, max: 30 }, gravityY: 70, rotate: { start: 0, end: 300 }, scale: { start: 1, end: 0.5 }, alpha: { start: 1, end: 0 }, tint: [0xffb0d8, 0xffd8ea, 0xff8ac0] } },
+    void:   { tex: 'fx_dot', step: 6, cfg: { lifespan: 320, speed: 0, scale: { start: 1.25, end: 0.1 }, alpha: { start: 0.95, end: 0 }, tint: [0x8a3aff, 0x3a0a7a, 0x14051f] } },
+  };
   const BG15 = { jungle: [1, 2, 3, 4, 14, 7], base: [5, 6, 12, 13, 15, 8], snow: [9, 10, 11] };
   function backdrop(scene, theme, stage) {
     const { W, H } = CG.CONFIG;
@@ -188,6 +199,9 @@
         lifespan: { min: 200, max: 600 }, speed: { min: 120, max: 560 }, scale: { start: 1.5, end: 0 },
         gravityY: 700, blendMode: 'ADD', tint: [0xffffff, 0xffd27a, 0xff8a3c], emitting: false,
       }).setDepth(15);
+      this.trailFx = {};
+      this.physics.world.timeScale = 1;                  // (a flank's hit-stop never outlives the scene)
+      this.makeFxTextures();
 
       this.bullets = this.physics.add.group({ allowGravity: false, maxSize: 90 });
       this.ebullets = this.physics.add.group({ allowGravity: false, maxSize: 120 });
@@ -221,7 +235,7 @@
       const mine = this.cfg.online ? this.players.find((p) => p.owner === CG.Net.uid && !p.bot) : this.players.find((p) => !p.bot && !p.remote);
       if (mine) {
         CG.Shop.apply(mine, fx);
-        if (!this.cfg.online) { mine.bulletColor = CG.Cosmetics.lookColor('bullet', CG.Profile.bullet()); mine.nameColor = CG.Cosmetics.lookColor('namec', CG.Profile.namec()); }
+        if (!this.cfg.online) { mine.bulletColor = CG.Cosmetics.lookColor('bullet', CG.Profile.bullet()); mine.bulletFx = CG.Cosmetics.bulletFx(CG.Profile.bullet()); mine.nameColor = CG.Cosmetics.lookColor('namec', CG.Profile.namec()); }
         if (fx.life && !this.cfg.online && (this.cfg.teamLives === null || this.cfg.teamLives === undefined)) this.teamLives++;
       }
       // name colours (story / horde / co-op — duels keep the team colours so you can tell the sides apart)
@@ -342,7 +356,11 @@
         h.ab = has('ab_' + id) ? left(this.add.image(x + 250, y + 30, 'ab_' + id)) : null;
         if (h.ab) h.ab.setScale(44 / h.ab.height);
         h.cd = left(this.add.graphics());
-        h.pw = left(this.add.text(x + 72, y + 54, '', ts(16, '#ffd39a')).setShadow(0, 2, '#000', 4));
+        // the power-ups this soldier holds: an icon each, a ring that runs down and the seconds left
+        h.bx = x + 90; h.by = y + 82;
+        h.badges = left(this.add.container(0, 0));
+        h.ring = left(this.add.graphics());
+        h.pwKey = ''; h.full = {}; h.prev = {};
         h.lastHp = -1; h.lastMax = -1;
         return h;
       });
@@ -481,8 +499,12 @@
       this.roundEnd = false;
       this.down = new Set();
       this.bullets.getChildren().forEach((b) => { if (b.active) this.kill(b); });
+      // a clean start: nobody keeps the power-ups of the last round, and what was lying in the arena goes
+      if (!this.isClient) { this.pickups.children.iterate((k) => { if (k) this.time.delayedCall(0, () => k.destroy()); }); this.dropT = 9000; }
       for (const p of this.players) {
         if (p.remote) continue;
+        p.clearPowers();
+        p.stormT = p.domeT = p.adrenT = p.cloakT = p.dashT = 0;
         p.respawn();
         p.abilityCd = 0; p.abilityAt = 0; p.mdashCd = 0;
       }
@@ -574,11 +596,9 @@
           }
           h.lastHp = p.hp; h.lastMax = p.maxHp;
         }
-        const tags = [p.rapid && 'R', p.spread && 'S', p.pierce && 'P', p.blast && 'X', p.double && 'D', p.ice && 'I', p.fire && 'F', p.shock && 'Z',
-          p.magnetT > 0 && 'MAG', p.bootsT > 0 && 'BOOTS', p.aimT > 0 && 'AIM', p.cloakT > 0 && 'CLOAK', p.overT > 0 && 'OVERDRIVE'].filter(Boolean).join(' ');
-        if (h.pw.text !== tags) h.pw.setText(tags);
-        const a = p.out ? 0.3 : 1;
-        [h.port, h.name, h.hearts, h.ab].forEach((o) => o && o.setAlpha(a));
+        this.updateBadges(h);
+        const a = p.left ? 0 : p.out ? 0.3 : 1;                 // someone who quit: their card goes too
+        [h.port, h.name, h.hearts, h.ab, h.badges, h.ring].forEach((o) => o && o.setAlpha(a));
         h.cd.clear();
         if (h.ab && p.abilityCd > 0) {                     // a dark wedge that shrinks as the ability recharges
           const f = p.abilityCd / p.agent.ability.cd;
@@ -588,6 +608,50 @@
       this.livesText.setText('×' + this.teamLives);
       this.coinText.setText('+' + (this.coinsEarned || 0));
       this.adminTag.setVisible(false);
+    }
+
+    // what a soldier holds right now: [key, icon, ms left (null = until you die)]
+    powersOf(p) {
+      const pw = p.pw || {}, out = [];
+      for (const k of ['rapid', 'spread', 'pierce', 'blast', 'double', 'ice', 'fire', 'shock']) if (p[k]) out.push([k, 'pk_' + k, pw[k] !== undefined ? pw[k] : null]);
+      if (p.barrierT > 0) out.push(['barrier', 'pk_barrier', p.barrierT]);
+      if (p.magnetT > 0) out.push(['magnet', 'pk_magnet', p.magnetT]);
+      if (p.bootsT > 0) out.push(['boots', 'pk_boots', p.bootsT]);
+      if (p.aimT > 0) out.push(['autoaim', 'pk_autoaim', p.aimT]);
+      if (p.overT > 0) out.push(['overdrive', 'pk_overdrive', p.overT]);
+      if (p.armorMax) out.push(['armor', 'pk_armor', null]);
+      return out;
+    }
+    updateBadges(h) {
+      const list = h.p.alive ? this.powersOf(h.p) : [], key = list.map((b) => b[0]).join(',');
+      const R = 17, gap = 44;
+      if (key !== h.pwKey) {                             // what is held changed: lay the icons out again
+        h.pwKey = key;
+        h.badges.removeAll(true);
+        h.secs = [];
+        list.forEach(([k, tex], i) => {
+          const x = h.bx + i * gap, y = h.by;
+          h.badges.add(this.add.circle(x, y, R, 0x0a0d10, 0.85).setStrokeStyle(2, 0x2c333b));
+          if (this.textures.exists(tex)) { const im = this.add.image(x, y, tex); im.setScale(26 / Math.max(im.width, im.height)); h.badges.add(im); }
+          else h.badges.add(this.add.text(x, y, k.slice(0, 2).toUpperCase(), ts(14, '#ffd39a')).setOrigin(0.5));
+          const t = this.add.text(x, y + R + 9, '', ts(15, '#ffffff')).setOrigin(0.5).setShadow(0, 2, '#000', 4);
+          h.badges.add(t); h.secs.push(t);
+        });
+      }
+      h.ring.clear();
+      list.forEach(([k, , left], i) => {
+        const x = h.bx + i * gap, y = h.by;
+        if (left === null) { h.secs[i].setText(''); return; }
+        if (!(left <= (h.prev[k] || 0) + 50)) h.full[k] = left;       // picked up (or picked up again): a full ring
+        h.prev[k] = left;
+        const f = Math.max(0, Math.min(1, left / (h.full[k] || left || 1)));
+        const col = left < 3000 ? 0xff5a4a : 0xffd23c;
+        h.ring.lineStyle(4, col, 1).beginPath().arc(x, y, R + 1, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2, false).strokePath();
+        const sec = Math.ceil(left / 1000) + 's';
+        if (h.secs[i].text !== sec) h.secs[i].setText(sec).setColor(left < 3000 ? '#ff7a6a' : '#ffffff');
+        // the last seconds blink
+        h.secs[i].setAlpha(left < 3000 && Math.floor(left / 250) % 2 ? 0.35 : 1);
+      });
     }
 
     // ---------------------------------------------------------------- terrain
@@ -764,13 +828,17 @@
         this.sparks.explode(4, bul.x, bul.y);
         if (bul.pierce > 0) { bul.pierce--; bul.hitSet = bul.hitSet || new Set(); if (bul.hitSet.has(e)) return; bul.hitSet.add(e); } else this.kill(bul);
         if (bul.ghost) return;
-        // FLANK: a shot in the back (the bullet flies the way the soldier faces) does double damage
-        const flank = !e.T.boss && !e.T.fixed && this.fromBehind(bul, e.flipX ? -1 : 1);
+        // FLANK: hit it from the front first, then get behind it — shots in its back do double damage
+        const flank = !e.T.boss && !e.T.fixed && this.flanked(e, bul.shooter, this.fromBehind(bul, e.flipX ? -1 : 1));
         const who = bul.shooter && bul.shooter.agent ? bul.shooter.agent.id : '';
         e.lastHitBy = bul.shooter;
         e.damage((bul.dmg || 1) * (flank ? (who === 'ghost' ? 3 : 2) : 1) * (who === 'hammer' && (e.T.boss || e.T.fixed) ? 2 : 1));   // passives: GHOST, HAMMER
         if (who === 'viper') this.poison(e, () => e.active && e.damage(1));
-        if (flank && bul.shooter && !bul.shooter.bot && !bul.shooter.remote) { this.heads++; this.popText(e.x, e.y - e.displayHeight, 'FLANKED ×2', '#ffd23c'); }
+        if (flank && bul.shooter && !bul.shooter.bot && !bul.shooter.remote) {
+          this.heads++;
+          this.flankText(e.x, e.y - e.displayHeight, who === 'ghost' ? 3 : 2);
+          this.impactFrame(bul.x, bul.y, e.active ? e : null);
+        }
         if (bul.ice && e.active && !e.T.boss) e.stunT = Math.max(e.stunT || 0, 450);
         if (bul.fire && e.active) {                      // fire rounds: it keeps burning for a moment
           for (const ms of [500, 1000]) this.time.delayedCall(ms, () => { if (e.active) { this.sparks.explode(3, e.body.center.x, e.body.top); e.damage(1); } });
@@ -801,11 +869,14 @@
         }
         victim.lastHitBy = bul.shooter;
         // FLANK works on players too: get behind them and every shot in the back does double damage
-        const flank = this.fromBehind(bul, victim.facing), who = bul.shooter && bul.shooter.agent ? bul.shooter.agent.id : '';
+        const flank = this.flanked(victim, bul.shooter, this.fromBehind(bul, victim.facing)), who = bul.shooter && bul.shooter.agent ? bul.shooter.agent.id : '';
         if (who === 'viper') this.poison(victim, () => victim.alive && victim.hit(1));                  // passive: VIPER
         if (victim.hit((bul.dmg || 1) * (flank ? (who === 'ghost' ? 3 : 2) : 1)) && flank) {
-          this.popText(victim.body.center.x, victim.body.top - 20, 'FLANKED ×2', '#ffd23c');
+          this.flankText(victim.body.center.x, victim.body.top - 20, who === 'ghost' ? 3 : 2);
           if (bul.shooter && !bul.shooter.bot && !bul.shooter.remote) this.heads++;
+          // the impact frame for whoever is a person here, and for the shooter's own screen online
+          if (!victim.bot || (bul.shooter && !bul.shooter.bot)) this.impactFrame(bul.x, bul.y, victim.visual);
+          if (this.net && bul.shooter && bul.shooter.remote) this.net.shout('flankfx', { x: Math.round(bul.x), y: Math.round(bul.y), id: victim.netId, by: bul.shooter.netId });
         }
       });
       ph.add.overlap(bodies, this.ebullets, (a, b) => {
@@ -866,6 +937,8 @@
       b.blast = !!(player && player.blast); b.ice = !!(player && player.ice);
       if (player && player.pierce) b.pierce = 2;
       b.fire = !!(player && player.fire); b.shock = !!(player && player.shock);
+      b.fx = (player && player.bulletFx) || null; b.fxT = 0; b.fxX = b.fxY = undefined;
+      if (b.fx) b.setScale(b.scaleX * 1.15);
       // the shooter's bullet colour (cosmetic, seen by everyone); then the cloak's red on top
       const bc = player && player.bulletColor;
       if (bc === 'rainbow') b.setTintFill(Phaser.Display.Color.HSVToRGB((this.time.now / 700) % 1, 0.7, 1).color);
@@ -1026,6 +1099,95 @@
       const dx = Math.cos(bul.rotation);                 // the way it was fired (it may already be stopped by the hit)
       return Math.abs(dx) > 0.3 && Math.sign(dx) === Math.sign(facing || 1);
     }
+    // A flank has to be EARNED: the shooter first hits the target from the FRONT (it has seen them), then gets round
+    // behind it — shots in its back within 8 s of that count. Shooting someone who never faced you is not a flank.
+    flanked(target, shooter, behind) {
+      if (!shooter || !target) return false;
+      const m = target.facedBy || (target.facedBy = new Map()), now = this.time.now;
+      if (!behind) { m.set(shooter, now); return false; }
+      const t = m.get(shooter);
+      return t !== undefined && now - t < 8000;
+    }
+    flankText(x, y, mult) {
+      const t = this.add.text(x, y, 'FLANK ×' + mult, { fontFamily: 'Black Ops One, Impact, sans-serif', fontSize: '34px', color: '#ffd23c' })
+        .setOrigin(0.5).setDepth(40).setStroke('#000000', 6);
+      this.tweens.add({ targets: t, scale: { from: 1.8, to: 1 }, duration: 140, ease: 'Back.out' });
+      this.tweens.add({ targets: t, y: y - 60, alpha: 0, delay: 380, duration: 600, onComplete: () => t.destroy() });
+    }
+    // the FLANK impact frame: a split-second hit-stop and two stark frames — white with black speed lines and the
+    // target as a black silhouette, then the reverse — before the world snaps back (at most one every 0.7 s)
+    impactFrame(x, y, src) {
+      const now = this.time.now;
+      if (this.impactAt && now - this.impactAt < 700) return;
+      this.impactAt = now;
+      const v = this.cameras.main.worldView, D = 95;
+      const g = this.add.graphics().setDepth(D);
+      const lines = Array.from({ length: 30 }, () => ({ a: Math.random() * Math.PI * 2, r0: 50 + Math.random() * 70, r1: 500 + Math.random() * 900, w: 0.015 + Math.random() * 0.04 }));
+      const draw = (bg, fg, alpha) => {
+        g.clear();
+        g.fillStyle(bg, alpha).fillRect(v.x - 60, v.y - 60, v.width + 120, v.height + 120);
+        g.fillStyle(fg, 1);
+        for (const l of lines) {
+          g.fillTriangle(x + Math.cos(l.a - l.w) * l.r0, y + Math.sin(l.a - l.w) * l.r0, x + Math.cos(l.a + l.w) * l.r0, y + Math.sin(l.a + l.w) * l.r0,
+            x + Math.cos(l.a) * l.r1, y + Math.sin(l.a) * l.r1);
+        }
+      };
+      let sil = null;
+      if (src && src.texture && src.frame) {
+        sil = this.add.image(src.x, src.y, src.texture.key, src.frame.name).setOrigin(src.originX, src.originY)
+          .setScale(src.scaleX, src.scaleY).setFlipX(src.flipX).setAngle(src.angle || 0).setDepth(D + 1).setTintFill(0x000000);
+      }
+      draw(0xffffff, 0x000000, 0.82);
+      this.physics.world.timeScale = 5;                  // hit-stop: everything crawls for a moment
+      this.time.delayedCall(55, () => { if (g.active) draw(0x000000, 0xffffff, 0.62); if (sil && sil.active) sil.setTintFill(0xffffff); });
+      this.time.delayedCall(115, () => {
+        this.physics.world.timeScale = 1;
+        g.destroy(); if (sil) sil.destroy();
+        const ring = this.add.circle(x, y, 22).setStrokeStyle(6, 0xffd23c).setDepth(D);
+        this.tweens.add({ targets: ring, scale: 6, alpha: 0, duration: 280, onComplete: () => ring.destroy() });
+      });
+      CG.Sfx.play('hit');
+      if (this.shakeOn !== false) this.cameras.main.shake(90, 0.006);
+    }
+    // a short message at the top of the screen (someone quit, the host changed, ...)
+    notice(msg, col) {
+      const { W } = CG.CONFIG, y0 = this.pvp ? 300 : 250;
+      this.notices = (this.notices || []).filter((n) => n.active);
+      const c = this.add.container(W / 2, y0).setScrollFactor(0).setDepth(103);
+      const t = this.add.text(0, 0, msg, ts(28, col || '#ffffff')).setOrigin(0.5).setShadow(0, 2, '#000', 4);
+      const w = t.width + 56, h = 50, g = this.add.graphics();
+      g.fillStyle(0x05080a, 0.85).fillRoundedRect(-w / 2, -h / 2, w, h, 10);
+      g.fillStyle(parseInt((col || '#ffffff').slice(1), 16), 1).fillRect(-w / 2, -h / 2, 6, h);
+      c.add([g, t]);
+      this.notices.unshift(c);
+      this.notices.forEach((n, i) => n.setY(y0 + i * 58));
+      if (this.syncCams) this.syncCams();
+      this.tweens.add({ targets: c, alpha: { from: 0, to: 1 }, scale: { from: 0.85, to: 1 }, duration: 200, ease: 'Back.out' });
+      this.time.delayedCall(3400, () => { if (c.active) this.tweens.add({ targets: c, alpha: 0, duration: 400, onComplete: () => c.destroy() }); });
+    }
+    // little textures for the fancy bullets' trails
+    makeFxTextures() {
+      const make = (key, w, h, draw) => {
+        if (this.textures.exists(key)) return;
+        const g = this.make.graphics({ add: false });
+        draw(g);
+        g.generateTexture(key, w, h);
+        g.destroy();
+      };
+      make('fx_dot', 16, 16, (g) => { for (let r = 8; r > 0; r--) { g.fillStyle(0xffffff, 0.12 + 0.88 * (1 - r / 8)); g.fillCircle(8, 8, r); } });
+      make('fx_star', 16, 16, (g) => {
+        g.fillStyle(0xffffff, 1);
+        g.fillPoints([{ x: 8, y: 0 }, { x: 10, y: 6 }, { x: 16, y: 8 }, { x: 10, y: 10 }, { x: 8, y: 16 }, { x: 6, y: 10 }, { x: 0, y: 8 }, { x: 6, y: 6 }], true);
+      });
+      make('fx_petal', 12, 8, (g) => { g.fillStyle(0xffffff, 1); g.fillEllipse(6, 4, 12, 7); });
+    }
+    trail(kind) {
+      if (this.trailFx[kind] !== undefined) return this.trailFx[kind];
+      const T = TRAILS[kind];
+      const tex = T && this.textures.exists(T.tex) ? T.tex : 'spark';
+      this.trailFx[kind] = T ? this.add.particles(0, 0, tex, Object.assign({ emitting: false }, T.cfg)).setDepth(8) : null;
+      return this.trailFx[kind];
+    }
     // online: "WAITING FOR PLAYERS 1/2" until every game has loaded the stage
     showNetWait() {
       const w = this.netWait, { W, H } = CG.CONFIG;
@@ -1097,17 +1259,19 @@
     collect(p, k) {
       const C = CG.CONFIG.PLAYER;
       if (k.kind === 'heal' && p.hp >= p.maxHp) return;                 // leave it for someone who needs it
-      if (k.kind === 'rapid') { p.rapid = true; this.say('RAPID FIRE', 900); }
-      if (k.kind === 'spread') { p.spread = true; this.say('SPREAD SHOT', 900); }
       CG.Sfx.play('pickup');
       const lasts = p.agent.id === 'volt' ? 1.5 : 1;                                  // passive: VOLT
+      // bullet power-ups run out: 15 s in a fight with other players, 40 s in the story (the HUD shows the time left)
+      const dur = (this.pvp ? 15000 : 40000) * lasts;
+      if (k.kind === 'rapid') { p.givePower('rapid', dur); this.say('RAPID FIRE', 900); }
+      if (k.kind === 'spread') { p.givePower('spread', dur); this.say('SPREAD SHOT', 900); }
       if (k.kind === 'barrier') { p.barrierT = C.barrierMs * lasts; this.say('SHIELD', 900); }
       if (k.kind === 'life' && !this.isClient) { this.teamLives++; this.say('TEAM LIFE +1', 900); }
       if (k.kind === 'heal') p.heal(p.agent.id === 'nova' ? 3 : 2);                 // passive: NOVA
       const PW = { pierce: 'PIERCING ROUNDS', blast: 'EXPLOSIVE ROUNDS', double: 'DOUBLE DAMAGE', ice: 'ICE ROUNDS' };
-      if (PW[k.kind]) { p[k.kind] = true; this.say(PW[k.kind], 900); }
-      if (k.kind === 'fire') { p.fire = true; this.say('FIRE ROUNDS', 900); }
-      if (k.kind === 'shock') { p.shock = true; this.say('SHOCK ROUNDS', 900); }
+      if (PW[k.kind]) { p.givePower(k.kind, dur); this.say(PW[k.kind], 900); }
+      if (k.kind === 'fire') { p.givePower('fire', dur); this.say('FIRE ROUNDS', 900); }
+      if (k.kind === 'shock') { p.givePower('shock', dur); this.say('SHOCK ROUNDS', 900); }
       if (k.kind === 'magnet') { p.magnetT = 20000 * lasts; this.say('COIN MAGNET', 900); }
       if (k.kind === 'boots') { p.bootsT = 20000 * lasts; this.say('JUMP BOOTS', 900); }
       if (k.kind === 'autoaim') { p.aimT = 12000 * lasts; this.say('AUTO AIM', 900); }
@@ -1219,7 +1383,12 @@
       g.body.enable = true; g.body.allowGravity = true;
       g.body.setSize(18, 18, true);
       g.body.reset(p.body.center.x, p.body.top + 20);
-      g.body.setVelocity(p.facing * 560 + p.body.velocity.x * 0.5, -760);
+      // holding UP: straight up — it goes off as it falls back past you (or on its fuse), and the blast fires you
+      // FORWARD: a grenade jump (see launchPlayers)
+      g.up = !toxic && !!(p.lastInp && p.lastInp.up);
+      g.fuseT = g.up ? 1300 : 0;
+      if (g.up) g.body.setVelocity(p.body.velocity.x * 0.35, -1100);
+      else g.body.setVelocity(p.facing * 560 + p.body.velocity.x * 0.5, -760);
       g.body.setAngularVelocity(p.facing * 600);
     }
     fragBurst(g) {
@@ -1241,14 +1410,26 @@
         if (this.isFoe(g.owner, q) && q.alive && Phaser.Math.Distance.Between(x, y, q.body.center.x, q.body.center.y) < ab.radius) this.damagePlayer(q, 3, g.owner);
       }
       // the blast throws players (Jax too: grenade jumps). Teammates are only thrown, never hurt.
-      this.launchPlayers(x, y, ab.radius * 1.15);
+      this.launchPlayers(x, y, ab.radius * 1.15, g.up ? g.owner : null);
       if (this.net) this.net.shout('blast', { x: Math.round(x), y: Math.round(y), r: Math.round(ab.radius * 1.15) });
     }
-    launchPlayers(x, y, r) {
+    // a blast throws every player near it away from it; `rider` (who threw a grenade straight up) is fired FORWARD —
+    // the way they hold, else the way they face — high and fast: the grenade jump
+    launchPlayers(x, y, r, rider) {
       for (const p of this.players) {
         if (!p.alive || p.remote) continue;
         const c = p.body.center, dx = c.x - x, dy = c.y - y, d = Math.hypot(dx, dy);
         if (d > r) continue;
+        if (p === rider) {
+          const inp = p.lastInp || {}, dir = inp.right ? 1 : inp.left ? -1 : p.facing || 1;
+          p.facing = dir;
+          p.body.velocity.x = dir * 1300;
+          p.body.velocity.y = -1250;
+          p.airDashed = false; p.airJumps = 1;
+          p.launchT = 650;
+          this.sparks.explode(10, c.x - dir * 30, p.body.bottom);
+          continue;
+        }
         const k = 1 - d / r * 0.5;                            // stronger close to the blast
         p.body.velocity.x = (dx / (d || 1)) * 950 * k;
         p.body.velocity.y = -Math.max(700, 1350 * k);
@@ -1548,10 +1729,34 @@
       }
 
       const off = (b) => b.x < this.camX - 60 || b.x > this.camX + W + 60 || b.y < -60 || b.y > H + 60;
-      this.bullets.children.iterate((b) => { if (b && b.active && off(b)) this.kill(b); });
+      this.bullets.children.iterate((b) => {
+        if (!b || !b.active) return;
+        if (off(b)) { this.kill(b); return; }
+        if (!b.fx) return;                                         // a fancy bullet drops its trail as it flies
+        const T = TRAILS[b.fx], em = T && this.trail(b.fx);
+        if (!em) return;
+        if (T.step) {                                              // a streak: fill the path since the last frame
+          const lx = b.fxX === undefined ? b.x : b.fxX, ly = b.fxY === undefined ? b.y : b.fxY;
+          const n = Math.min(12, Math.max(1, Math.round(Math.hypot(b.x - lx, b.y - ly) / T.step)));
+          for (let i = 1; i <= n; i++) em.emitParticleAt(lx + ((b.x - lx) * i) / n, ly + ((b.y - ly) * i) / n, 1);
+          b.fxX = b.x; b.fxY = b.y;
+          return;
+        }
+        if ((b.fxT -= delta) > 0) return;
+        b.fxT = T.every;
+        em.emitParticleAt(b.x, b.y, T.n);
+      });
       this.ebullets.children.iterate((b) => { if (b && b.active && off(b)) this.kill(b); });
       this.ebombs.children.iterate((b) => { if (b && b.active && (b.y > H + 60 || b.x < this.camX - 200)) this.kill(b); });
-      this.grenades.children.iterate((g) => { if (g && g.active && (g.y > H + 60 || g.x > this.camX + W + 200)) this.kill(g); });
+      this.grenades.children.iterate((g) => {
+        if (!g || !g.active) return;
+        if (g.y > H + 60 || g.x > this.camX + W + 200) { this.kill(g); return; }
+        if (!g.up) return;
+        // thrown straight up: it goes off as it drops back past the thrower, or when its fuse runs out
+        g.fuseT -= delta;
+        const o = g.owner, near = o && o.alive && g.body.velocity.y > 0 && Phaser.Math.Distance.Between(g.x, g.y, o.body.center.x, o.body.center.y) < 95;
+        if (g.fuseT <= 0 || near) this.fragBurst(g);
+      });
       if (!this.isClient) this.pickups.children.iterate((k) => { if (k && k.active && (k.x < this.camX - 100 || k.y > H + 100)) k.destroy(); });
 
       if (this.horde && !this.isClient && !this.over) this.updateHorde(delta);

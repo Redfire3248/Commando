@@ -185,7 +185,7 @@ CG.Admin = (() => {
         <div class="admin-row give-rank">${[-100, -25, 25, 100].map((n) => `<button class="btn" data-adm="give-rr" data-n="${n}">${n > 0 ? '+' : ''}${n} RR</button>`).join('')}
           <button class="btn" data-adm="give-stats-reset">RESET STATS</button></div>
         <div class="admin-grid ranks-grid">${CG.Ranks.TIERS.map((t, ti) => (t.id === 'legend' ? [0] : [1, 2, 3]).map((dv) => {
-          const rr = t.id === 'legend' ? CG.Ranks.LEGEND_AT : (ti * 3 + dv - 1) * CG.Ranks.DIV;
+          const rr = t.id === 'legend' ? CG.Ranks.LEGEND_AT : CG.Ranks.divStart(ti, dv);
           return `<button class="tile btn ${CG.Ranks.of(u.rr || 0).name === CG.Ranks.of(rr).name ? 'on' : ''}" data-adm="give-rank" data-n="${rr}">${CG.Ranks.icon(rr, 34)}<span>${CG.Ranks.of(rr).name}</span></button>`;
         }).join('')).join('')}</div>
         <div class="admin-sec">Coins</div>

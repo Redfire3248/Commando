@@ -400,7 +400,7 @@ CG.UI = (() => {
         <div class="pf-id"><div class="pf-name">${esc(x.name)}${x.bot ? ' <small>BOT</small>' : ''}</div>
           <div class="pf-title" style="color:${CG.Cosmetics.titleColor(prof.title)}">${esc(CG.Cosmetics.titleName(prof.title))}</div>
           <div class="pf-rank">${CG.Ranks.icon(r.rr, 46)}<div><b style="color:${r.tier.color}">${r.name}</b>
-            <div class="pf-bar"><i style="width:${r.div ? r.inDiv : 100}%;background:${r.tier.color}"></i></div><small>${r.div ? r.inDiv + ' / 100 RR' : (r.rr - CG.Ranks.LEGEND_AT) + ' RR'}</small></div></div></div>
+            <div class="pf-bar"><i style="width:${r.div ? Math.round((100 * r.inDiv) / r.size) : 100}%;background:${r.tier.color}"></i></div><small>${r.div ? r.inDiv + ' / ' + r.size + ' RR' : (r.rr - CG.Ranks.LEGEND_AT) + ' RR'}</small></div></div></div>
       </div>
       ${st ? `<div class="pf-stats">${stat('MATCHES', st.matches || 0)}${stat('WINS', st.wins || 0)}${stat('KILLS', st.kills || 0)}${stat('FLANKS', st.heads || 0)}${stat('STAGES', st.stages || 0)}${stat('BEST WAVE', st.wave || 0)}</div>`
         : `<p class="pf-note">${x.bot ? 'A computer player. Its rank sets how well it plays.' : 'No matches yet.'}</p>`}
@@ -845,7 +845,8 @@ CG.UI = (() => {
   // the BULLETS / NAMES preview: your agent with the name over it in its colour, firing shots in the bullet colour
   function lookPreview() {
     const a = CG.AGENT[myAgent()] || CG.AGENTS[0], bc = CG.Cosmetics.lookColor('bullet', CG.Profile.bullet());
-    const shot = bc === 'rainbow' ? 'rainbow' : '';
+    const fx = CG.Cosmetics.bulletFx(CG.Profile.bullet());
+    const shot = fx ? 'fx fx-' + fx : bc === 'rainbow' ? 'rainbow' : '';
     return `<div class="look-stage">
       <div class="ls-fig">${CG.Cosmetics.nameHtml(CG.Profile.namec(), esc(myName()))}<div class="ls-body">${figure(a.id)}</div></div>
       <div class="ls-shots ${shot}" style="--bc:${bc && bc !== 'rainbow' ? bc : '#ffe9a0'}"><i></i><i></i><i></i></div>
