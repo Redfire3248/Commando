@@ -875,6 +875,9 @@ CG.UI = (() => {
         <div class="sel-role">${looking.role}</div>
         <div class="passive"><small>PASSIVE</small><b>${looking.passive.name}</b><span>${looking.passive.desc}</span></div>
         <div class="sel-ab">${abIcon(looking.id) ? `<img src="${abIcon(looking.id)}" alt="">` : ''}<div><small>ABILITY</small><b>${ab.name}</b><p>${ab.desc}</p></div></div>
+        <div class="gear-row"><small>STARTING GEAR · FREE FOR EVERYONE</small>
+          <span>${ico('hook')}<b>GRAPPLING HOOK</b><i>Fell in the water alone? Hit the timing bar and it pulls you out.</i></span>
+          <span>${ico('rope')}<b>RESCUE ROPE</b><i>A teammate is sinking? Stand at the edge and pull them up.</i></span></div>
         ${action}
       </div>`;
     // only the agents this account owns (the rest are in the SHOP)

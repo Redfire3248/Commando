@@ -14,6 +14,9 @@
 // match (15 s at most, for someone who never makes it) and then sends GO; every game starts on it together.
 // Hits work like this: you see your own bullet hit an enemy, your game tells the host, the host takes the
 // enemy's health. Enemy bullets that reach you hurt you in your own game.
+// Someone leaving does not end the match: a player whose game stops reporting for 3 s is taken out (in a duel the
+// other side wins when a whole side is gone); if the HOST goes, the next person still here (lowest uid) takes over —
+// their game turns the enemy puppets into real enemies and carries on from where the host left it.
 CG.Online = {
   mid: null, info: null, scene: null, host: false,
 
@@ -42,7 +45,12 @@ CG.Online = {
     const on = (ref, ev, fn) => { ref.on(ev, fn); this.offs.push(() => ref.off(ev, fn)); };
     on(this.base.child('p'), 'value', (s) => { this.ps = s.val() || {}; });
     on(this.base.child('bc').limitToLast(20), 'child_added', (s) => this.broadcast(s.val()));
-    on(this.base.child('info/ended'), 'value', (s) => { if (s.val() && !this.host) this.ended(s.val()); });
+    on(this.base.child('info/ended'), 'value', (s) => {
+      const v = s.val();
+      if (!v || this.host) return;
+      if (v === 'host-left') this.migrate(); else this.ended(v);
+    });
+    this.on = on;
     if (this.host) {
       on(this.base.child('ev'), 'child_added', (s) => { this.event(s.val()); s.ref.remove(); });
       this.base.child('info/ended').onDisconnect().set('host-left');
@@ -102,7 +110,7 @@ CG.Online = {
   leave() {
     const N = CG.Net;
     if (!this.mid) return;
-    if (this.host) this.base.child('info/ended').set('done').catch(() => {});
+    if (this.host) this.base.child('info/ended').set(this.scene && !this.scene.over ? 'host-left' : 'done').catch(() => {});
     else if (this.scene) for (const p of this.scene.players) if (p.owner === N.uid) this.base.child('p/' + p.netId).remove().catch(() => {});
     this.detach();
     this.mid = null; this.info = null;
@@ -142,9 +150,76 @@ CG.Online = {
       this.base.child('s').set(JSON.stringify(this.snapshot())).catch(() => {});
     }
     if (!this.host && this.snapNew) { this.snapNew = false; this.applySnapshot(); }
-    // nothing from the host for 12 seconds: they are gone
-    if (!this.host && Date.now() - this.snapAt > 12000) { this.ended('host-left'); return; }
+    // nothing from the host for 6 seconds: they are gone — someone takes over
+    if (!this.host && Date.now() - this.snapAt > 6000) { this.migrate(); return; }
     if (!this.host) this.movePuppets(dt);
+    if (this.host) this.leftCheck();
+  },
+
+  // ---------------------------------------------------------------- someone left
+  // host: a person whose soldier stopped reporting for 3 s has left — out of the match (a duel side that is gone loses)
+  leftCheck() {
+    const sc = this.scene, now = Date.now();
+    for (const p of sc.players) {
+      if (!p.remote || p.left || p.bot) continue;
+      if (this.ps[p.netId]) { p.goneAt = 0; continue; }
+      if (!p.netSeen) continue;
+      if (!p.goneAt) p.goneAt = now;
+      else if (now - p.goneAt > 3000) this.dropPlayer(p);
+    }
+  },
+  dropPlayer(p) {
+    const sc = this.scene;
+    p.left = true; p.out = true;
+    p.visual.setVisible(false); p.tag.setVisible(false); if (p.rankImg) p.rankImg.setVisible(false); p.bar.clear();
+    if (p.body) p.body.enable = false;
+    if (sc.feedLine) sc.feedLine(p.name + ' LEFT THE MATCH'); else sc.say(p.name + ' LEFT', 1400);
+    if (sc.pvp && !sc.ffa && !sc.over && this.host) {                         // a duel: a side with nobody left loses
+      for (const t of [0, 1]) {
+        if (sc.players.some((q) => q.team === t && !q.left)) continue;
+        sc.duelWinner = 1 - t; sc.duelOver(1 - t);
+        return;
+      }
+    }
+    if (this.host && !sc.pvp) sc.checkOver();
+  },
+  // the host is gone: the person still here with the lowest uid becomes the host, everyone else follows them
+  migrate() {
+    const sc = this.scene, N = CG.Net;
+    if (!sc || sc.over || !this.info) { this.ended('host-left'); return; }
+    const old = this.info.host;
+    if (this.goneHost === old) return;                   // already handled (the ended flag and the silence both say so)
+    this.goneHost = old;
+    const here = [...new Set(this.info.players.filter((q) => !q.bot && q.owner !== old && (q.owner === N.uid || this.ps[q.id])).map((q) => q.owner))].sort();
+    if (!here.length) { this.ended('host-left'); return; }
+    this.info.host = here[0];
+    for (const p of sc.players) if (p.owner === old && !p.left) this.dropPlayer(p);       // the old host's soldier and bots go
+    const who = (this.info.players.find((q) => q.owner === here[0] && !q.bot) || {}).name || 'A PLAYER';
+    sc.say('HOST LEFT — ' + who + ' TAKES OVER', 1800);
+    this.snapAt = Date.now();
+    if (here[0] === N.uid) this.becomeHost();
+  },
+  becomeHost() {
+    const sc = this.scene, N = CG.Net, W = CG.CONFIG.W;
+    this.host = true; sc.isClient = false;
+    this.base.child('info/host').set(N.uid).catch(() => {});
+    this.base.child('info/ended').set(null).catch(() => {});
+    this.base.child('info/ended').onDisconnect().set('host-left');
+    this.on(this.base.child('ev'), 'child_added', (s) => { this.event(s.val()); s.ref.remove(); });
+    // the enemies on screen become real ones (they were puppets the old host moved)
+    for (const id in this.puppets) {
+      const e = this.puppets[id];
+      if (!e.active) continue;
+      e.puppet = false;
+      if (!e.T.fixed) { e.body.moves = true; e.body.allowGravity = !e.T.fly; }
+    }
+    this.puppets = {};
+    for (const id in this.pickups) { const k = this.pickups[id]; if (k.active) k.body.moves = true; }
+    this.pickups = {};
+    // spawning picks up after what is already on screen (nothing behind the camera comes back)
+    sc.spawnI = sc.spawns ? sc.spawns.findIndex((x) => x.x > sc.camX + W + 100) : 0;
+    if (sc.spawnI < 0) sc.spawnI = sc.spawns.length;
+    this.leftCheck();
   },
 
   // ---------------------------------------------------------------- players

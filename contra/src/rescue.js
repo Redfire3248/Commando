@@ -1,6 +1,6 @@
 // Falling in the water (story mode) is no longer the end straight away.
 //   Alone (one person in the game, bots or not): the GRAPPLING HOOK. A timing bar appears over you — tap JUMP while
-//     the marker is in the green (two tries, the second one harder). It costs a heart and works once per life; the
+//     the marker is in the green (two tries, the second one harder). It is free (starting gear) and works once per life; the
 //     hook flies to the nearest edge in reach (ground, ledge or rock top) and pulls you out.
 //   With other people (co-op on one device or online): no hook. You sink slowly for 6 s with HELP! over you; a
 //     teammate near you presses SKILL (it says ROPE) and plays the same timing bar — hit it and the rope pulls you
@@ -15,6 +15,17 @@ CG.Rescue = (() => {
   const solo = (sc) => sc.players.filter((p) => !p.bot).length <= 1;
   const gyOf = () => CG.DATA.level.groundRow * T();
   const has = (sc, k) => sc.textures.exists(k);
+  // the key this player presses for an action, as words on the screen ("PRESS C", "TAP SKILL", "PRESS Y")
+  function keyFor(p, action) {
+    const d = (p.device && p.device.type) || 'any';
+    if (d === 'touch' || (d === 'any' && CG.Touch.enabled)) return 'TAP ' + (action === 'ability' ? 'SKILL' : 'JUMP');
+    if (d === 'pad') return 'PRESS ' + (action === 'ability' ? 'Y' : 'A');
+    if (d === 'kbA') return 'PRESS ' + (action === 'ability' ? 'H' : 'G');
+    if (d === 'kbB') return 'PRESS ' + (action === 'ability' ? 'O' : 'L');
+    const keys = CG.Keys.get()[action] || [];
+    const k = keys.find((x) => x[1] === 'SPACE') || keys[0];
+    return 'PRESS ' + (k ? k[1] : action.toUpperCase());
+  }
 
   // ---------------------------------------------------------------- into the water
   function enter(p) {
@@ -24,6 +35,7 @@ CG.Rescue = (() => {
     p.setProne(false);
     sc.splash(b.center.x);
     CG.Sfx.play('hit');
+    announce(p);
     if (p.remote) return;
     if (p.bot) {                                         // a bot tries its hook once, as well as it plays
       if (!p.hookUsed) sc.time.delayedCall(900, () => { if (p.inWater && !p.pull && Math.random() < 0.3 + 0.6 * (p.skill || 0)) hook(p); });
@@ -35,7 +47,7 @@ CG.Rescue = (() => {
     const sc = p.scene;
     p.mini = { kind, target, t: Math.random() * 2, tries: 2, zone: 0.26, speed: 1.15, flash: 0,
       g: sc.add.graphics().setDepth(45),
-      txt: sc.add.text(0, 0, kind === 'hook' ? 'HOOK!  TAP JUMP IN THE GREEN' : 'ROPE!  TAP JUMP IN THE GREEN', { fontFamily: 'Rajdhani, sans-serif', fontSize: '20px', fontStyle: '800', color: '#ffd23c' })
+      txt: sc.add.text(0, 0, (kind === 'hook' ? 'HOOK!  ' : 'ROPE!  ') + keyFor(p, 'jump') + ' IN THE GREEN', { fontFamily: 'Rajdhani, sans-serif', fontSize: '20px', fontStyle: '800', color: '#ffd23c' })
         .setOrigin(0.5, 1).setDepth(45).setShadow(0, 2, '#000', 3) };
   }
   function endMini(p) {
@@ -88,8 +100,7 @@ CG.Rescue = (() => {
     const sc = p.scene, a = anchor(p);
     p.hookUsed = true;
     if (!a) { sc.popText(p.body.center.x, p.body.top - 40, 'NOTHING IN REACH', '#ff6a5a'); return; }
-    p.hp = Math.max(1, p.hp - 1);                                              // a rescue costs a heart
-    pull(p, a.x, a.y, 'hook');
+    pull(p, a.x, a.y, 'hook');                                                 // free: everyone carries the hook
   }
 
   // ---------------------------------------------------------------- the rope (a teammate)
@@ -168,13 +179,21 @@ CG.Rescue = (() => {
       .setOrigin(0.5, 1).setDepth(44).setShadow(0, 3, '#000', 0);
     p.helpTxt.setPosition(p.body.center.x, Math.min(p.body.top, gyOf()) - 30).setVisible(Math.floor(sc.time.now / 250) % 2 === 0);
   }
-  // "SKILL = ROPE" over a player who could throw the rope right now
-  function hint(p, on) {
+  // "PRESS C — PULL MATE UP" over a player who could throw the rope right now (their own key)
+  function hint(p, on, q) {
     const sc = p.scene;
     if (!on) { if (p.ropeHint) { p.ropeHint.destroy(); p.ropeHint = null; } return; }
-    if (!p.ropeHint) p.ropeHint = sc.add.text(0, 0, 'SKILL = ROPE', { fontFamily: 'Rajdhani, sans-serif', fontSize: '18px', fontStyle: '800', color: '#ffd23c' })
-      .setOrigin(0.5, 1).setDepth(44).setShadow(0, 2, '#000', 3);
-    p.ropeHint.setPosition(p.body.center.x, p.body.top - 46);
+    const text = keyFor(p, 'ability') + ' — PULL ' + (q ? q.name : 'THEM') + ' UP';
+    if (!p.ropeHint) p.ropeHint = sc.add.text(0, 0, text, { fontFamily: 'Rajdhani, sans-serif', fontSize: '22px', fontStyle: '800', color: '#ffd23c', backgroundColor: 'rgba(0,0,0,0.6)', padding: { x: 8, y: 3 } })
+      .setOrigin(0.5, 1).setDepth(44);
+    if (p.ropeHint.text !== text) p.ropeHint.setText(text);
+    p.ropeHint.setPosition(p.body.center.x, p.body.top - 46).setScale(1 + 0.06 * Math.sin(sc.time.now / 120));
+  }
+  // everyone hears about it when a teammate falls in (co-op)
+  function announce(p) {
+    const sc = p.scene;
+    if (solo(sc)) return;
+    sc.say(p.name + ' FELL IN — PULL THEM UP!', 1600);
   }
   // a teammate sinking near this player (the one a rope would reach)
   function sinkingNear(p) {
@@ -221,7 +240,7 @@ CG.Rescue = (() => {
       if (!p.mini.target || !p.mini.target.inWater || p.mini.target.pull) endMini(p);
       else { b.setVelocity(0, b.velocity.y); tickMini(p, dt, inp.jumpPressed); p.sync(dt); return true; }
     }
-    hint(p, !!q && !p.bot);
+    hint(p, !!q && !p.bot, q);
     if (q && p.bot) {
       if (!p.ropeAt) p.ropeAt = sc.time.now + 1300;
       else if (sc.time.now > p.ropeAt) { p.ropeAt = 0; if (Math.random() < 0.35 + 0.6 * (p.skill || 0)) throwRope(p, q); }
@@ -253,7 +272,7 @@ CG.Rescue = (() => {
   function remote(p, inWater) {
     const was = p.inWater;
     p.inWater = !!inWater;
-    if (p.inWater && !was) p.scene.splash(p.body.center.x);
+    if (p.inWater && !was) { p.scene.splash(p.body.center.x); announce(p); }
     help(p, p.inWater);
   }
 
