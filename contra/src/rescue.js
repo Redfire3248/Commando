@@ -2,7 +2,7 @@
 //   Alone (one person in the game, bots or not): the GRAPPLING HOOK. A timing bar appears over you — tap JUMP while
 //     the marker is in the green (two tries, the second one harder). It is free (starting gear) and works once per life; the
 //     hook flies to the nearest edge in reach (ground, ledge or rock top) and pulls you out.
-//   With other people (co-op on one device or online): no hook. You sink slowly for 6 s with HELP! over you; a
+//   With other people (co-op on one device or online): no hook. You sink slowly for up to 20 s with a SINKING! marker (ring countdown) over you; a
 //     teammate near you presses SKILL (it says ROPE) and plays the same timing bar — hit it and the rope pulls you
 //     out next to them. Online the rescuer's game sends a `rope` message and the sinking player's own game pulls.
 //   Bots: a bot that falls in hooks itself out (more often the better it is); bots throw the rope to anyone sinking.
@@ -10,7 +10,7 @@
 // Art from hook.png (hook_open, hook_closed, rope_piece, rope_coil, fx_grab_1/2); a plain line stands in without it.
 CG.Rescue = (() => {
   const T = () => CG.CONFIG.TILE;
-  const SOLO_SINK = 4800, TEAM_SINK = 6000, REACH = 8, ROPE_RANGE = 340;
+  const SOLO_SINK = 20000, TEAM_SINK = 20000, REACH = 8, ROPE_RANGE = 340;      // up to 20 s to be saved
   const enabled = (sc) => !sc.pvp && !sc.horde;
   const solo = (sc) => sc.players.filter((p) => !p.bot).length <= 1;
   const gyOf = () => CG.DATA.level.groundRow * T();
@@ -30,7 +30,12 @@ CG.Rescue = (() => {
   // ---------------------------------------------------------------- into the water
   function enter(p) {
     const sc = p.scene, b = p.body;
-    p.inWater = true; p.sinkAt = sc.time.now; p.sinkMs = solo(sc) ? SOLO_SINK : TEAM_SINK;
+    // the water drains you: a heart every (20 s / max hearts), so full health lasts 20 s and fewer hearts less;
+    // whoever is pulled out keeps what is left
+    const full = solo(sc) ? SOLO_SINK : TEAM_SINK;
+    p.inWater = true; p.sinkAt = sc.time.now; p.hpAtSink = Math.max(1, p.hp);
+    p.drainMs = full / Math.max(1, p.maxHp);
+    p.sinkMs = p.hpAtSink * p.drainMs;
     b.setAllowGravity(false); b.setVelocity(0, 30);
     p.setProne(false);
     sc.splash(b.center.x);
@@ -42,42 +47,93 @@ CG.Rescue = (() => {
     } else if (solo(sc) && !p.hookUsed) startMini(p, 'hook');
   }
 
-  // ---------------------------------------------------------------- the timing bar (over the player who plays it)
+  // ---------------------------------------------------------------- shared look
+  const FONT_HEAD = 'Black Ops One, Impact, sans-serif', FONT_UI = 'Rajdhani, sans-serif';
+  // world UI scale: the game is drawn ~40 % of its size on a phone, so touch screens get it much bigger
+  const UI = () => (CG.Touch.enabled ? 2.2 : 1.5);
+  const KEYTXT = (p, action) => keyFor(p, action).replace(/^(PRESS|TAP) /, '');
+  const touchy = (p) => { const d = (p.device && p.device.type) || 'any'; return d === 'touch' || (d === 'any' && CG.Touch.enabled); };
+  // a keyboard key cap (or, on a touch screen, the button's picture) — what to press, drawn as a key
+  function keycap(sc, p, action, icon) {
+    const c = sc.add.container(0, 0).setDepth(46);
+    const g = sc.add.graphics();
+    g.fillStyle(0x0b0f13, 1).fillRoundedRect(-24, -22, 48, 48, 9);                    // shadow / side
+    g.fillStyle(0xf1ece0, 1).fillRoundedRect(-24, -26, 48, 46, 9);                    // the key top
+    g.lineStyle(2, 0x0b0f13, 1).strokeRoundedRect(-24, -26, 48, 46, 9);
+    c.add(g);
+    if (touchy(p) && icon && has(sc, 'ui_' + icon)) {
+      const im = sc.add.image(0, -3, 'ui_' + icon); im.setScale(34 / Math.max(im.width, im.height)); c.add(im);
+    } else {
+      const label = touchy(p) ? (action === 'ability' ? 'SKILL' : 'JUMP') : KEYTXT(p, action);
+      c.add(sc.add.text(0, -3, label, { fontFamily: FONT_UI, fontSize: label.length > 2 ? '15px' : '26px', fontStyle: '800', color: '#14181d' }).setOrigin(0.5));
+    }
+    return c;
+  }
+
+  // ---------------------------------------------------------------- the timing gauge (over the player who plays it)
+  // a half-moon dial: the needle swings across, the GREEN arc is a hit, the GOLD middle is PERFECT
   function startMini(p, kind, target) {
     const sc = p.scene;
-    p.mini = { kind, target, t: Math.random() * 2, tries: 2, zone: 0.26, speed: 1.15, flash: 0,
-      g: sc.add.graphics().setDepth(45),
-      txt: sc.add.text(0, 0, (kind === 'hook' ? 'HOOK!  ' : 'ROPE!  ') + keyFor(p, 'jump') + ' IN THE GREEN', { fontFamily: 'Rajdhani, sans-serif', fontSize: '20px', fontStyle: '800', color: '#ffd23c' })
-        .setOrigin(0.5, 1).setDepth(45).setShadow(0, 2, '#000', 3) };
+    const c = sc.add.container(0, 0).setDepth(46);
+    const g = sc.add.graphics();
+    const title = sc.add.text(0, -104, kind === 'hook' ? 'GRAPPLE!' : 'THROW THE ROPE!', { fontFamily: FONT_HEAD, fontSize: '26px', color: '#ffd23c' }).setOrigin(0.5).setShadow(0, 3, '#000', 0);
+    const key = keycap(sc, p, 'jump', kind);
+    key.setPosition(-44, 34);
+    const hint = sc.add.text(-12, 34, 'IN THE GREEN', { fontFamily: FONT_UI, fontSize: '17px', fontStyle: '800', color: '#ffffff' }).setOrigin(0, 0.5).setShadow(0, 2, '#000', 2);
+    c.add([g, title, key, hint]);
+    const easy = touchy(p);                                                   // thumbs get a wider green zone and a slower needle
+    p.mini = { kind, target, t: Math.random() * 2, tries: 2, zone: easy ? 0.38 : 0.28, speed: easy ? 0.75 : 0.95, flash: 0, ok: 0, c, g, title };
+    sc.tweens.add({ targets: c, scale: { from: 0.4 * UI(), to: UI() }, duration: 220, ease: 'Back.out' });
   }
   function endMini(p) {
     if (!p.mini) return;
-    p.mini.g.destroy(); p.mini.txt.destroy();
+    p.mini.c.destroy();
     p.mini = null;
+  }
+  function drawGauge(m, pos) {
+    const g = m.g, R = 64, A0 = Math.PI, span = Math.PI;                       // left → right across the top
+    const ang = (f) => A0 + f * span;
+    g.clear();
+    g.fillStyle(0x0b0f13, 0.85).slice(0, 0, R + 16, Math.PI, 0, false).fillPath();
+    g.lineStyle(16, m.flash > 0 ? 0x7a1414 : 0x2a313a, 1).beginPath().arc(0, 0, R, Math.PI, 0, false).strokePath();
+    const z = m.zone, pz = z * 0.34;
+    g.lineStyle(16, 0x3ccf4e, 1).beginPath().arc(0, 0, R, ang(0.5 - z / 2), ang(0.5 + z / 2), false).strokePath();
+    g.lineStyle(16, 0xffd23c, 1).beginPath().arc(0, 0, R, ang(0.5 - pz / 2), ang(0.5 + pz / 2), false).strokePath();
+    g.lineStyle(2, 0x0b0f13, 1).beginPath().arc(0, 0, R + 8, Math.PI, 0, false).strokePath();
+    g.beginPath().arc(0, 0, R - 8, Math.PI, 0, false).strokePath();
+    const a = ang(pos), col = m.ok > 0 ? 0x7cff8a : m.flash > 0 ? 0xff5a4a : 0xffffff;
+    g.lineStyle(6, 0x0b0f13, 1).lineBetween(0, 0, Math.cos(a) * (R + 12), Math.sin(a) * (R + 12));
+    g.lineStyle(3, col, 1).lineBetween(0, 0, Math.cos(a) * (R + 10), Math.sin(a) * (R + 10));
+    g.fillStyle(0x0b0f13, 1).fillCircle(0, 0, 9);
+    g.fillStyle(col, 1).fillCircle(0, 0, 5);
+    for (let i = 0; i < 2; i++) {                                                    // tries left: two pips
+      g.fillStyle(i < m.tries ? 0xffd23c : 0x3a3f46, 1).fillCircle(R + 26, -20 + i * 18, 6);
+      g.lineStyle(2, 0x0b0f13, 1).strokeCircle(R + 26, -20 + i * 18, 6);
+    }
   }
   function tickMini(p, dt, pressed) {
     const m = p.mini, sc = p.scene, b = p.body;
     m.t += dt; m.flash = Math.max(0, m.flash - dt);
     const pos = (Math.sin(m.t * m.speed * Math.PI) + 1) / 2;                 // 0..1, swinging
-    const W = 240, H = 22, x = b.center.x - W / 2, y = (p.inWater ? Math.min(b.top, gyOf()) : b.top) - 78;
-    const g = m.g;
-    g.clear();
-    g.fillStyle(0x000000, 0.75).fillRect(x - 4, y - 4, W + 8, H + 8);
-    g.fillStyle(m.flash > 0 ? 0x7a1010 : 0x2a2f36, 1).fillRect(x, y, W, H);
-    g.fillStyle(0x3ccf4e, 1).fillRect(x + W * (0.5 - m.zone / 2), y, W * m.zone, H);
-    g.fillStyle(0xffffff, 1).fillRect(x + W * pos - 3, y - 6, 6, H + 12);
-    for (let i = 0; i < m.tries; i++) g.fillStyle(0xffd23c, 1).fillCircle(x + W + 14 + i * 14, y + H / 2, 4);
-    m.txt.setPosition(b.center.x, y - 8);
+    const y = (p.inWater ? Math.min(b.top, gyOf()) : b.top) - 70 * UI();
+    m.c.setPosition(b.center.x + (m.flash > 0 ? Math.sin(m.flash * 90) * 5 : 0), y);
+    drawGauge(m, pos);
     if (!pressed) return;
-    if (Math.abs(pos - 0.5) <= m.zone / 2) {                                   // hit
+    const off = Math.abs(pos - 0.5);
+    if (off <= m.zone / 2) {                                                     // hit
+      const perfect = off <= m.zone * 0.17;
       CG.Sfx.play('pickup');
-      const { kind, target } = m;
-      endMini(p);
+      sc.popText(b.center.x, y - 130 * UI(), perfect ? 'PERFECT!' : 'NICE!', perfect ? '#ffd23c' : '#7cff8a');
+      const kind = m.kind, target = m.target, c = m.c;
+      m.ok = 1; drawGauge(m, pos);
+      sc.tweens.add({ targets: c, scale: 1.2 * UI(), alpha: 0, duration: 200, onComplete: () => c.destroy() });
+      p.mini = null;
       if (kind === 'hook') hook(p); else throwRope(p, target);
-    } else {                                                                    // miss: smaller, faster, one try fewer
+    } else {                                                                      // miss: smaller, faster, one try fewer
       m.tries--; m.flash = 0.35; m.zone *= 0.75; m.speed *= 1.3;
       CG.Sfx.play('hit');
-      if (m.tries <= 0) { endMini(p); sc.popText(b.center.x, b.top - 40, 'MISSED', '#ff6a5a'); }
+      sc.cameras.main.shake(120, 0.004);
+      if (m.tries <= 0) { endMini(p); sc.popText(b.center.x, y - 60, 'MISSED!', '#ff6a5a'); }
     }
   }
 
@@ -108,11 +164,20 @@ CG.Rescue = (() => {
     const sc = rescuer.scene, b = rescuer.body;
     if (!q || !q.inWater) return;
     const x = b.center.x - rescuer.facing * 10, y = b.bottom;
+    // the coil sails across to them, then the rope pulls tight
+    coilFly(sc, b.center.x, b.top + 20, q.body.center.x, Math.min(q.body.top, gyOf()) + 10);
     if (q.remote) {                                     // online: their own game pulls them; show the rope here
       if (sc.net) sc.net.shout('rope', { target: q.netId, x: Math.round(x), y: Math.round(y) });
-      ropeFlash(sc, x, y - 20, q);
-    } else pull(q, x, y, 'rope');
-    sc.popText(b.center.x, b.top - 40, 'ROPE!', '#ffd23c');
+      sc.time.delayedCall(260, () => ropeFlash(sc, x, y - 20, q));
+    } else sc.time.delayedCall(260, () => { if (q.inWater && !q.pull) pull(q, x, y, 'rope'); });
+  }
+  function coilFly(sc, x1, y1, x2, y2) {
+    if (!has(sc, 'rope_coil')) return;
+    const c = sc.add.image(x1, y1, 'rope_coil').setDepth(47).setScale((sc.artScale.rope_coil || 0.2) * 0.8);
+    sc.tweens.add({ targets: c, x: x2, duration: 260, ease: 'Linear' });
+    sc.tweens.add({ targets: c, y: Math.min(y1, y2) - 90, duration: 130, ease: 'Quad.out', onComplete: () => sc.tweens.add({ targets: c, y: y2, duration: 130, ease: 'Quad.in' }) });
+    sc.tweens.add({ targets: c, angle: 540, duration: 260 });
+    sc.time.delayedCall(270, () => c.destroy());
   }
   // a rope seen for a moment (online, while the other game does the pulling)
   function ropeFlash(sc, x, y, q) {
@@ -171,29 +236,108 @@ CG.Rescue = (() => {
     } else sc.splash(x);
   }
 
-  // ---------------------------------------------------------------- HELP! over someone sinking (co-op)
+  // ---------------------------------------------------------------- the sinking marker (over anyone in the water)
+  // their portrait in a ring that drains as their time runs out, SINKING! and the seconds left, bubbles rising
   function help(p, on) {
     const sc = p.scene;
-    if (!on) { if (p.helpTxt) { p.helpTxt.destroy(); p.helpTxt = null; } return; }
-    if (!p.helpTxt) p.helpTxt = sc.add.text(0, 0, 'HELP!', { fontFamily: 'Black Ops One, Impact, sans-serif', fontSize: '30px', color: '#ff5a4a' })
-      .setOrigin(0.5, 1).setDepth(44).setShadow(0, 3, '#000', 0);
-    p.helpTxt.setPosition(p.body.center.x, Math.min(p.body.top, gyOf()) - 30).setVisible(Math.floor(sc.time.now / 250) % 2 === 0);
+    if (!on) { if (p.helpUI) { p.helpUI.c.destroy(); p.helpUI = null; } return; }
+    if (!p.helpUI) {
+      const c = sc.add.container(0, 0).setDepth(45);
+      const g = sc.add.graphics();
+      const key = 'portrait_' + p.agent.id;
+      const face = has(sc, key) ? sc.add.image(0, 0, key) : null;
+      if (face) face.setScale(46 / Math.max(face.width, face.height));
+      const lbl = sc.add.text(0, -54, 'SINKING!', { fontFamily: FONT_HEAD, fontSize: '22px', color: '#ff5a4a' }).setOrigin(0.5).setShadow(0, 3, '#000', 0);
+      const sec = sc.add.text(0, 44, '', { fontFamily: FONT_UI, fontSize: '18px', fontStyle: '800', color: '#ffffff', backgroundColor: '#7a1414', padding: { x: 6, y: 1 } }).setOrigin(0.5);
+      const name = sc.add.text(0, 66, p.name, { fontFamily: FONT_UI, fontSize: '15px', fontStyle: '800', color: '#ffd23c' }).setOrigin(0.5).setShadow(0, 2, '#000', 2);
+      c.add(face ? [g, face, lbl, sec, name] : [g, lbl, sec, name]);
+      p.helpUI = { c, g, lbl, sec, bubT: 0 };
+      sc.tweens.add({ targets: c, scale: { from: 0.3 * UI(), to: UI() }, duration: 260, ease: 'Back.out' });
+    }
+    const U = p.helpUI, left = Math.max(0, p.sinkMs - (sc.time.now - p.sinkAt)), f = left / (p.sinkMs || 1);
+    const x = p.body.center.x, y = gyOf() - 96 * UI();
+    U.c.setPosition(x, y + Math.sin(sc.time.now / 260) * 3);
+    const g = U.g, danger = f < 0.34;
+    g.clear();
+    g.fillStyle(0x0b1620, 0.92).fillCircle(0, 0, 31);
+    g.lineStyle(7, 0x2a0e0e, 1).strokeCircle(0, 0, 33);
+    g.lineStyle(7, danger ? 0xff3a2a : 0xff8a3c, 1).beginPath().arc(0, 0, 33, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2, false).strokePath();
+    g.lineStyle(2, 0x0b0f13, 1).strokeCircle(0, 0, 37);
+    U.lbl.setAlpha(danger ? (Math.floor(sc.time.now / 160) % 2 ? 1 : 0.35) : 1);
+    U.sec.setText((left / 1000).toFixed(1) + 's');
+    // bubbles from where they went under
+    U.bubT -= sc.game.loop.delta;
+    if (U.bubT <= 0) {
+      U.bubT = 140;
+      const bx = x + (Math.random() - 0.5) * 50, by = gyOf() + 60;
+      const bub = sc.add.circle(bx, by, 3 + Math.random() * 4, 0xbfe8ff, 0.85).setStrokeStyle(1, 0xffffff, 0.9).setDepth(4);
+      sc.tweens.add({ targets: bub, y: gyOf() + 30, alpha: 0, duration: 520 + Math.random() * 300, ease: 'Quad.out', onComplete: () => bub.destroy() });
+    }
   }
-  // "PRESS C — PULL MATE UP" over a player who could throw the rope right now (their own key)
+  // over a player who could throw the rope right now: their key as a key cap, PULL UP, and a dotted rope to them
   function hint(p, on, q) {
     const sc = p.scene;
-    if (!on) { if (p.ropeHint) { p.ropeHint.destroy(); p.ropeHint = null; } return; }
-    const text = keyFor(p, 'ability') + ' — PULL ' + (q ? q.name : 'THEM') + ' UP';
-    if (!p.ropeHint) p.ropeHint = sc.add.text(0, 0, text, { fontFamily: 'Rajdhani, sans-serif', fontSize: '22px', fontStyle: '800', color: '#ffd23c', backgroundColor: 'rgba(0,0,0,0.6)', padding: { x: 8, y: 3 } })
-      .setOrigin(0.5, 1).setDepth(44);
-    if (p.ropeHint.text !== text) p.ropeHint.setText(text);
-    p.ropeHint.setPosition(p.body.center.x, p.body.top - 46).setScale(1 + 0.06 * Math.sin(sc.time.now / 120));
+    if (!on) { if (p.ropeUI) { p.ropeUI.c.destroy(); p.ropeUI.line.destroy(); p.ropeUI = null; } return; }
+    if (!p.ropeUI) {
+      const c = sc.add.container(0, 0).setDepth(46);
+      const key = keycap(sc, p, 'ability', 'rope');
+      key.setPosition(-46, 0);
+      const t1 = sc.add.text(-14, -10, 'PULL UP', { fontFamily: FONT_HEAD, fontSize: '22px', color: '#ffd23c' }).setOrigin(0, 0.5).setShadow(0, 3, '#000', 0);
+      const t2 = sc.add.text(-14, 13, '', { fontFamily: FONT_UI, fontSize: '15px', fontStyle: '800', color: '#ffffff' }).setOrigin(0, 0.5).setShadow(0, 2, '#000', 2);
+      c.add([key, t1, t2]);
+      p.ropeUI = { c, t2, line: sc.add.graphics().setDepth(44) };
+      sc.tweens.add({ targets: c, scale: { from: 0.4 * UI(), to: UI() }, duration: 200, ease: 'Back.out' });
+    }
+    const U = p.ropeUI, b = p.body;
+    U.t2.setText(q ? q.name : '');
+    U.c.setPosition(b.center.x + 10, b.top - 56 * UI() + Math.sin(sc.time.now / 180) * 3);
+    // the dotted rope from your hands to them, marching toward them
+    const x1 = b.center.x, y1 = b.top + 40, x2 = q.body.center.x, y2 = Math.min(q.body.top, gyOf()) + 10;
+    const len = Math.hypot(x2 - x1, y2 - y1), n = Math.floor(len / 16), ph = (sc.time.now / 60) % 16;
+    const g = U.line;
+    g.clear();
+    for (let i = 0; i < n; i++) {
+      const f = (i * 16 + ph) / len, px = x1 + (x2 - x1) * f, py = y1 + (y2 - y1) * f - Math.sin(f * Math.PI) * 30;
+      g.fillStyle(0x0b0f13, 0.9).fillCircle(px, py, 5);
+      g.fillStyle(0xffd23c, 1).fillCircle(px, py, 3);
+    }
   }
-  // everyone hears about it when a teammate falls in (co-op)
+  // the alert card at the top of the screen while a teammate is sinking (co-op): who, how long, what to do
+  function alertCard(sc) {
+    const people = sc.players.filter((q) => !q.bot && !q.remote);
+    const sinking = sc.players.filter((q) => q.inWater && !q.pull && q.alive && !(people.length === 1 && q === people[0]));
+    if (!sinking.length || solo(sc)) { if (sc.rescueCard) { sc.rescueCard.c.destroy(); sc.rescueCard = null; } return; }
+    const leftOf = (x) => x.sinkMs - (sc.time.now - x.sinkAt);
+    const q = sinking.reduce((a, x) => (leftOf(x) < leftOf(a) ? x : a));
+    const W = CG.CONFIG.W, cw = 540, ch = 80;
+    if (!sc.rescueCard) {
+      const c = sc.add.container(W / 2, 170).setScrollFactor(0).setDepth(56).setScale(CG.Touch.enabled ? 1.75 : 1.35);
+      const g = sc.add.graphics();
+      const icon = has(sc, 'ui_rope') ? sc.add.image(-cw / 2 + 44, 0, 'ui_rope') : null;
+      if (icon) icon.setScale(52 / Math.max(icon.width, icon.height));
+      const t1 = sc.add.text(-cw / 2 + 84, -18, '', { fontFamily: FONT_HEAD, fontSize: '24px', color: '#ff6a5a' }).setOrigin(0, 0.5);
+      const t2 = sc.add.text(-cw / 2 + 84, 10, '', { fontFamily: FONT_UI, fontSize: '18px', fontStyle: '800', color: '#ffd23c' }).setOrigin(0, 0.5);
+      c.add(icon ? [g, icon, t1, t2] : [g, t1, t2]);
+      sc.rescueCard = { c, g, t1, t2 };
+      sc.tweens.add({ targets: c, y: { from: 100, to: 170 }, alpha: { from: 0, to: 1 }, duration: 240, ease: 'Back.out' });
+      if (sc.syncCams) sc.syncCams();
+    }
+    const C = sc.rescueCard, left = Math.max(0, leftOf(q)), f = left / (q.sinkMs || 1);
+    // someone on this screen in reach? then their key, else: run to the edge
+    const inReach = people.find((r) => !r.inWater && r.alive && r.onGround && Math.abs(r.body.center.x - q.body.center.x) < ROPE_RANGE);
+    C.t1.setText(q.name + ' IS SINKING');
+    C.t2.setText(inReach ? keyFor(inReach, 'ability') + ' TO THROW THE ROPE' : "GET TO THE WATER'S EDGE \u2014 FAST");
+    const g = C.g, pulse = 0.5 + 0.5 * Math.sin(sc.time.now / 140);
+    g.clear();
+    g.fillStyle(0x1a0606, 0.92).fillRoundedRect(-cw / 2, -ch / 2, cw, ch, 10);
+    g.lineStyle(3, Phaser.Display.Color.GetColor(255, Math.round(70 + 80 * pulse), 58), 1).strokeRoundedRect(-cw / 2, -ch / 2, cw, ch, 10);
+    g.fillStyle(0x3a1010, 1).fillRect(-cw / 2 + 84, ch / 2 - 14, cw - 104, 7);
+    g.fillStyle(f < 0.34 ? 0xff3a2a : 0xff8a3c, 1).fillRect(-cw / 2 + 84, ch / 2 - 14, (cw - 104) * f, 7);
+  }
+  // when a teammate falls in (co-op) the alert card does the talking; just a sound here
   function announce(p) {
-    const sc = p.scene;
-    if (solo(sc)) return;
-    sc.say(p.name + ' FELL IN — PULL THEM UP!', 1600);
+    if (solo(p.scene)) return;
+    CG.Sfx.play('hit');
   }
   // a teammate sinking near this player (the one a rope would reach)
   function sinkingNear(p) {
@@ -214,18 +358,27 @@ CG.Rescue = (() => {
   function update(p, dt, inp) {
     const sc = p.scene, b = p.body;
     if (!enabled(sc)) return false;
+    if (p === sc.players.find((q) => !q.bot && !q.remote)) alertCard(sc);
     if (!p.bot && !p.remote) buttons(p, p.inWater || p.pull ? null : sinkingNear(p));
     const hideTag = () => { p.tag.setVisible(false); if (p.rankImg) p.rankImg.setVisible(false); p.bar.clear(); };
-    if (p.pull) { tickPull(p, dt); p.sync(dt); hideTag(); return true; }
+    if (p.pull) { help(p, false); tickPull(p, dt); p.sync(dt); hideTag(); return true; }
     if (p.inWater) {
       hideTag();
       b.setVelocity(0, 30);
       p.invT = Math.max(p.invT, 120);                    // helpless in the water: bullets miss you (you blink)
       p.visual.setTint(0x9cc8ff);
       if (p.mini) tickMini(p, dt, inp.jumpPressed);
-      help(p, !solo(sc) && !p.pull);
+      help(p, !p.pull);
       p.sync(dt);
-      if (sc.time.now - p.sinkAt > p.sinkMs) {                                   // gone under
+      hideTag();
+      // drowning: hearts drain away while you are under (the HUD hearts show it)
+      const want = Math.max(0, p.hpAtSink - Math.floor((sc.time.now - p.sinkAt) / p.drainMs));
+      if (p.hp > want) {
+        p.hp = want;
+        sc.popText(b.center.x, gyOf() - 20, '-1 \u2665', '#ff5a4a');
+        CG.Sfx.play('hit');
+      }
+      if (p.hp <= 0 || sc.time.now - p.sinkAt > p.sinkMs) {                     // gone under
         endMini(p); help(p, false);
         p.inWater = false; p.visual.clearTint(); b.setAllowGravity(true);
         sc.splash(b.center.x);
@@ -272,7 +425,7 @@ CG.Rescue = (() => {
   function remote(p, inWater) {
     const was = p.inWater;
     p.inWater = !!inWater;
-    if (p.inWater && !was) { p.scene.splash(p.body.center.x); announce(p); }
+    if (p.inWater && !was) { p.sinkAt = p.scene.time.now; p.sinkMs = Math.max(1, p.hp) * TEAM_SINK / Math.max(1, p.maxHp); p.scene.splash(p.body.center.x); announce(p); }
     help(p, p.inWater);
   }
 

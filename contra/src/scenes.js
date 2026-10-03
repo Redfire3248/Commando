@@ -61,6 +61,7 @@
       if (!art || !CG.CONFIG.SHEET_ART) return;
       this.load.on('progress', (v) => CG.UI.loading(v));
       for (const k in art.images) this.load.image(k, art.images[k]);
+      for (const k in art.ui || {}) this.load.image('ui_' + k, art.ui[k]);        // interface icons, for in-game prompts too
       for (const k in art.sheets) this.load.spritesheet(k, art.sheets[k].path, { frameWidth: art.sheets[k].fw, frameHeight: art.sheets[k].fh });
     }
     create() {
