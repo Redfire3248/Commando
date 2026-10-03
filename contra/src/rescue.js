@@ -255,7 +255,8 @@ CG.Rescue = (() => {
       sc.tweens.add({ targets: c, scale: { from: 0.3 * UI(), to: UI() }, duration: 260, ease: 'Back.out' });
     }
     const U = p.helpUI, left = Math.max(0, p.sinkMs - (sc.time.now - p.sinkAt)), f = left / (p.sinkMs || 1);
-    const x = p.body.center.x, y = gyOf() - 96 * UI();
+    // your own gauge is up (the hook, alone): the marker steps aside so the two don't overlap
+    const x = p.body.center.x + (p.mini ? 150 * UI() : 0), y = gyOf() - 96 * UI();
     U.c.setPosition(x, y + Math.sin(sc.time.now / 260) * 3);
     const g = U.g, danger = f < 0.34;
     g.clear();
